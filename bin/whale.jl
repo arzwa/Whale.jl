@@ -62,6 +62,7 @@ function do_mcmc(S, ccd, slices, conf, ids; burnin=1000)
         @show out.minimum
     else
         @info "Writing samples to $(conf["mcmc"]["outfile"][1])"
+        burnin = conf["mcmc"]["ngen"][1] < burnin ? 1 : burnin
         amcmc!(ccd, chain, prop, prior, conf["mcmc"]["ngen"][1],
             conf["mcmc"]["freq"][1], fname=conf["mcmc"]["outfile"][1])
         df = CSV.read(conf["mcmc"]["outfile"][1])[burnin:end, :]

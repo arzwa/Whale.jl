@@ -1,8 +1,5 @@
 #===============================================================================
 ALE duplication-loss model likelihood calculation using dynamic programming.
-
-the `ale_probability` function in commit b181e7445118932bd4b4c05ff47ca284d6e7fb10
-was tested against PsDL and gave identical results.
 ===============================================================================#
 # Main algorithm(s) ------------------------------------------------------------
 """
@@ -264,7 +261,7 @@ end
 """
     get_slices(T::Tree, Δt::Float64, min_n_slices::Int64; root::Float64=-1.,
         max_n_slices::Int64=1000)
-Slicing function similar to PsDL. Maybe put Δt and min_n_slices as keyword args.
+Slicing function. Maybe put Δt and min_n_slices as keyword args.
 """
 function get_slices(T::Tree, Δt::Float64, min_n_slices::Int64; root::Float64=-1.,
         max_n_slices::Int64=1000)
@@ -364,7 +361,7 @@ end
 
 """
     total_normalized_probability(results, ε; branches::Array{Int64}=[1])
-Total probability, normalized as in PsDL (and ALE?). This is the sum of the
+Total probability, normalized as in ALE. This is the sum of the
 probabilities of observing the ubiquitous clade Γ over all branches and time
 slices.
 

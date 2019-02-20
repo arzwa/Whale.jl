@@ -86,11 +86,7 @@ end
 
 """
     get_extinction_probabilities(S::SpeciesTree, slices::Slices, λ::Float64, μ::Float64)
-Compute all extinction probabilities as in PsDL, assuming no WGDs.
-I have tested this (I really compared all branches, so I tested it quite well),
-and it indeed gives virtually identical results as PsDL, with the slight differences
-probably originating from slightly different slicing. For the branch leading to the
-root I got identical results, as the slicing is performed identical here as in PsDL.
+Compute all extinction probabilities, assuming no WGDs.
 """
 function get_extinction_probabilities(S::SpeciesTree, slices::Slices, λ::Float64, μ::Float64)
     #e_vtx, e_arc = p_extinction(S, λ, μ, [])
@@ -134,7 +130,7 @@ end
 """
     get_extinction_probabilities(S::SpeciesTree, slices::Slices, λ::Float64, μ::Float64,
         q::Array{Float64})
-Compute all extinction probabilities as in PsDL, with WGDs.
+Compute all extinction probabilities with WGDs.
 """
 function get_extinction_probabilities(S::SpeciesTree, slices::Slices, λ::Float64, μ::Float64,
         q::Array{Float64})
@@ -179,7 +175,7 @@ end
 
 """
     get_extinction_probabilities(...)
-Compute all extinction probabilities as in PsDL, with WGDs. With arbitrary
+Compute all extinction probabilities, with WGDs. With arbitrary
 rates for each branch (given in the rate_index).
 """
 function get_extinction_probabilities(S::SpeciesTree, slices::Slices, λ::Array{Float64},

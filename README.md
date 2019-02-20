@@ -4,7 +4,7 @@
 
 - This method, called Whale, can be used to assess WGD hypotheses using gene family phylogenetic trees. It can also be used to estimate branch-specific duplication and loss rates for a species tree under various models of rate evolution.
 
-- To install `Whale`, you will need a julia installation (v1.x). Currently you should clone this repository, open a julia session, type `]` to enter the package manager and then do `dev /path/to/Whale`. Then you should be able to type `using Whale` in a julia session, after which you can use the library. Note that this is still a development version.
+- To install `Whale`, you will need a julia installation (v1.x). Currently you should clone this repository, open a julia session, type `]` to enter the package manager and then do `dev /path/to/Whale`. Then you should be able to type `using Whale` in a julia session, after which you can use the library. Note that this is still a development version. You might want to get some minimal familiarity with the Julia REPL and its package manager, see [the julia docs](https://docs.julialang.org/en/v1/).
 
 - To do analyses with Whale, you will need (1) a dated species tree, (2) a set of gene families with for each gene family a sample from the posterior distribution of gene trees (bootstrap replicates can also be used in principle), summarized as a *conditional clade distribution* in an `ale` file (see below) and (3) a configuration file. All analyses are invoked by using
 
@@ -29,7 +29,7 @@ PPAT = PPAT 0.6 -1.
 [rates]
 ATHA,CPAP = 1 true
 PPAT,MPOL = 2 true
-GBIL,PABI = 3 false
+GBIL,PABI = 3 true
 
 [ml]
 η = 0.66
@@ -55,12 +55,39 @@ To specify branch wise rates one can use the `[rates]` section. This looks like 
 [rates]
 ATHA,CPAP = 1 true
 PPAT,MPOL = 2 true
-GBIL,PABI = 3 false
+GBIL,PABI = 3 true
 ```
 
-Here we have specified a rate class (with ID 1) for the clade defined by the common ancestor of `ATHA` and `CPAP`. Similarly for the mosses (with ID 2). By using the `false` setting, the rate is not defined for the full clade below the speicfied node but only for the branch leasing to that node. Si, in this case we assigned a rate class (3) to the branch leading to the gymnosperms (the branch leading to the `GBIL,PABI` common ancestor node).
+Here we have specified a rate class (with ID 1) for the clade defined by the common ancestor of `ATHA` and `CPAP`. Similarly for the mosses (with ID 2) and gymnosperms (ID 3). By using the `false` instead of `true` setting, the rate is not defined for the full clade below the specified node but only for the branch leasing to that node.
 
 Other options for the ML method are specified in the `[ml]` section, here you can parametrize the geometric prior distribution on the number of lineages at the root (η). Other parameters that can be set here are `maxiter` (the maximum number of iterations) and `ctol` (the convergence criterion).
+
+You can test the ML methods with the example data in the `example` directory. From the main directory of the repository, execute:
+
+```
+julia -p 1 bin/whale.jl example/morris-9taxa.nw example/example-ale example/whalemle.conf
+```
+
+The output should be something like this:
+
+```
+...
+λ = ( 0.245,  0.093,  0.092,  0.106) ; μ = ( 0.345,  0.086,  0.121,  0.176) ; q = ( 0.174,  0.000,  0.418) ; ⤷ log[P(Γ)] = -280.143
+Maximum: log(L) = -280.1426
+ML estimates (η = 0.66): λ = ( 0.245,  0.093,  0.092,  0.107) ; μ = ( 0.345,  0.086,  0.121,  0.176) ; q = ( 0.174,  0.000,  0.418) ;
+out = Results of Optimization Algorithm
+ * Algorithm: Nelder-Mead
+ * Starting Point: [0.17712481405234004,0.17712481405234004, ...]
+ * Minimizer: [0.24459519525102252,0.09337957168782722, ...]
+ * Minimum: 2.801426e+02
+ * Iterations: 929
+ * Convergence: true
+   *  √(Σ(yᵢ-ȳ)²)/n < 1.0e-05: true
+   * Reached Maximum Number of Iterations: false
+ * Objective Calls: 1333
+out.minimizer = [0.244595, 0.0933796, 0.0916083, 0.106514, 0.344514, 0.0863275, 0.120583, 0.175975, 0.173878, 9.11622e-7, 0.41785]
+out.minimum = 280.1426206365062
+```
 
 ## Testing WGD hypotheses and inferring branch-wise duplication and loss rates using MCMC
 
@@ -71,7 +98,6 @@ Whale implements a Bayesian approach using MCMC to do posterior inference for th
 SEED = GBIL,ATHA 3.900 -1.
 ANGI = ATRI,ATHA 3.080 -1.
 MONO = OSAT      0.910 -1.
-GMMA = ATHA,VVIT 1.200 -1.
 ALPH = ATHA      0.501 -1.
 CPAP = CPAP      0.275 -1.
 BETA = ATHA      0.550 -1.
@@ -91,11 +117,19 @@ kernel = arwalk
 
 # chain
 outfile = whalebay-gbm.csv  # output file for posterior sampled
-ngen = 11000                # number of generations to run the chain
+ngen = 200                  # number of generations to run the chain (set this to > 5000)
 freq = 1                    # chain sample frequency
 ```
 
 For the `[wgd]` section, please refer to the previous section. The `[mcmc]` section is quite self-explanatory (note the comments indicating the priors etc.). The `rates = gbm` setting will result in the autocorrelation (geometric Brownian motion) prior being used, whereas `iid` will result in the independent and identically distributed rates prior being used. Note that the ν parameter has a different meaning in both models. Currently as `kernel` setting only `arwalk` (adaptive random walk) is supported.
+
+You can test the Bayesian approach using the example data by executing:
+
+```
+julia -p 1 bin/whale.jl example/morris-9taxa.nw example/example-ale example/whalebay.conf
+```
+
+You should see a file `whalebay-gbm.csv` emerge.
 
 ## Extra
 
@@ -115,3 +149,5 @@ ccd = get_ccd("example/100.nw.ale", S)
 rtrees = backtrackmcmcpost(post, ccd_, S, slices, 100)  # do the backtracking (sample 100 trees)
 ```
 In a `julia` session you can always use `?` to fetch documentation of particular functions.
+
+I hope to be updating this software soon and frequently, so please check the latest commits on Github.

@@ -5,7 +5,7 @@ challenge.
 
     10/01/2019: basics seem to work
 ===============================================================================#
-# TODO: How to sample a bunch and make a consensus? PsDL does not seem to implement this (ALE does?)
+# TODO: How to sample a bunch and make a consensus? 
 # TODO: How to get reasonable/correct branch lengths, in particular for WGDs? See also _track.jl
 # TODO: reimplement visualization of rec. trees:w
 """
@@ -442,7 +442,7 @@ function correct_branch_lengths!(R::RecTree, S::SpeciesTree)
 end
 
 # FIXME: I think it (the branch length) may be incorrect when for instance
-# a wgd node is in between two duplication nodes 
+# a wgd node is in between two duplication nodes
 """
     do_correction!(R::RecTree, S::SpeciesTree, node::Int64)
 This does the actual correcting described in `correct_branch_lengths!(R, S)`
