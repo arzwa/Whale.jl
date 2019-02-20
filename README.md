@@ -1,5 +1,19 @@
 # Whale: whole genome duplication inference by amalgamated likelihood estimation
 
+```
+
+    .-------------'```'----....,,__                        _,
+   |                               `'`'`'`'-.,.__        .'(
+   |                                             `'--._.'   )
+   |                                                   `'-.<
+   \               .-'`'-.                            -.    `\
+    \               -.o_.     _                     _,-'`\    |
+     ``````''--.._.-=-._    .'  \            _,,--'`      `-._(
+       (^^^^^^^^`___    '-. |    \  __,,..--'                 `
+        `````````   `'--..___\    |`
+                              `-.,'
+```
+
 - This library implements the duplication, loss and whole genome duplication (DL + WGD) model for performing joint gene tree - reconciliation inference using amalgamated likelihood estimation (ALE).
 
 - This method, called Whale, can be used to assess WGD hypotheses using gene family phylogenetic trees. It can also be used to estimate branch-specific duplication and loss rates for a species tree under various models of rate evolution.
