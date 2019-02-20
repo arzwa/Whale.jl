@@ -157,6 +157,7 @@ q, ids = mark_wgds!(S, conf["wgd"])
 slices = get_slices_conf(S, conf["slices"])
 ccd = get_ccd("example/100.nw.ale", S)
 rtrees = backtrackmcmcpost(post, ccd_, S, slices, 100)  # do the backtracking (sample 100 trees)
+drawtree(rtrees[1][1], width=200, height=120)
 ```
 In a `julia` session you can always use `?` to fetch documentation of particular functions.
 
