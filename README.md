@@ -6,11 +6,13 @@
 
 - To install `Whale`, you will need a julia installation (v1.x). Currently you should clone this repository, open a julia session, type `]` to enter the package manager and then do `dev /path/to/Whale`. Then you should be able to type `using Whale` in a julia session, after which you can use the library. Note that this is still a development version. You might want to get some minimal familiarity with the Julia REPL and its package manager, see [the julia docs](https://docs.julialang.org/en/v1/).
 
-- To do analyses with Whale, you will need (1) a dated species tree, (2) a set of gene families with for each gene family a sample from the posterior distribution of gene trees (bootstrap replicates can also be used in principle), summarized as a *conditional clade distribution* in an `ale` file (see below) and (3) a configuration file. All analyses are invoked by using
+- To do analyses with Whale, you will need (1) a dated species tree, (2) a set of gene families with for each gene family a sample from the posterior distribution of gene trees (bootstrap replicates can also be used in principle), summarized as a *conditional clade distribution* in an `ale` file (see below) and (3) a configuration file.
 
-    `julia -p <n_cores> whale.jl <species tree> <ale directory|file|filelist> <config file>`
+- The main program is `whale.jl` in the `bin` folder of this repository (it is not a binary file but a julia script, but following traditions I have put it in a bin folder). All analyses are invoked by using
 
-- The main program is `whale.jl` in the `bin` folder of this repository (it is not a binary file but a julia script, but following traditions I have put it in a bin folder).
+```
+julia -p <n_cores> whale.jl <species tree> <ale directory|file|filelist> <config file>
+```
 
 - `julia` can have a rather slow startup time, if you plan to use `Whale` a lot, you may want to open a julia session, load the Whale package and do your analyses in the session. However for the typical rather long analyses performed with Whale, you will probably just submit your job to some cluster.
 
@@ -145,7 +147,7 @@ There are some scripts and pieces of julia code in the `scripts` dir that might 
 
 For example, to backtrack reconciled trees after an MCMC analysis you could use the following code in a julia session:
 
-```
+```julia
 using Whale
 
 S = read_sp_tree("example/morris-9taxa.nw")
