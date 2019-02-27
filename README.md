@@ -20,7 +20,7 @@
 
 - To install `Whale`, you will need a julia installation (v1.x). Currently you should clone this repository, open a julia session, type `]` to enter the package manager and then do `dev /path/to/Whale`. Then you should be able to type `using Whale` in a julia session, after which you can use the library. Note that this is still a development version. You might want to get some minimal familiarity with the Julia REPL and its package manager, see [the julia docs](https://docs.julialang.org/en/v1/).
 
-- To do analyses with Whale, you will need (1) a dated species tree, (2) a set of gene families with for each gene family a sample from the posterior distribution of gene trees (bootstrap replicates can also be used in principle), summarized as a *conditional clade distribution* in an `ale` file (see below) and (3) a configuration file.
+- To do analyses with Whale, you will need (1) a dated species tree, (2) a set of gene families with for each gene family a sample from the posterior distribution of gene trees (bootstrap replicates can also be used in principle), summarized as a *conditional clade distribution* in an `ale` file ([see below](#aleobserve)) and (3) a configuration file.
 
 - The main program is `whale.jl` in the `bin` folder of this repository (it is not a binary file but a julia script, but following traditions I have put it in a bin folder). All analyses are invoked by using
 
@@ -154,6 +154,10 @@ $ head -n3 whalebay-gbm.csv
 2.0,0.09087,0.08779,0.06499,0.09778,0.09058,0.10693,0.10208,0.10039,0.11356,0.11513,0.10401,0.12012,0.11390,0.09216,0.08940,0.06600,0.07432,0.12849,0.12426,0.16929,0.11909,0.13670,0.14608,0.14116,0.15792,0.16911,0.15653,0.13682,0.13521,0.13825,0.17974,0.12830,0.11509,0.10615,0.39608,0.04957,0.60998,0.83352,0.29122,0.45863,0.17825,0.1,0.8749981040217331,94.92630520290867,-301.2617513981243
 ...
 ```
+
+## <a name="aleobserve"></a>Getting the CCD (ale) files
+
+Whale requires as input for each gene family a sample from the posterior distribution of topologies, summarized as a conditional clade distribution (CCD). These can be acquired using the program `ALEobserve` from the [ALE software suite](https://github.com/ssolo/ALE). If you have for each gene family a file with on each line a newick tree, you can run  for example `ALEobserve trees.nw burnin=1000` to get a CCD file (discarding the firt 1000 tree as burn-in in this example). **Note** that the gene IDs should be prefixed with the corresponding species name, separated by an `_` character. For example, the gene `AT2G02000` corresponding to the species with ID `ATHA` in the species tree file should be named `ATHA_AT2G02000` in the gene family trees file.
 
 ## Extra
 
