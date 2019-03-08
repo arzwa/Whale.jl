@@ -116,4 +116,5 @@ module Whale
     include("viz.jl")
 
     @info "This is Whale v0.1 - © Arthur Zwaenepoel 2018-2019"
+    @info "https://doi.org/10.1101/556076 "
 end

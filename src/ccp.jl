@@ -249,7 +249,12 @@ function get_ccd(ale_in::String, S::SpeciesTree)
     if isfile(ale_in) && endswith(ale_in, ".ale")
         ccd = [read_ale_observe(ale_in, S)]
     elseif isfile(ale_in)
-        ccd = read_ale_from_list(ale_in, S)
+        if filesize(ale_in) == 0
+            @warn "$ale_in is an empty file, will create a dummy CCD"
+            ccd = [get_dummy_ccd()]
+        else
+            ccd = read_ale_from_list(ale_in, S)
+        end
     elseif isdir(ale_in)
         ccd = read_ale_from_dir(ale_in, S)
     else
