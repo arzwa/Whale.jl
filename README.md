@@ -1,12 +1,26 @@
 # Whale: whole genome duplication inference by amalgamated likelihood estimation
 
+```
+
+                             .-------------'```'----....,,__                        _,
+                            |                               `'`'`'`'-.,.__        .'(
+                            |                                             `'--._.'   )
+                            |                                                   `'-.<
+                            \               .-'`'-.                            -.    `\
+                             \               -.o_.     _                     _,-'`\    |
+                              ``````''--.._.-=-._    .'  \            _,,--'`      `-._(
+                                (^^^^^^^^`___    '-. |    \  __,,..--'                 `
+                                 `````````   `'--..___\    |`
+                                                       `-.,'
+```
+
 - This library implements the duplication, loss and whole genome duplication (DL + WGD) model for performing joint gene tree - reconciliation inference using amalgamated likelihood estimation (ALE).
 
 - This method, called Whale, can be used to assess WGD hypotheses using gene family phylogenetic trees. It can also be used to estimate branch-specific duplication and loss rates for a species tree under various models of rate evolution.
 
 - To install `Whale`, you will need a julia installation (v1.x). Currently you should clone this repository, open a julia session, type `]` to enter the package manager and then do `dev /path/to/Whale`. Then you should be able to type `using Whale` in a julia session, after which you can use the library. Note that this is still a development version. You might want to get some minimal familiarity with the Julia REPL and its package manager, see [the julia docs](https://docs.julialang.org/en/v1/).
 
-- To do analyses with Whale, you will need (1) a dated species tree, (2) a set of gene families with for each gene family a sample from the posterior distribution of gene trees (bootstrap replicates can also be used in principle), summarized as a *conditional clade distribution* in an `ale` file (see below) and (3) a configuration file.
+- To do analyses with Whale, you will need (1) a dated species tree, (2) a set of gene families with for each gene family a sample from the posterior distribution of gene trees (bootstrap replicates can also be used in principle), summarized as a *conditional clade distribution* in an `ale` file ([see below](#aleobserve)) and (3) a configuration file.
 
 - The main program is `whale.jl` in the `bin` folder of this repository (it is not a binary file but a julia script, but following traditions I have put it in a bin folder). All analyses are invoked by using
 
@@ -141,6 +155,10 @@ $ head -n3 whalebay-gbm.csv
 ...
 ```
 
+## <a name="aleobserve"></a>Getting the CCD (ale) files
+
+Whale requires as input for each gene family a sample from the posterior distribution of topologies, summarized as a conditional clade distribution (CCD). These can be acquired using the program `ALEobserve` from the [ALE software suite](https://github.com/ssolo/ALE). If you have for each gene family a file with on each line a newick tree, you can run  for example `ALEobserve trees.nw burnin=1000` to get a CCD file (discarding the firt 1000 tree as burn-in in this example). **Note** that the gene IDs should be prefixed with the corresponding species name, separated by an `_` character. For example, the gene `AT2G02000` corresponding to the species with ID `ATHA` in the species tree file should be named `ATHA_AT2G02000` in the gene family trees file.
+
 ## Extra
 
 There are some scripts and pieces of julia code in the `scripts` dir that might be of interest if you would like to make trace plots (`trace.py`), or plot a species tree with branches colored by duplication or loss rates and WGDs marked along the phylogeny. The `viz.jl` code in the `src` dir contains other functions to plot reconciled trees. This will however require you to use Whale as a julia package in a julia session (I would recommend downloading the Juno editor and playing around with Julia there, it's a lot like R or Python!).
@@ -157,6 +175,7 @@ q, ids = mark_wgds!(S, conf["wgd"])
 slices = get_slices_conf(S, conf["slices"])
 ccd = get_ccd("example/100.nw.ale", S)
 rtrees = backtrackmcmcpost(post, ccd_, S, slices, 100)  # do the backtracking (sample 100 trees)
+drawtree(rtrees[1][1], width=200, height=120)
 ```
 In a `julia` session you can always use `?` to fetch documentation of particular functions.
 
