@@ -94,3 +94,22 @@ q = sumry[[startswith(string(var), "q") for var in sumry[:variable]], :mean][1:e
 Whale.drawtree(sptree)
 Whale.drawtree(sptree.tree, nodelabels=true, linewidth=2)
 Whale.coltree(sptree, μ, q=q, fname="/home/arzwa/tmp/mu.svg")
+
+
+# 12 taxa ------------------------------------------------------------------------------------------
+leaves = readdict("example/species.txt")
+sptree = read_sp_tree("../data/ortho6/morris-12taxa.nw")
+dffile = "../data/ortho6/gbm1-500ale.csv"
+conf = read_whaleconf("../data/ortho6/gbm1.conf")
+q, ids = mark_wgds!(sptree, conf["wgd"])
+for (n, s) in sptree.species; sptree.species[n] = leaves[s]; end
+
+# get mean rates (should it be mean?)
+sumry = diagnostics(dffile, burnin=1000)
+λ = sumry[[startswith(string(var), "l") for var in sumry[:variable]], :mean][1:end-1]
+μ = sumry[[startswith(string(var), "m") for var in sumry[:variable]], :mean][1:end]
+q = sumry[[startswith(string(var), "q") for var in sumry[:variable]], :mean][1:end]
+
+Whale.drawtree(sptree)
+Whale.drawtree(sptree.tree, nodelabels=true, linewidth=2)
+Whale.coltree(sptree, μ, q=q, fname="/home/arzwa/tmp/mu.svg")

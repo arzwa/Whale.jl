@@ -67,6 +67,8 @@ function do_mcmc(S, ccd, slices, conf, ids; burnin=1000)
             conf["mcmc"]["freq"][1], fname=conf["mcmc"]["outfile"][1])
         df = CSV.read(conf["mcmc"]["outfile"][1])[burnin:end, :]
         diagnostics(df)
+        @info "Approximate Savage-Dickey density ratio (Bayes factors)"
+        computebfs(df, ids)
     end
 end
 

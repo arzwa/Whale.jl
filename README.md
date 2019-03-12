@@ -18,7 +18,7 @@
 
 - This method, called Whale, can be used to assess WGD hypotheses using gene family phylogenetic trees. It can also be used to estimate branch-specific duplication and loss rates for a species tree under various models of rate evolution.
 
-- To install `Whale`, you will need a julia installation (v1.x). Currently you should clone this repository, open a julia session, type `]` to enter the package manager and then do `dev /path/to/Whale`. Then you should be able to type `using Whale` in a julia session, after which you can use the library. Note that this is still a development version. You might want to get some minimal familiarity with the Julia REPL and its package manager, see [the julia docs](https://docs.julialang.org/en/v1/).
+- To install `Whale`, you will need a julia installation (v1.x). Currently you should clone this repository, open a julia session, type `]` to enter the package manager and then do `add /path/to/Whale`. Then you should be able to type `using Whale` in a julia session, after which you can use the library. Note that this is still a development version. You might want to get some minimal familiarity with the Julia REPL and its package manager, see [the julia docs](https://docs.julialang.org/en/v1/).
 
 - To do analyses with Whale, you will need (1) a dated species tree, (2) a set of gene families with for each gene family a sample from the posterior distribution of gene trees (bootstrap replicates can also be used in principle), summarized as a *conditional clade distribution* in an `ale` file ([see below](#aleobserve)) and (3) a configuration file.
 

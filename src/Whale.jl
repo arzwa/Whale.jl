@@ -16,6 +16,7 @@ module Whale
     using CSV         # diagnostics
     using UUIDs
     using ColorSchemes
+    using KernelDensity
     import Luxor
 
     export
@@ -96,7 +97,9 @@ module Whale
         mcmc!,
         amcmc!,
         diagnostics,
-        bayesfactor_sd,
+        bayesfactor,
+        decide,
+        computebfs,
         drawtree
 
     include("types.jl")
@@ -111,6 +114,7 @@ module Whale
     include("pllel.jl")
     include("utils.jl")
     include("dlsim.jl")
+    include("bfact.jl")
     include("ccp.jl")
     include("bdp.jl")
     include("viz.jl")
