@@ -395,7 +395,6 @@ git-tree-sha1 = "08c6e3697997e08fd77f351dd9f39acde6eab937"
 repo-rev = "master"
 repo-url = "https://github.com/arzwa/PhyloTrees.jl"
 uuid = "4c47b132-0681-5a5d-b498-3afcf53fd314"
-version = "0.8.0+"
 
 [[Pkg]]
 deps = ["Dates", "LibGit2", "Markdown", "Printf", "REPL", "Random", "SHA", "UUIDs"]
