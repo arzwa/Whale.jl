@@ -1,4 +1,6 @@
 # TODO: this is long an ugly, split up and make more tidy
+# TODO: handle ambiguous clades, make sure that they map to the ambiguous node, not the species
+# leaves, but don't add the ambiguous node ion the species dict of the SpeciesTree
 """
     read_ale_observe(ale_file, species_tree)
 Read the output from ALEobserve from a file. Note that the branch lengths field
@@ -59,7 +61,8 @@ function read_ale_observe(ale_file, S::SpeciesTree)
     )
     # m3_ now contains the IDs for gene tree leaf NAMES
 
-    sp = reverse_labels(S.species)  # species to node names
+    # sp = reverse_labels(S.species)  # species to node names
+    sp = merge(reverse_labels(S.species), reverse_labels(S.ambiguous))
     g2s = gene_to_species(collect(values(m3_)))
     leaf_to_spnode = Dict{Int64,Int64}()
     for (k, v) in m3_
