@@ -153,3 +153,27 @@ function log_iteration_ssv(λ::Array{Float64}, μ::Array{Float64}, q::Array{Floa
     print(join([@sprintf "%6.3f" x for x in μ], " ") * " ")
     print(join([@sprintf "%6.3f" x for x in q], " ") * " ")
 end
+
+"""
+    update_q(q::Array{Float64}, x::Array{Float64})
+
+Update the retention rates, keeping those that should be fixed fixed while
+optimizing others.
+"""
+function update_q_(q, x; minq::Float64=1e-6, maxq::Float64=0.999999, i::Int64=3)
+    q_ = Float64[]
+    for qq in q  # optimized
+        if qq < 0
+            if x[i] < minq
+                push!(q_, 0.); i+= 1
+            elseif x[i] > maxq
+                push!(q_, 1.); i+= 1
+            else
+                push!(q_, x[i]); i+= 1
+            end
+        else  # fixed
+            push!(q_, qq)
+        end
+    end
+    return q_
+end
