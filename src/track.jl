@@ -168,10 +168,6 @@ function backtrack_inter!(node::Int64, γ::Int64, e::Int64, R::RecTree, ccd::CCD
         # leaf node in both species and gene tree
         add_leaf_node!(R, e, node, γ, ccd.blens[γ], ccd.leaves[γ])
         return node  # ends recursion
-    elseif isleaf(bt.S.tree, e) && isambiguousleafof(γ, ccd, e, S) # XXX subgenome ambiguity
-        # leaf node in both species and gene tree
-        add_leaf_node!(R, e, node, γ, ccd.blens[γ], ccd.leaves[γ])
-        return node  # ends recursion
     elseif length(childnodes(bt.S.tree, e)) == 2
         # speciation node
         return bt_sp!(node, γ, e, R, ccd, bt)
@@ -474,3 +470,29 @@ function do_correction!(R::RecTree, S::SpeciesTree, node::Int64)
         curr_n = n
     end
 end
+
+
+#= Backtracking at speciation and WGD nodes ========================================================
+# backtrack at nodes in S
+function backtrack_inter!(node::Int64, γ::Int64, e::Int64, R::RecTree, ccd::CCD, bt::BackTracker)
+    if isleaf(bt.S.tree, e) && haskey(ccd.m3, γ)
+        # leaf node in both species and gene tree
+        add_leaf_node!(R, e, node, γ, ccd.blens[γ], ccd.leaves[γ])
+        return node  # ends recursion
+    elseif isleaf(bt.S.tree, e) && isambiguousleafof(γ, ccd, e, S) # XXX subgenome ambiguity
+        # leaf node in both species and gene tree
+        print("yes")
+        add_leaf_node!(R, e, node, γ, ccd.blens[γ], ccd.leaves[γ])
+        return node  # ends recursion
+    elseif length(childnodes(bt.S.tree, e)) == 2
+        # speciation node
+        return bt_sp!(node, γ, e, R, ccd, bt)
+    elseif length(childnodes(bt.S.tree, e)) == 1
+        # wgd node
+        return bt_wgd!(node, γ, e, R, ccd, bt)
+    else
+        # happens when we're in a leaf branch, at time 1, but not with a leaf clade!
+        error("Backtracking failed (inter, γ ≠ leaf, e = leaf): γ = $γ, e = $e")
+        return  # stops recursion, REALLY shouldn't occur
+    end
+end =#
