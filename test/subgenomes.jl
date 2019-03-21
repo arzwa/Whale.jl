@@ -8,8 +8,8 @@ rate_index = Whale.constant_ri(S)
 add_ambiguous!(S, conf)
 
 # get some test CCD and see whether the CCD reading works correctly
-#ccd = get_ccd("/home/arzwa/coffee/ale-out.1/OG0002088.fasta.nex.treesample.ale", S)[1]
-ccd = get_ccd("/home/arzwa/coffee/ale-out.1/OG0001012.fasta.nex.treesample.ale", S)[1]
+ccd = get_ccd("/home/arzwa/coffee/ale-out.1/OG0002088.fasta.nex.treesample.ale", S)[1]
+#ccd = get_ccd("/home/arzwa/coffee/ale-out.1/OG0001012.fasta.nex.treesample.ale", S)[1]
 #ccd = get_ccd("/home/arzwa/coffee/ale-out.1/OG0010729.fasta.nex.treesample.ale", S)[1]
 #ccd = get_ccd("/home/arzwa/coffee/ale-out.1/OG0009650.fasta.nex.treesample.ale", S)[1]
 #ccd = get_ccd("/home/arzwa/coffee/ale-out.1", S)
