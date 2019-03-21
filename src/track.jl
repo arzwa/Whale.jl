@@ -5,7 +5,7 @@ challenge.
 
     10/01/2019: basics seem to work
 ===============================================================================#
-# TODO: How to sample a bunch and make a consensus? 
+# TODO: How to sample a bunch and make a consensus?
 # TODO: How to get reasonable/correct branch lengths, in particular for WGDs? See also _track.jl
 # TODO: reimplement visualization of rec. trees:w
 """
@@ -165,6 +165,10 @@ end
 # backtrack at nodes in S
 function backtrack_inter!(node::Int64, γ::Int64, e::Int64, R::RecTree, ccd::CCD, bt::BackTracker)
     if isleaf(bt.S.tree, e) && haskey(ccd.m3, γ)
+        # leaf node in both species and gene tree
+        add_leaf_node!(R, e, node, γ, ccd.blens[γ], ccd.leaves[γ])
+        return node  # ends recursion
+    elseif isleaf(bt.S.tree, e) && isambiguousleafof(γ, ccd, e, S) # XXX subgenome ambiguity
         # leaf node in both species and gene tree
         add_leaf_node!(R, e, node, γ, ccd.blens[γ], ccd.leaves[γ])
         return node  # ends recursion
