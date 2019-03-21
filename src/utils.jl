@@ -145,6 +145,7 @@ end
 function add_ambiguous!(S::SpeciesTree, conf)
     !haskey(conf, "ambiguous") ? (return) : nothing
     for (k,v) in conf["ambiguous"]
+        @info "Adding ambiguous species ID $k → $v"
         spid = maximum(keys(S.species)) + 1
         S.ambiguous[spid] = k
         for sp in v

@@ -17,11 +17,11 @@ using CSV
 function main(ARGS)
     @info "Please consider the environment before running this software on large data sets"
     S = read_sp_tree(ARGS[1])
-    ccd = get_ccd(ARGS[2], S)
     conf = read_whaleconf(ARGS[3])
+    add_ambiguous!(S, conf)
     q, ids = mark_wgds!(S, conf["wgd"])
     slices = get_slices_conf(S, conf["slices"])
-    add_ambiguous!(S, conf)
+    ccd = get_ccd(ARGS[2], S)
     if haskey(conf, "ml")
         out = do_ml(S, ccd, slices, q, conf["ml"]["e"][1], conf)
     elseif haskey(conf, "mcmc")

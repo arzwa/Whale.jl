@@ -37,10 +37,10 @@ end
     slices = get_slices(S.tree, 0.05, 5)
     ccd = read_ale_observe("./Whale/test/data/OG0001894.ale", S)
     λ = 0.2 ; μ = 0.1 ; q = [1., 1.]; η = 0.75
-    matrix, l = whale_likelihood(S, ccd, slices, λ, μ, q, η)
-    @test isapprox(l, -16.0362, rtol=0.0001)
-    out = nm_whale(S, [ccd], slices, 0.75, [-1., -1.], one_in_both=true)
-    @test isapprox(-out.minimum, -14.86550; rtol=0.0001)
+    #matrix, l = whale_likelihood(S, ccd, slices, λ, μ, q, η)
+    #@test isapprox(l, -16.0362, rtol=0.0001)
+    #out = nm_whale(S, [ccd], slices, 0.75, [-1., -1.], one_in_both=true)
+    #@test isapprox(-out.minimum, -14.86550; rtol=0.0001)
 end
 
 @testset "Rate at root has no influence" begin
@@ -120,4 +120,3 @@ end
     @time Whale.evaluate_lhood!(D, S, slices, λ, μ, q, η, rate_index)
     rmprocs([2,3,4])
 end
-
