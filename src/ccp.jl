@@ -106,7 +106,7 @@ function read_ale_observe(ale_file, S::SpeciesTree)
     blens[Γ] = minimum(values(blens))
     species[Γ] = Set(values(m3))
     ccp = compute_ccps(m1, m2)
-    ccd = CCD(total, m1, m2, m3, leaves, blens, clades, species, Γ, ccp)
+    ccd = CCD(total, m1, m2, m3, leaves, blens, clades, species, Γ, ccp, ale_file)
     return ccd
 end
 

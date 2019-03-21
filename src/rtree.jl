@@ -483,3 +483,30 @@ function summarize_wgds(rtrees::Array{RecTree}, S::SpeciesTree)
     end
     return d
 end
+
+# TODO: rectree to recGeneTree XML
+function Base.write(io::IO, tree::RecTree, sptree::SpeciesTree; family::String="NA")
+    write(io, "<recGeneTree xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" ")
+    write(io, "xmlns=\"http://www.recgenetreexml.org\" ")
+    write(io, "xsi:schemaLocation=\"http://www.recgenetreexml.org ../../xsd/recGeneTreeXML.xsd\">")
+    write(io, "<id>$family</id>")
+    function walk(n)
+        if isleaf(tree.tree, n)
+            s  = "<clade><name>"
+            s *= tree.labels[n] == "loss" ? "LOSS" : tree.leaves[n]
+            s *= "</name><eventsRec><$(tree.labels[n]) speciesLocation="
+            s *= haskey(sptree.species, tree.σ[n]) ? sptree.species[tree.σ[n]] : string(tree.σ[n])
+            s *= tree.labels[n] == "loss" ? "/>" : " geneName=\"$(tree.leaves[n])\"/>"
+            s *= "</eventsRec></clade>"
+            return s
+        else
+            s  = "<clade><name $n></name><eventsRec><$(tree.labels[n]) "
+            s *= "speciesLocation=\"$(tree.σ[n])\"/</eventsRec>"
+            for c in childnodes(tree.tree, n); s *= walk(c); end
+            s *= "</clade>"
+            return s
+        end
+    end
+    write(io, walk(1))
+    write(io, "</phylogeny></recGeneTree>")
+end
