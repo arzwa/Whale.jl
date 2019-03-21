@@ -1,17 +1,6 @@
 #===============================================================================
 ALE duplication-loss model likelihood calculation using dynamic programming.
 ===============================================================================#
-#= NOTE: adaptations required for subgenome ambiguity/assignment marked by XXX
-required (γ = ambiguous, say Coar):
- - ccd.species[γ] = Coar
- - Every branch `e` that has a coffee in it's subtree should have `Coar` in its clades
-    = to pass the `ccd.species[γ] ⊆ S.clades[e]` test
- - ccd.m3[γ] should be an indicator of the ambiguity; so different from `e`
-    = that way we skip `leaf_γ && ccd.m3[γ] == e` whcih wouldset P to 1
- - The species tree object stores ambiguous clades in a separate dict
-    = `elseif leaf_y && haskey(S.ambiguous, ccd.m3[γ])` will only evaluate to true
-    if γ is ambiguous and its mapping in m3 evaluates to an ambiguous species clade
-=#
 
 # Main algorithm(s) ------------------------------------------------------------
 """
@@ -53,10 +42,6 @@ function whale_likelihood(S::SpeciesTree, ccd::CCD, slices::Slices, λ::Float64,
                 if i == 1
                     if leaf_γ && ccd.m3[γ] == e
                         results[e][γ, i] = 1.0
-
-                    # XXX subgenome ambiguity
-                    elseif leaf_y && haskey(S.ambiguous, ccd.m3[γ])
-                        results[e][γ, i] = 0.5
 
                     elseif !(sp_leaf || wgd_node)
                         f, g = childnodes(S.tree, e)
@@ -154,10 +139,6 @@ function whale_likelihood_bw!(results::Dict{Int64,Array{Float64,2}}, S::SpeciesT
                 if i == 1
                     if leaf_γ && ccd.m3[γ] == e
                         results[e][γ, i] = 1.0
-
-                    # XXX subgenome ambiguity
-                    elseif leaf_y && haskey(S.ambiguous, ccd.m3[γ])
-                        results[e][γ, i] = 0.5
 
                     elseif !(sp_leaf || wgd_node)
                         f, g = childnodes(S.tree, e)
