@@ -267,3 +267,8 @@ function get_ccd(ale_in::String, S::SpeciesTree)
         exit(1)
     end
 end
+
+# helper methods
+isambiguousleaf(γ::Int64, ccd::CCD, S::SpeciesTree) = haskey(S.ambiguous, ccd.m3[γ])
+isambiguousleafof(γ::Int64, ccd::CCD, e::Int64, S::SpeciesTree) = (isleaf(S.tree, e) &&
+    haskey(S.ambiguous, ccd.m3[γ]))

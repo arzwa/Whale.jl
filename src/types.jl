@@ -112,5 +112,6 @@ end
 
 # show method
 function Base.show(io::IO, ccd::CCD)
-    println("n = $(ccd.total)| N = $(length(ccd.clades))| Γ = $(ccd.Γ)| L = $(length(ccd.leaves))")
+    @printf "CCD of %d (%d) taxa (clades) " length(ccd.leaves) length(ccd.clades)
+    @printf "based on %d samples " ccd.total
 end

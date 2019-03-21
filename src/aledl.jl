@@ -54,8 +54,7 @@ function whale_likelihood(S::SpeciesTree, ccd::CCD, slices::Slices, λ::Float64,
                     if leaf_γ && ccd.m3[γ] == e
                         results[e][γ, i] = 1.0
 
-                    # XXX subgenome ambiguity
-                    elseif leaf_y && haskey(S.ambiguous, ccd.m3[γ])
+                    elseif leaf_γ && isambiguousleaf(γ, ccd, e, S) # XXX subgenome ambiguity
                         results[e][γ, i] = 0.5
 
                     elseif !(sp_leaf || wgd_node)
@@ -155,8 +154,7 @@ function whale_likelihood_bw!(results::Dict{Int64,Array{Float64,2}}, S::SpeciesT
                     if leaf_γ && ccd.m3[γ] == e
                         results[e][γ, i] = 1.0
 
-                    # XXX subgenome ambiguity
-                    elseif leaf_y && haskey(S.ambiguous, ccd.m3[γ])
+                    elseif leaf_γ && isambiguousleaf(γ, ccd, e, S) # XXX subgenome ambiguity
                         results[e][γ, i] = 0.5
 
                     elseif !(sp_leaf || wgd_node)

@@ -50,6 +50,7 @@ module Whale
         get_slices_conf,
         configure_mcmc,
         get_rateindex,
+        add_ambiguous!,
 
         # sim
         dlsim,

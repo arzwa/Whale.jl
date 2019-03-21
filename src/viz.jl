@@ -38,7 +38,7 @@ end
 
 # draw a reconciled tree
 function drawtree(rtree::RecTree; width::Int64=400, height::Int64=300, fname::String="",
-        nonretained::Bool=true)
+        nonretained::Bool=true, fontsize::Int64=7)
     d = fname == "" ? Luxor.Drawing(width, height, :svg) : Luxor.Drawing(width, height, :svg, fname)
     coords, paths = treecoords(rtree.tree, width=width, height=height)
     Luxor.sethue("black")
@@ -46,7 +46,7 @@ function drawtree(rtree::RecTree; width::Int64=400, height::Int64=300, fname::St
     Luxor.setline(1)
     drawtree(coords, paths, width=width, height=height)
     rectreenodes(rtree, coords, nonretained=nonretained)
-    leaflabels(rtree.leaves, coords, fontfamily="monospace", fontsize=6)
+    leaflabels(rtree.leaves, coords, fontfamily="monospace", fontsize=fontsize)
     Luxor.finish()
     Luxor.preview()
 end
