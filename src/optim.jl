@@ -177,3 +177,21 @@ function update_q_(q, x; minq::Float64=1e-6, maxq::Float64=0.999999, i::Int64=3)
     end
     return q_
 end
+
+"""
+    update_q(q::Array{Float64}, x::Array{Float64})
+
+Update the retention rates, keeping those that should be fixed fixed while
+optimizing others.
+"""
+function update_q(q, x; i::Int64=3)
+    q_ = Float64[]
+    for qq in q  # optimized
+        if qq < 0.
+            push!(q_, x[i]) ; i += 1
+        else
+            push!(q_, qq)
+        end
+    end
+    return q_
+end
