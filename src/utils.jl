@@ -141,6 +141,29 @@ function get_rateindex(S::SpeciesTree, conf::Dict{String,Tuple})
     return rate_index
 end
 
+# handling ambiguous clades in the case of multiple subgenomes
+function add_ambiguous!(S::SpeciesTree, conf)
+    !haskey(conf, "ambiguous") ? (return) : nothing
+    for (k,v) in conf["ambiguous"]
+        spid = maximum(keys(S.species)) + 1
+        S.ambiguous[spid] = k
+        for sp in v
+            subgenome = get_branchno(S, sp)  # leaf node/branch ID for the subgenome `sp`
+            ambiguous_to_clades!(S, spid, subgenome)
+        end
+    end
+end
+
+function get_branchno(S::SpeciesTree, sp::String)
+    return [k for (k,v) in S.species if v == sp][1]
+end
+
+function ambiguous_to_clades!(S::SpeciesTree, amb, subgenome)
+    for (k,v) in S.clades
+        (subgenome in v) ? union!(S.clades[k], amb) : nothing
+    end
+end
+
 # replace greek characters
 function replacements(line::AbstractString)
     line = replace(line, "λ" => "l")

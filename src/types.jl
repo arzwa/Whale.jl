@@ -10,6 +10,8 @@ struct SpeciesTree
     species::Dict{Int64,String}
     wgd_index::Dict{Int64,Int64}  # an index relating node to WGD id
     clades::Dict{Int64,Set{Int64}}
+    ambiguous::Dict{Int64,String}  # XXX ambiguous clades (subgenome assignment), since it's
+                                   # a dictionary I don't think mutability is needed
 
     function SpeciesTree(tree::Tree, node2sp::Dict{Int64,String})
         wgd_index = Dict{Int64,Int64}()
@@ -26,7 +28,7 @@ struct SpeciesTree
             end
         end
         walk(1)
-        new(tree, node2sp, wgd_index, clades)
+        new(tree, node2sp, wgd_index, clades, Dict{Int64,Set{String}}())
     end
 end
 
