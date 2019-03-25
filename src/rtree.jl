@@ -82,54 +82,6 @@ end
 last_node(t::Tree) = maximum(keys(t.nodes))
 
 """
-    write_nw(T::Tree, labels)
-Write a newick tree, without BSVs but with branch lengths and leaf labels
-"""
-function write_nw(T::Tree, labels::Dict{Int64,String})
-    function walk(n)
-        if isleaf(T, n)
-            return labels[n] * ":" * string(distance(T, n, parentnode(T, n)))
-        else
-            nw_str = ""
-            for c in childnodes(T, n)
-                nw_str *= walk(c) * ","
-            end
-            if n != 1
-                δ = string(distance(T, n, parentnode(T, n)))
-                return "(" * nw_str[1:end-1] * ")" * ":" * δ
-            else
-                return "(" * nw_str[1:end-1] * ")"
-            end
-        end
-    end
-    return walk(1) * ";"
-end
-
-"""
-    write_nw(T::Tree)
-Write a tree in newick format.
-"""
-function write_nw(T::Tree)
-    function walk(n)
-        if isleaf(T, n)
-            return string(n) * ":" * string(distance(T, n, parentnode(T, n)))
-        else
-            nw_str = ""
-            for c in childnodes(T, n)
-                nw_str *= walk(c) * ","
-            end
-            if n != 1
-                δ = string(distance(T, n, parentnode(T, n)))
-                return "(" * nw_str[1:end-1] * ")" * ":" * δ
-            else
-                return "(" * nw_str[1:end-1] * ")"
-            end
-        end
-    end
-    return walk(1) * ";"
-end
-
-"""
     get_leaf_name(nw_str::String, i::Int64)
 Get the leaf name that starts at index i in nw_str.
 """
@@ -438,11 +390,6 @@ function set_rates_clade!(node, class, rate_index, S)
     walk(node)
 end
 
-# TODO: Consensus trees, this is not so much fun to implement, since we have to break
-# down a list of rectrees back to clades, and get the majority vote for every split.
-# What may be more interesting and easier, is to summarize a sample of rectrees by events
-# per species tree branch, as in ALE.
-
 """
     summarize_wgds(nrtrees::Dict, S::SpeciesTree)
 Summarize retained WGD events for every gene family.
@@ -484,29 +431,77 @@ function summarize_wgds(rtrees::Array{RecTree}, S::SpeciesTree)
     return d
 end
 
-# TODO: rectree to recGeneTree XML
+"""
+    write(io::IO, tree::Tree)
+Write a tree in newick format.
+"""
+function Base.write(io::IO, tree::Tree)
+    function walk(n)
+        if isleaf(tree, n)
+            return "$n:$(distance(tree, n, parentnode(tree, n)))"
+        else
+            nw_str = ""
+            for c in childnodes(tree, n); nw_str *= walk(c) * ","; end
+            return n != 1 ? "($(nw_str[1:end-1])):$(distance(tree, n, parentnode(tree, n)))" :
+                "($(nw_str[1:end-1]));"
+        end
+    end
+    write(io, walk(1))
+end
+
+"""
+    write(io::IO, tree::RecTree)
+Write a tree in newick format.
+"""
+function Base.write(io::IO, rectree::RecTree)
+    tree = rectree.tree
+    function walk(n)
+        if isleaf(tree, n)
+            return rectree.labels[n] != "loss" ?
+                "$(rectree.leaves[n]):$(distance(tree, n, parentnode(tree, n)))" : "loss$n:0.0"
+        else
+            nw_str = ""
+            for c in childnodes(tree, n); nw_str *= walk(c) * ","; end
+            return n != 1 ? "($(nw_str[1:end-1])):$(distance(tree, n, parentnode(tree, n)))" :
+                "($(nw_str[1:end-1]));"
+        end
+    end
+    write(io, walk(1) * ";")
+end
+
+"""
+    write(io::IO, tree::RecTree, sptree::SpeciesTree)
+Write a rectree to an IO stream in RecPhyloXML format.
+"""
 function Base.write(io::IO, tree::RecTree, sptree::SpeciesTree; family::String="NA")
-    write(io, "<recGeneTree xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" ")
-    write(io, "xmlns=\"http://www.recgenetreexml.org\" ")
-    write(io, "xsi:schemaLocation=\"http://www.recgenetreexml.org ../../xsd/recGeneTreeXML.xsd\">")
-    write(io, "<id>$family</id>")
+    write(io, "<recGeneTree\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" ")
+    write(io, "\n\txmlns=\"http://www.recgenetreexml.org\"\n\txsi:schemaLocation=")
+    write(io, "\"http://www.recgenetreexml.org ../../xsd/recGeneTreeXML.xsd\"> ")
+    write(io, "\n\t<phylogeny rooted=\"true\">")
+    write(io, "\n\t\t<id>$family</id>")
+    l = "\t"
     function walk(n)
         if isleaf(tree.tree, n)
-            s  = "<clade><name>"
+            l *= "\t"
+            s  = "\n$l<clade>\n$l\t<name>"
             s *= tree.labels[n] == "loss" ? "LOSS" : tree.leaves[n]
-            s *= "</name><eventsRec><$(tree.labels[n]) speciesLocation="
+            s *= "</name>\n$l\t<eventsRec><$(tree.labels[n]) speciesLocation=\""
             s *= haskey(sptree.species, tree.σ[n]) ? sptree.species[tree.σ[n]] : string(tree.σ[n])
-            s *= tree.labels[n] == "loss" ? "/>" : " geneName=\"$(tree.leaves[n])\"/>"
-            s *= "</eventsRec></clade>"
+            s *= tree.labels[n] == "loss" ? "\" >" : "\" geneName=\"$(tree.leaves[n])\">"
+            s *= "</$(tree.labels[n])>"
+            s *= "</eventsRec>\n$l</clade>"
+            l = l[1:end-1]
             return s
         else
-            s  = "<clade><name $n></name><eventsRec><$(tree.labels[n]) "
-            s *= "speciesLocation=\"$(tree.σ[n])\"/</eventsRec>"
+            l *= "\t"
+            s  = "\n$l<clade>\n$l\t<name>$n</name>\n$l\t<eventsRec><$(tree.labels[n]) "
+            s *= "speciesLocation=\"$(tree.σ[n])\"></$(tree.labels[n])></eventsRec>"
             for c in childnodes(tree.tree, n); s *= walk(c); end
-            s *= "</clade>"
+            s *= "\n$l</clade>"
+            l = l[1:end-1]
             return s
         end
     end
     write(io, walk(1))
-    write(io, "</phylogeny></recGeneTree>")
+    write(io, "\n\t</phylogeny>\n</recGeneTree>")
 end

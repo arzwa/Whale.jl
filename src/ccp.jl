@@ -264,7 +264,6 @@ function get_ccd(ale_in::String, S::SpeciesTree)
         @error "Could not read ale files, either provide a single file ending
                 with `.ale`, a file with one path to a `.ale` file per line or
                 a path to a directory with only `.ale` files in there."
-        exit(1)
     end
 end
 
