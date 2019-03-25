@@ -100,43 +100,43 @@
 								<eventsRec><leaf speciesLocation="Coca" geneName="Coca_Ccan005g012730.1"></leaf></eventsRec>
 							</clade>
 							<clade>
-								<name>26</name>
-								<eventsRec><duplication speciesLocation="13"></duplication></eventsRec>
-								<clade>
-									<name>CoarC_chr_E_sg_C_Cara009g010990.1</name>
-									<eventsRec><leaf speciesLocation="CoarC" geneName="CoarC_chr_E_sg_C_Cara009g010990.1"></leaf></eventsRec>
-								</clade>
-								<clade>
-									<name>Coar_Cara1045g005000.1</name>
-									<eventsRec><leaf speciesLocation="CoarC" geneName="Coar_Cara1045g005000.1"></leaf></eventsRec>
-								</clade>
+								<name>CoarC_chr_E_sg_C_Cara009g010990.1</name>
+								<eventsRec><leaf speciesLocation="CoarC" geneName="CoarC_chr_E_sg_C_Cara009g010990.1"></leaf></eventsRec>
 							</clade>
 						</clade>
 						<clade>
-							<name>29</name>
-							<eventsRec><speciation speciesLocation="8"></speciation></eventsRec>
+							<name>27</name>
+							<eventsRec><duplication speciesLocation="8"></duplication></eventsRec>
 							<clade>
-								<name>30</name>
-								<eventsRec><duplication speciesLocation="10"></duplication></eventsRec>
-								<clade>
-									<name>CoarE_chr_E_sg_E_Cara010g011300.1</name>
-									<eventsRec><leaf speciesLocation="CoarE" geneName="CoarE_chr_E_sg_E_Cara010g011300.1"></leaf></eventsRec>
-								</clade>
-								<clade>
-									<name>Coar_Cara1044g005000.1</name>
-									<eventsRec><leaf speciesLocation="CoarE" geneName="Coar_Cara1044g005000.1"></leaf></eventsRec>
-								</clade>
-							</clade>
-							<clade>
-								<name>33</name>
-								<eventsRec><duplication speciesLocation="9"></duplication></eventsRec>
+								<name>28</name>
+								<eventsRec><speciation speciesLocation="8"></speciation></eventsRec>
 								<clade>
 									<name>Coeu_Ceug007g013550.1</name>
 									<eventsRec><leaf speciesLocation="Coeu" geneName="Coeu_Ceug007g013550.1"></leaf></eventsRec>
 								</clade>
 								<clade>
+									<name>30</name>
+									<eventsRec><duplication speciesLocation="10"></duplication></eventsRec>
+									<clade>
+										<name>CoarE_chr_E_sg_E_Cara010g011300.1</name>
+										<eventsRec><leaf speciesLocation="CoarE" geneName="CoarE_chr_E_sg_E_Cara010g011300.1"></leaf></eventsRec>
+									</clade>
+									<clade>
+										<name>Coar_Cara1044g005000.1</name>
+										<eventsRec><leaf speciesLocation="CoarE" geneName="Coar_Cara1044g005000.1"></leaf></eventsRec>
+									</clade>
+								</clade>
+							</clade>
+							<clade>
+								<name>33</name>
+								<eventsRec><speciation speciesLocation="8"></speciation></eventsRec>
+								<clade>
 									<name>Coeu_Ceug007g013750.1</name>
 									<eventsRec><leaf speciesLocation="Coeu" geneName="Coeu_Ceug007g013750.1"></leaf></eventsRec>
+								</clade>
+								<clade>
+									<name>Coar_Cara1045g005000.1</name>
+									<eventsRec><leaf speciesLocation="CoarE" geneName="Coar_Cara1045g005000.1"></leaf></eventsRec>
 								</clade>
 							</clade>
 						</clade>

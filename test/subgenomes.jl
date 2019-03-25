@@ -23,10 +23,19 @@ ccd = get_ccd("$base/OG0001012.fasta.nex.treesample.ale", S)[1]
 results, D = nmwhale(S, [ccd], slices, 0.8)
 λ = results.minimizer[1:1]; μ = results.minimizer[2:2]; q = Float64[]; η = 0.8
 bt = BackTracker(S, slices, rate_index, λ, μ, q, η)
-rt = [backtrack(D[1], bt) for i=1:10]
+rt = [backtrack(D[1], bt) for i=1:1000]
 Whale.drawtree(rt[1], height=300, width=500, fontsize=8)
 
 
- open("./example/rectree.xml", "w") do io
-     write(io, rt[1], S, family=ccd.fname)
- end
+open("./example/rectree.xml", "w") do io
+    write(io, rt[1], S, family=ccd.fname)
+end
+
+
+mr = mrpencode(rt, loss=false)
+
+parsfitch(parstree, mr.matrix, initleafmap(parstree))
+
+parstree, leaves = parsfitch(mr, ctol=20)
+drawtree(parstree, leaves)
+write("/home/arzwa/tmp/test.nw", parstree, leaves)

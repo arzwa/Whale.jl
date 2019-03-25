@@ -226,7 +226,7 @@ function preorder_t(tree)
             walk(c, depth + 1)
         end
     end
-    walk(1)
+    walk(findroots(tree)[1])
     return l
 end
 
@@ -246,7 +246,7 @@ function preorder_ids(tree)
             walk(c, depth + 1)
         end
     end
-    walk(1)
+    walk(findroots(tree)[1])
     return ids
 end
 
@@ -391,63 +391,43 @@ function set_rates_clade!(node, class, rate_index, S)
 end
 
 """
-    summarize_wgds(nrtrees::Dict, S::SpeciesTree)
-Summarize retained WGD events for every gene family.
-"""
-function summarize_wgds(nrtrees::Dict{Int64,Array{RecTree}}, S::SpeciesTree)
-    data = DataFrame(:gf => Int64[], :wgd_id => Int64[], :wgd_node => Int64[],
-        :rectree_node => Int64[], :gleft => String[], :gright => String[],
-        :sleft => String[], :sright => String[], :count => Int64[])
-    for (gf, rtrees) in nrtrees
-        for (wgd, x) in summarize_wgds(rtrees, S)
-            push!(data, [gf ; x])
-        end
-    end
-    return data
-end
-
-# function for summarizing WGDs in samples of backtracked trees, uses hashes to count
-function summarize_wgds(rtrees::Array{RecTree}, S::SpeciesTree)
-    d = Dict{UInt64,Array}()
-    for rt in rtrees
-        for (n, l) in rt.labels
-            children = childnodes(rt.tree, n)
-            if l == "wgd" && length(children) == 2
-                left   = sort(Whale.subtree_leaves(rt, children[1]))
-                right  = sort(Whale.subtree_leaves(rt, children[2]))
-                h = hash(sort([left, right]))
-                if !haskey(d, h)
-                    sleft  = sort(Whale.subtree_leaves(S,  rt.σ[children[1]]))
-                    sright = sort(Whale.subtree_leaves(S,  rt.σ[children[2]]))
-                    wgd_node = rt.σ[n]
-                    wgd_id = S.wgd_index[wgd_node]
-                    d[h] = [wgd_id, wgd_node, n, join(left, ";"), join(right, ";"),
-                            join(sleft, ";"), join(sright, ";"), 0]
-                end
-                d[h][end] += 1
-            end
-        end
-    end
-    return d
-end
-
-"""
     write(io::IO, tree::Tree)
 Write a tree in newick format.
 """
 function Base.write(io::IO, tree::Tree)
+    root = findroots(tree)[1]
     function walk(n)
         if isleaf(tree, n)
             return "$n:$(distance(tree, n, parentnode(tree, n)))"
         else
             nw_str = ""
             for c in childnodes(tree, n); nw_str *= walk(c) * ","; end
-            return n != 1 ? "($(nw_str[1:end-1])):$(distance(tree, n, parentnode(tree, n)))" :
+            return n != root ? "($(nw_str[1:end-1])):$(distance(tree, n, parentnode(tree, n)))" :
                 "($(nw_str[1:end-1]));"
         end
     end
-    write(io, walk(1))
+    write(io, walk(root))
 end
+
+"""
+    write(io::IO, tree::Tree, labels::Dict)
+Write a tree in newick format.
+"""
+function Base.write(io::IO, tree::Tree, labels::Dict{Int64,String})
+    root = findroots(tree)[1]
+    function walk(n)
+        if isleaf(tree, n)
+            return "$(labels[n]):$(distance(tree, n, parentnode(tree, n)))"
+        else
+            nw_str = ""
+            for c in childnodes(tree, n); nw_str *= walk(c) * ","; end
+            return n != root ? "($(nw_str[1:end-1])):$(distance(tree, n, parentnode(tree, n)))" :
+                "($(nw_str[1:end-1]));"
+        end
+    end
+    write(io, walk(root))
+end
+
 
 """
     write(io::IO, tree::RecTree)
@@ -455,6 +435,7 @@ Write a tree in newick format.
 """
 function Base.write(io::IO, rectree::RecTree)
     tree = rectree.tree
+    root = findroots(tree)[1]
     function walk(n)
         if isleaf(tree, n)
             return rectree.labels[n] != "loss" ?
@@ -462,11 +443,11 @@ function Base.write(io::IO, rectree::RecTree)
         else
             nw_str = ""
             for c in childnodes(tree, n); nw_str *= walk(c) * ","; end
-            return n != 1 ? "($(nw_str[1:end-1])):$(distance(tree, n, parentnode(tree, n)))" :
+            return n != root ? "($(nw_str[1:end-1])):$(distance(tree, n, parentnode(tree, n)))" :
                 "($(nw_str[1:end-1]));"
         end
     end
-    write(io, walk(1) * ";")
+    write(io, walk(root) * ";")
 end
 
 """
@@ -502,6 +483,6 @@ function Base.write(io::IO, tree::RecTree, sptree::SpeciesTree; family::String="
             return s
         end
     end
-    write(io, walk(1))
+    write(io, walk(root = findroots(tree)[1]))
     write(io, "\n\t</phylogeny>\n</recGeneTree>")
 end

@@ -95,11 +95,12 @@ end
 # coordinate to every node actually
 function treecoords(tree::Tree; width::Int64=400, height::Int64=300)
     leaves = findleaves(tree)
+    root = findroots(tree)[1]
     coords = Dict{Int64,Luxor.Point}()
     Δx = width * 0.8 / 2  # offset x-coordinate
     Δy = height / (length(leaves) + 1)  # vertical space between leaves
     yleaf = -Δy * (length(leaves) / 2)  # initial leaf y coordinate
-    xmax = maximum([distance(tree, 1, x) for x in leaves])  # maximum distance from root
+    xmax = maximum([distance(tree, root, x) for x in leaves])  # maximum distance from root
     a = width * 0.7 / xmax  # modifier
     paths = []
 
@@ -107,7 +108,7 @@ function treecoords(tree::Tree; width::Int64=400, height::Int64=300)
     function walk(node)
         if isleaf(tree, node)
             yleaf += Δy
-            x = distance(tree, 1, node) * a - Δx
+            x = distance(tree, root, node) * a - Δx
             coords[node] = Luxor.Point(x, yleaf)
             return yleaf
         else
@@ -117,12 +118,12 @@ function treecoords(tree::Tree; width::Int64=400, height::Int64=300)
                 push!(paths, (node, child))
             end
             y = sum(ychildren) / length(ychildren)
-            x = distance(tree, 1, node) * a - Δx
+            x = distance(tree, root, node) * a - Δx
             coords[node] = Luxor.Point(x, y)
             return y
         end
     end
-    walk(1)
+    walk(root)
     return coords, paths
 end
 
