@@ -172,6 +172,33 @@ function parsfitch(tree::Tree, site::Vector, leafmap::Dict)
     return treelen
 end
 
+# slower
+function parsfitch2(tree::Tree, aln::Matrix, leafmap::Dict{Int64,Int64})
+    treelen = 0
+    L = size(aln)[2]
+    function fitchfun(states)
+        isect = intersect(states...)
+        if length(isect) > 0
+            return isect
+        else
+            treelen += 1
+            return union(states...)
+        end
+    end
+    function walk(n)
+        if isleaf(tree, n)
+            return Set.(aln[leafmap[n], :])
+        else
+            child_states = Array{Set{Int64}}[]
+            for c in childnodes(tree, n); push!(child_states, walk(c)); end
+            return [fitchfun([child_states[j][i] for j in 1:length(child_states)])
+                for i in 1:L]
+        end
+    end
+    walk(findroots(tree)[1])
+    return treelen
+end
+
 # initialize a tree of nleaves leaves
 function inittree(nleaves::Int64)
     tree = Tree()
@@ -222,7 +249,7 @@ function do_nni(tree, node, a, b, c, d, e, f)
 end
 
 function spr(tree, node1, node2)
-    t = deepcop0y(tree)
+    t = deepcopy(tree)
     node3 = parentnode(t, node2)
     node5 = parentnode(t, node1)
     deletebranch!(t, t.nodes[node1].in[1])

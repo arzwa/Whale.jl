@@ -483,6 +483,6 @@ function Base.write(io::IO, tree::RecTree, sptree::SpeciesTree; family::String="
             return s
         end
     end
-    write(io, walk(root = findroots(tree)[1]))
+    write(io, walk(root = findroots(tree.tree)[1]))
     write(io, "\n\t</phylogeny>\n</recGeneTree>")
 end

@@ -34,8 +34,8 @@ end
 
 mr = mrpencode(rt, loss=false)
 
-parsfitch(parstree, mr.matrix, initleafmap(parstree))
+parsfitch2(parstree, mr.matrix, initleafmap(parstree))
 
-parstree, leaves = parsfitch(mr, ctol=20)
+parstree, leaves = parsfitch(mr, ctol=5)
 drawtree(parstree, leaves)
 write("/home/arzwa/tmp/test.nw", parstree, leaves)
