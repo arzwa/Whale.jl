@@ -122,7 +122,7 @@ function get_dummy_ccd()
     blens = Dict{Int64,Float64}()
     clades = Array{Int64,1}()
     species = Dict{Int64,Set{Int64}}()
-    return CCD(total, m1, m2, m3, leaves, blens, clades, species, Γ, ccp)
+    return CCD(total, m1, m2, m3, leaves, blens, clades, species, Γ, ccp, "dummy")
 end
 
 #= Bug that was in way too long!
