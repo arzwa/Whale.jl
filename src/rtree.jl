@@ -483,6 +483,16 @@ function Base.write(io::IO, tree::RecTree, sptree::SpeciesTree; family::String="
             return s
         end
     end
-    write(io, walk(root = findroots(tree.tree)[1]))
+    write(io, walk(findroots(tree.tree)[1]))
     write(io, "\n\t</phylogeny>\n</recGeneTree>")
+end
+
+function write_rectrees(rtrees::Dict{Any,Array{RecTree}}, S::SpeciesTree, fname::String)
+    open(fname, "w") do f
+        for (k, v) in rtrees
+            for t in v
+                write(f, t, S, family=k)
+            end
+        end
+    end
 end

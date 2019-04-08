@@ -116,6 +116,7 @@ module Whale
     include("utils.jl")
     include("dlsim.jl")
     include("bfact.jl")
+    include("cnsns.jl")
     include("ccp.jl")
     include("bdp.jl")
     include("viz.jl")

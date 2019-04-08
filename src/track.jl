@@ -67,7 +67,7 @@ function backtrackmcmcpost(sample::DataFrame, ccd, S, slices, N; q1::Bool=false)
     λc = [i for (i, var) in enumerate(names(sample)) if startswith(string(var), "l")][1:end-1]
     μc = [i for (i, var) in enumerate(names(sample)) if startswith(string(var), "m")][1:end]
     qc = [i for (i, var) in enumerate(names(sample)) if startswith(string(var), "q")][1:end]
-    allrtrees = Dict{Int64,Array{RecTree}}(i => RecTree[] for i in 1:length(ccd))
+    allrtrees = Dict{Any,Array{RecTree}}(ccd[i].fname => RecTree[] for i in 1:length(ccd))
     p = Progress(N, 0.1, "| backtracking (N = $N)")
     for i in rand(1:size(sample)[1], N)
         # HACK: fix your package dependencies!
@@ -87,8 +87,8 @@ function backtrackmcmcpost(sample::DataFrame, ccd, S, slices, N; q1::Bool=false)
         bt = BackTracker(S, slices, ri, λ, μ, q, η)
         Whale.evaluate_lhood!(D, S, slices, λ, μ, q, η, ri)
         Whale.set_recmat!(D)
-        for (i, c) in enumerate(D)
-            push!(allrtrees[i], backtrack(c, bt))
+        for c in D
+            push!(allrtrees[c.fname], backtrack(c, bt))
         end
         next!(p)
     end

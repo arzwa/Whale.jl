@@ -291,8 +291,16 @@ function randspr(tree, node1)
     return spr(tree, node1, node2)
 end
 
-
 # ALE-like summary =================================================================================
+function alelike_summary(rt::Dict{Any,Array{RecTree}}, S::SpeciesTree)
+    dfs = []
+    for (k, v) in rt
+        push!(dfs, alelike_summary(v, S, fname=k))
+    end
+    return vcat(dfs...)
+end
+
+# this is implemented for rectrees of one family
 function alelike_summary(rt::Array{RecTree}, S::SpeciesTree; fname="")
     df = DataFrame(family=String[], branch=Int64[], speciation=Float64[], leaf=Float64[],
         wgd=Float64[], duplication=Float64[], loss=Float64[], retained=Float64[],
@@ -326,12 +334,13 @@ function getspecies(S::SpeciesTree, n::Int64)
 end
 
 # WGD specific summary =============================================================================
+# this is implemented for rectrees over all families
 """
     summarize_wgds(nrtrees::Dict, S::SpeciesTree)
 Summarize retained WGD events for every gene family.
 """
-function summarize_wgds(nrtrees::Dict{Int64,Array{RecTree}}, S::SpeciesTree)
-    data = DataFrame(:gf => Int64[], :wgd_id => Int64[], :wgd_node => Int64[],
+function summarize_wgds(nrtrees::Dict{Any,Array{RecTree}}, S::SpeciesTree)
+    data = DataFrame(:gf => Any[], :wgd_id => Int64[], :wgd_node => Int64[],
         :rectree_node => Int64[], :gleft => String[], :gright => String[],
         :sleft => String[], :sright => String[], :count => Int64[])
     for (gf, rtrees) in nrtrees

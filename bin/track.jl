@@ -21,18 +21,25 @@ using DistributedArrays
 @everywhere using Whale
 
 function main(ARGS, sample)
-         S = read_sp_tree(ARGS[1])
-         N = parse(Int64, ARGS[5])
-       ccd = get_ccd(ARGS[2], S)
-      conf = read_whaleconf(ARGS[6])
+    S = read_sp_tree(ARGS[1])
+    N = parse(Int64, ARGS[5])
+    ccd = get_ccd(ARGS[2], S)
+    conf = read_whaleconf(ARGS[6])
     q, ids = mark_wgds!(S, conf["wgd"])
     slices = get_slices_conf(S, conf["slices"])
     if haskey(conf, "ml")
         error("ML: Not yet implemented")
     elseif haskey(conf, "mcmc")
         rtrees = Whale.backtrackmcmcpost(sample, ccd, S, slices, N; q1=false)
-        df     = Whale.summarize_wgds(rtrees, S)
-        CSV.write(conf["mcmc"]["outfile"][1] * ".wgdsum", df)
+        prefix = conf["mcmc"]["outfile"][1]
+        @info "Getting ALE-like summary ($prefix.alesum.csv)"
+        df2 = Whale.alelike_summary(rtrees, S)
+        CSV.write(prefix * ".alesum.csv", df2)
+        @info "Summarizing WGDs ($prefix.wgdsum.csv)"
+        df1 = Whale.summarize_wgds(rtrees, S)
+        CSV.write(prefix * ".wgdsum.csv", df1)
+        @info "Writing trees ($prefix.rectrees.xml)"
+        Whale.write_rectrees(rtrees, S, prefix * ".rectrees.xml")
     else
         @error "No [mcmc] or [ml] section, no idea what to do"
         exit(1)
