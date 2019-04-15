@@ -7,8 +7,8 @@ sample from the posterior, but this would require recalculating the likelihood
 N times! The other is to recalculate the likelihood for the MAP estimates, which
 requires a single likelihood evaluation for every family.
 ===============================================================================#
-if length(ARGS) != 6
-    @error "Usage: <track.jl> <sptree> <ale> <sample> <burnin> <N> <config>"
+if !(6 <= length(ARGS) <= 7)
+    @error "Usage: <track.jl> <sptree> <ale> <sample> <burnin> <N> <config> <trees?>"
     exit(1)
 end
 
@@ -25,6 +25,7 @@ function main(ARGS, sample)
     N = parse(Int64, ARGS[5])
     ccd = get_ccd(ARGS[2], S)
     conf = read_whaleconf(ARGS[6])
+    trees = length(ARGS) == 7 ? parse(Bool, ARGS[7]) : false
     q, ids = mark_wgds!(S, conf["wgd"])
     slices = get_slices_conf(S, conf["slices"])
     if haskey(conf, "ml")
@@ -38,8 +39,17 @@ function main(ARGS, sample)
         @info "Summarizing WGDs ($prefix.wgdsum.csv)"
         df1 = Whale.summarize_wgds(rtrees, S)
         CSV.write(prefix * ".wgdsum.csv", df1)
-        @info "Writing trees ($prefix.rectrees.xml)"
-        Whale.write_rectrees(rtrees, S, prefix * ".rectrees.xml")
+        if trees
+            @info "Writing trees ($prefix.rectrees.xml)"
+            Whale.write_rectrees(rtrees, S, prefix * ".rectrees.xml")
+            @info "Writing trees ($prefix.nw/)"
+            mkdir("$prefix.nw/")
+            for (k, rts) in rtrees
+                open("$prefix.nw/$(basename(k))", "w") do f
+                    for rt in rts ; write(f, rt) ; end
+                end
+            end
+        end
     else
         @error "No [mcmc] or [ml] section, no idea what to do"
         exit(1)

@@ -27,6 +27,7 @@ rt = [backtrack(D[1], bt) for i=1:1000]
 Whale.drawtree(rt[1], height=300, width=500, fontsize=8)
 
 
+
 open("./example/rectree.xml", "w") do io
     write(io, rt[1], S, family=ccd.fname)
 end

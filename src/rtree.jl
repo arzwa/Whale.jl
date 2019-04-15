@@ -447,7 +447,7 @@ function Base.write(io::IO, rectree::RecTree)
                 "($(nw_str[1:end-1]));"
         end
     end
-    write(io, walk(root) * ";")
+    write(io, walk(root) * "\n")
 end
 
 """
