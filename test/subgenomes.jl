@@ -26,6 +26,9 @@ bt = BackTracker(S, slices, rate_index, λ, μ, q, η)
 rt = [backtrack(D[1], bt) for i=1:1000]
 Whale.drawtree(rt[1], height=300, width=500, fontsize=8)
 
+rt1 = Whale.prune_loss_nodes(rt[1])
+Whale.drawtree(rt1, height=300, width=500, fontsize=8)
+write(stdout, rt1)
 
 
 open("./example/rectree.xml", "w") do io

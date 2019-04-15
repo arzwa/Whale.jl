@@ -511,6 +511,16 @@ function prune_loss_nodes(rt::RecTree)
             for c in childnodes(rt.tree, n)
                 walk(c)
             end
+            if length(childnodes(rt.tree, n)) == 1
+                node = rt.tree.nodes[n]
+                pnode = parentnode(rt.tree, n)[1]
+                cnode = childnodes(rt.tree, n)[1]
+                d = distance(rt.tree, pnode, cnode)
+                deletebranch!(rt.tree, node.out[1])
+                deletebranch!(rt.tree, node.in[1])
+                deletenode!(rt.tree, n)
+                addbranch!(rt.tree, pnode, cnode, d)
+            end
         end
     end
     walk(findroots(rt.tree)[1])
