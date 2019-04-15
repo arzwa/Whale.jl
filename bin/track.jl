@@ -45,8 +45,8 @@ function main(ARGS, sample)
             @info "Writing trees ($prefix.nw/)"
             mkdir("$prefix.nw/")
             for (k, rts) in rtrees
-                open("$prefix.nw/$(basename(k))", "w") do f
-                    for rt in rts ; write(f, rt) ; end
+                open("$prefix.nw/$(basename(k)).nws", "w") do f
+                    for rt in rts ; write(f, Whale.prune_loss_nodes(rt)) ; end
                 end
             end
         end

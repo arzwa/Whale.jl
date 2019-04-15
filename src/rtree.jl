@@ -496,3 +496,23 @@ function write_rectrees(rtrees::Dict{Any,Array{RecTree}}, S::SpeciesTree, fname:
         end
     end
 end
+
+function prune_loss_nodes(rt::RecTree)
+    rt = deepcopy(rt)
+    function walk(n)
+        if isleaf(rt.tree, n)
+            if rt.labels[n] == "loss"
+                deletebranch!(rt.tree, rt.tree.nodes[n].in[1])
+                deletenode!(rt.tree, n)
+                delete!(rt.labels, n)
+                delete!(rt.σ, n)
+            end
+        else
+            for c in childnodes(rt.tree, n)
+                walk(c)
+            end
+        end
+    end
+    walk(findroots(rt.tree)[1])
+    return rt
+end
