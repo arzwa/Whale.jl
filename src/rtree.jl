@@ -1,4 +1,5 @@
-# Various tree manipulation routines. In particular related to handling reconciled trees
+# Various tree manipulation routines. In particular related to handling
+# reconciled trees
 # © Arthur Zwaenepoel - 2019
 """
     read_nw(nw_str::String)
@@ -262,7 +263,8 @@ function subtree_leaves(rtree::RecTree, node::Int64)
     if isleaf(rtree.tree, node) && haskey(rtree.leaves, node)
         return [rtree.leaves[node]]
     end
-    leafnodes = intersect(Set(descendantnodes(rtree.tree, node)), Set(findleaves(rtree.tree)))
+    leafnodes = intersect(
+        Set(descendantnodes(rtree.tree, node)), Set(findleaves(rtree.tree)))
     return [rtree.leaves[n] for n in leafnodes if haskey(rtree.leaves, n)]
 end
 
@@ -439,7 +441,7 @@ function Base.write(io::IO, rectree::RecTree)
     function walk(n)
         if isleaf(tree, n)
             return rectree.labels[n] != "loss" ?
-                "$(rectree.leaves[n]):$(distance(tree, n, parentnode(tree, n)))" : "loss$n:0.0"
+                "$(rectree.leaves[n])_$(rectree.σ[n]):$(distance(tree, n, parentnode(tree, n)))" : "loss$n:0.0"
         else
             nw_str = ""
             for c in childnodes(tree, n); nw_str *= walk(c) * ","; end
@@ -454,10 +456,13 @@ end
     write(io::IO, tree::RecTree, sptree::SpeciesTree)
 Write a rectree to an IO stream in RecPhyloXML format.
 """
-function Base.write(io::IO, tree::RecTree, sptree::SpeciesTree; family::String="NA")
-    write(io, "<recGeneTree\n\txmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" ")
-    write(io, "\n\txmlns=\"http://www.recgenetreexml.org\"\n\txsi:schemaLocation=")
-    write(io, "\"http://www.recgenetreexml.org ../../xsd/recGeneTreeXML.xsd\"> ")
+function Base.write(io::IO, tree::RecTree, sptree::SpeciesTree;
+    family::String="NA")
+    write(io, "<recGeneTree\n\txmlns:xsi=\"http://www.w3.org/2001/")
+    write(io, "XMLSchema-instance\" ")
+    write(io, "\n\txmlns=\"http://www.recgenetreexml.org\"\n\"")
+    write(io, "txsi:schemaLocation=\"http://www.recgenetreexml.org ")
+    write(io, "../../xsd/recGeneTreeXML.xsd\"> ")
     write(io, "\n\t<phylogeny rooted=\"true\">")
     write(io, "\n\t\t<id>$family</id>")
     l = "\t"
@@ -467,16 +472,20 @@ function Base.write(io::IO, tree::RecTree, sptree::SpeciesTree; family::String="
             s  = "\n$l<clade>\n$l\t<name>"
             s *= tree.labels[n] == "loss" ? "LOSS" : tree.leaves[n]
             s *= "</name>\n$l\t<eventsRec><$(tree.labels[n]) speciesLocation=\""
-            s *= haskey(sptree.species, tree.σ[n]) ? sptree.species[tree.σ[n]] : string(tree.σ[n])
-            s *= tree.labels[n] == "loss" ? "\" >" : "\" geneName=\"$(tree.leaves[n])\">"
+            s *= haskey(sptree.species, tree.σ[n]) ?
+                sptree.species[tree.σ[n]] : string(tree.σ[n])
+            s *= tree.labels[n] == "loss" ?
+                "\" >" : "\" geneName=\"$(tree.leaves[n])\">"
             s *= "</$(tree.labels[n])>"
             s *= "</eventsRec>\n$l</clade>"
             l = l[1:end-1]
             return s
         else
             l *= "\t"
-            s  = "\n$l<clade>\n$l\t<name>$n</name>\n$l\t<eventsRec><$(tree.labels[n]) "
-            s *= "speciesLocation=\"$(tree.σ[n])\"></$(tree.labels[n])></eventsRec>"
+            s  = "\n$l<clade>\n$l\t<name>$n</name>\n$l\t"
+            s *= "<eventsRec><$(tree.labels[n]) "
+            s *= "speciesLocation=\"$(tree.σ[n])\"></$(tree.labels[n])>"
+            s *= "</eventsRec>"
             for c in childnodes(tree.tree, n); s *= walk(c); end
             s *= "\n$l</clade>"
             l = l[1:end-1]
@@ -487,7 +496,11 @@ function Base.write(io::IO, tree::RecTree, sptree::SpeciesTree; family::String="
     write(io, "\n\t</phylogeny>\n</recGeneTree>")
 end
 
-function write_rectrees(rtrees::Dict{Any,Array{RecTree}}, S::SpeciesTree, fname::String)
+"""
+    write_rectrees()
+"""
+function write_rectrees(rtrees::Dict{Any,Array{RecTree}}, S::SpeciesTree,
+        fname::String)
     open(fname, "w") do f
         for (k, v) in rtrees
             for t in v
@@ -497,6 +510,9 @@ function write_rectrees(rtrees::Dict{Any,Array{RecTree}}, S::SpeciesTree, fname:
     end
 end
 
+"""
+    prune_loss_nodes(rt::RecTree)
+"""
 function prune_loss_nodes(rt::RecTree)
     rt = deepcopy(rt)
     function walk(n)

@@ -1,5 +1,7 @@
 # Types for whale.
 # © Arthur Zwaenepoel - 2019
+abstract type AbstractRecTree end
+
 """
     SpeciesTree(tree, node2sp::Dict)
 Species tree struct, holds the species tree related information (location of
@@ -36,7 +38,7 @@ end
     RecTree(tree, labels, σ, γ, leaves)
 A reconciled tree struct.
 """
-mutable struct RecTree
+mutable struct RecTree <: AbstractRecTree
     tree::Tree
     labels::Dict{Int64,String}
     σ::Dict{Int64,Int64}  # species mapping
@@ -44,16 +46,40 @@ mutable struct RecTree
     leaves::Dict{Int64,String}
 
     # new RecTree, all specified
-    function RecTree(tree::Tree, labels::Dict{Int64,String}, σ::Dict{Int64,Int64},
-            γ::Dict{Int64,Int64}, leaves::Dict{Int64,String})
+    function RecTree(tree::Tree, labels::Dict{Int64,String},
+            σ::Dict{Int64,Int64}, γ::Dict{Int64,Int64},
+            leaves::Dict{Int64,String})
         new(tree, labels, σ, γ, leaves)
     end
 
     # initialize empty RecTree
-    function RecTree()
-        new(Tree(), Dict{Int64,String}(), Dict{Int64,Int64}(),
+    RecTree() = new(Tree(), Dict{Int64,String}(), Dict{Int64,Int64}(),
             Dict{Int64,Int64}(), Dict{Int64,String}())
-    end
+
+    # unreconciled rectree
+    RecTree(tree, leaves) = new(tree, Dict{Int64,String}(), Dict{Int64,Int64}(),
+            Dict{Int64,Int64}(), leaves)
+end
+
+"""
+    ConRecTree(tree, labels, σ, γ, leaves)
+A consensus reconciled tree struct.
+"""
+mutable struct ConRecTree <: AbstractRecTree
+    tree::Tree
+    leaves::Dict{Int64,String}
+    labels::Dict{Int64,String}
+    σ::Dict{Int64,Int64}  # species mapping
+    p::Dict{Int64,Number}
+    recdist::Dict{Int64,Array{Pair{Tuple,Int64},1}}
+
+    ConRecTree(tree, leaves) = new(tree, leaves, Dict{Int64,Int64}(),
+        Dict{Int64,Int64}(), Dict{Int64,Number}(),
+        Dict{Int64,Pair{Tuple,Int64}}())
+
+    ConRecTree(R::RecTree) = new(R.tree, R.leaves, Dict{Int64,Int64}(),
+        Dict{Int64,Number}(), Dict{Int64,Int64}(),
+        Dict{Int64,Pair{Tuple,Int64}}())
 end
 
 """
