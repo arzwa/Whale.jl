@@ -131,6 +131,7 @@ end
 # and from file, then we don't need the consensus trees in the library, yet it
 # isn't a nice idea, since we do want the consensus trees in here.
 """
+    consensus_tree_reconciliation(contree::Arboreal, rectrees::Array{RecTree})
 Given a consensus tree topology Tᶜ, determine for every node (not clade?) in Tᶜ
 the reconciliation 'distribution' (e.g. `Tᶜ node 2: 80%S@S₃, 20%D@S₄`) and do a
 majority vote.
@@ -158,6 +159,11 @@ function consensus_tree_reconciliation(contree::Arboreal,
     return T
 end
 
+"""
+    reconciliation_distribution(rectrees::Array{RecTree})
+Get the reconciliation distribution for each node of a gene tree from a bunch
+of reconciled trees.
+"""
 function reconciliation_distribution(rectrees::Array{RecTree})
     dist = Dict{UInt64,Dict{Tuple,Int64}}()
     for rt in rectrees

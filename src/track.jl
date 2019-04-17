@@ -39,10 +39,14 @@ Backtrack sets of trees using the posterior mean estimates.
 function backtrackmcmcmap(sample::DataFrame, ccd, S, slices, N)
     D = distribute(ccd)
     sumry = describe(sample[2:end], stats=[:mean, :std, :q25, :median, :q75])
-    η = sumry[[startswith(string(var), "eta") for var in sumry[:variable]], :mean][1]
-    λ = sumry[[startswith(string(var), "l")   for var in sumry[:variable]], :mean][1:end-1]
-    μ = sumry[[startswith(string(var), "m")   for var in sumry[:variable]], :mean][1:end]
-    q = sumry[[startswith(string(var), "q")   for var in sumry[:variable]], :mean][1:end]
+    η = sumry[[startswith(string(var), "eta")
+        for var in sumry[:variable]], :mean][1]
+    λ = sumry[[startswith(string(var), "l")
+        for var in sumry[:variable]], :mean][1:end-1]
+    μ = sumry[[startswith(string(var), "m")
+        for var in sumry[:variable]], :mean][1:end]
+    q = sumry[[startswith(string(var), "q")
+        for var in sumry[:variable]], :mean][1:end]
     @info "η" η
     @info "λ" λ
     @info "μ" μ
@@ -64,10 +68,14 @@ Backtrack using samples from the posterior
 """
 function backtrackmcmcpost(sample::DataFrame, ccd, S, slices, N; q1::Bool=false)
     D = distribute(ccd)
-    λc = [i for (i, var) in enumerate(names(sample)) if startswith(string(var), "l")][1:end-1]
-    μc = [i for (i, var) in enumerate(names(sample)) if startswith(string(var), "m")][1:end]
-    qc = [i for (i, var) in enumerate(names(sample)) if startswith(string(var), "q")][1:end]
-    allrtrees = Dict{Any,Array{RecTree}}(ccd[i].fname => RecTree[] for i in 1:length(ccd))
+    λc = [i for (i, var) in enumerate(names(sample))
+        if startswith(string(var), "l")][1:end-1]
+    μc = [i for (i, var) in enumerate(names(sample))
+        if startswith(string(var), "m")][1:end]
+    qc = [i for (i, var) in enumerate(names(sample))
+        if startswith(string(var), "q")][1:end]
+    allrtrees = Dict{Any,Array{RecTree}}(ccd[i].fname => RecTree[]
+        for i in 1:length(ccd))
     p = Progress(N, 0.1, "| backtracking (N = $N)")
     for i in rand(1:size(sample)[1], N)
         # HACK: fix your package dependencies!
@@ -80,7 +88,8 @@ function backtrackmcmcpost(sample::DataFrame, ccd, S, slices, N; q1::Bool=false)
             @warn "DataFrames not up to date, have to convert to DataFrameRow"
             λ = collect(DataFrameRow(sample[i, λc], 1))
             μ = collect(DataFrameRow(sample[i, μc], 1))
-            q1 ? q = ones(length(qc)) .- 0.001 : q = collect(DataFrameRow(sample[i, qc], 1))
+            q1 ? q = ones(length(qc)) .- 0.001 :
+                q = collect(DataFrameRow(sample[i, qc], 1))
         end
         η = sample[i, :eta]
         ri = Dict(x => 1 for x in keys(S.tree.nodes))
@@ -365,10 +374,9 @@ function root_nonbifurcation(r, ccd, γ, η_, ε, f, g)
     return r, f, g
 end
 
-# Rectree functions ================================================================================
+# Rectree functions
 function add_loss_node!(R, e, node)
-    addnode!(R.tree)
-    new_node = last_node(R.tree)
+    new_node = addnode!(R.tree)
     addbranch!(R.tree, node, new_node, 0.01)
     R.σ[new_node] = e
     R.labels[new_node] = "loss"
@@ -376,8 +384,7 @@ function add_loss_node!(R, e, node)
 end
 
 function add_duplication_node!(R, e, node, γ, b)
-    addnode!(R.tree)
-    new_node = last_node(R.tree)
+    new_node = addnode!(R.tree)
     if node != -1
         addbranch!(R.tree, node, new_node, b)
     end
@@ -388,8 +395,7 @@ function add_duplication_node!(R, e, node, γ, b)
 end
 
 function add_speciation_node!(R, e, node, γ, b)
-    addnode!(R.tree)
-    new_node = last_node(R.tree)
+    new_node = addnode!(R.tree)
     if node != -1
         addbranch!(R.tree, node, new_node, b)
     end
@@ -400,8 +406,7 @@ function add_speciation_node!(R, e, node, γ, b)
 end
 
 function add_wgd_node!(R, e, node, γ, b)
-    addnode!(R.tree)
-    new_node = last_node(R.tree)
+    new_node = addnode!(R.tree)
     addbranch!(R.tree, node, new_node, b)
     R.σ[new_node] = e
     R.γ[new_node] = γ
@@ -410,8 +415,7 @@ function add_wgd_node!(R, e, node, γ, b)
 end
 
 function add_leaf_node!(R, e, node, γ, b, leaf_name)
-    addnode!(R.tree)
-    new_node = last_node(R.tree)
+    new_node = addnode!(R.tree)
     addbranch!(R.tree, node, new_node, b)
     R.γ[new_node] = γ
     R.σ[new_node] = e
@@ -472,7 +476,7 @@ function do_correction!(R::RecTree, S::SpeciesTree, node::Int64)
 end
 
 
-#= Backtracking at speciation and WGD nodes ========================================================
+#= Backtracking at speciation and WGD nodes
 # backtrack at nodes in S
 function backtrack_inter!(node::Int64, γ::Int64, e::Int64, R::RecTree, ccd::CCD, bt::BackTracker)
     if isleaf(bt.S.tree, e) && haskey(ccd.m3, γ)
