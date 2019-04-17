@@ -5,6 +5,7 @@ module Whale
     using Distributed
     using DistributedArrays
     using PhyloTrees
+    using ConsensusTrees
     using Optim
     using Distributions
     using Printf
@@ -101,7 +102,8 @@ module Whale
         bayesfactor,
         decide,
         computebfs,
-        drawtree
+        drawtree,
+        AbstractRecTree
 
     include("types.jl")
     include("rtree.jl")

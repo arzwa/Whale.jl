@@ -55,6 +55,24 @@ function drawtree(rtree::RecTree; width::Int64=400, height::Int64=300,
     Luxor.preview()
 end
 
+function drawtree(rtree::ConRecTree; width::Int64=400, height::Int64=300,
+        fname::String="", nonretained::Bool=true, fontsize::Int64=7,
+        linewidth=1)
+    d = fname == "" ? Luxor.Drawing(width, height, :svg) :
+        Luxor.Drawing(width, height, :svg, fname)
+    Luxor.background("white")
+    coords, paths = treecoords(rtree.tree, width=width, height=height)
+    Luxor.sethue("black")
+    Luxor.origin()
+    Luxor.setline(linewidth)
+    drawtree(coords, paths, width=width, height=height)
+    rectreenodes(rtree, coords, nonretained=nonretained)
+    leaflabels(rtree.leaves, coords, fontfamily="monospace", fontsize=fontsize)
+    supportvalues(rtree.support, coords, fontfamily="monospace", fontsize=fontsize)
+    Luxor.finish()
+    Luxor.preview()
+end
+
 # draw a species tree
 function drawtree(stree::SpeciesTree; width::Int64=400, height::Int64=300, linewidth=1,
         fname::String="")
@@ -159,7 +177,7 @@ function drawhook(p1, p2)
 end
 
 # add node markers for rectree nodes
-function rectreenodes(rtree::RecTree, coords::Dict; nonretained::Bool=true)
+function rectreenodes(rtree, coords::Dict; nonretained::Bool=true)
     for (node, coord) in coords
         if rtree.labels[node] == "duplication"
             Luxor.box(coord, 5, 5, 0, :fill)
@@ -210,10 +228,21 @@ function labelnodes(coords::Dict; fontfamily="monospace", fontsize=9)
 end
 
 # add leaf labels
-function leaflabels(leaves::Dict, coords::Dict; fontfamily="monospace", fontsize=6)
+function leaflabels(leaves::Dict, coords::Dict; fontfamily="monospace",
+        fontsize=6)
     Luxor.setfont(fontfamily, fontsize)
     for (node, lab) in leaves
         Luxor.settext("  " * lab, coords[node], valign="center", halign="left")
+    end
+end
+
+# add leaf labels
+function supportvalues(support::Dict, coords::Dict; fontfamily="monospace",
+        fontsize=6)
+    Luxor.setfont(fontfamily, fontsize)
+    for (node, lab) in support
+        l = lab < 1. ? (@sprintf "  %.2f" lab) : ""
+        Luxor.settext(l, coords[node], valign="center", halign="left")
     end
 end
 

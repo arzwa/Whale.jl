@@ -39,6 +39,9 @@ function main(ARGS, sample)
         @info "Summarizing WGDs ($prefix.wgdsum.csv)"
         df1 = Whale.summarize_wgds(rtrees, S)
         CSV.write(prefix * ".wgdsum.csv", df1)
+        @info "Writing consensus reconciliations ($prefix.conrec/)"
+        try mkdir("$prefix.conrec/"); catch ; end            
+        Whale.write_consensus_reconciliations(rtrees, S, "$prefix.conrec/")
         if trees
             @info "Writing trees ($prefix.rectrees.xml)"
             Whale.write_rectrees(rtrees, S, prefix * ".rectrees.xml")

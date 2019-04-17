@@ -1,6 +1,6 @@
-# Types for whale.
+# Types for Whale.
 # © Arthur Zwaenepoel - 2019
-abstract type AbstractRecTree end
+abstract type AbstractRecTree <: Arboreal end
 
 """
     SpeciesTree(tree, node2sp::Dict)
@@ -12,8 +12,9 @@ struct SpeciesTree
     species::Dict{Int64,String}
     wgd_index::Dict{Int64,Int64}  # an index relating node to WGD id
     clades::Dict{Int64,Set{Int64}}
-    ambiguous::Dict{Int64,String}  # XXX ambiguous clades (subgenome assignment), since it's
-                                   # a dictionary I don't think mutability is needed
+    ambiguous::Dict{Int64,String}
+    # XXX ambiguous clades (subgenome assignment), since it's a dictionary I
+    # don't think mutability is needed
 
     function SpeciesTree(tree::Tree, node2sp::Dict{Int64,String})
         wgd_index = Dict{Int64,Int64}()
@@ -39,11 +40,11 @@ end
 A reconciled tree struct.
 """
 mutable struct RecTree <: AbstractRecTree
-    tree::Tree
-    labels::Dict{Int64,String}
-    σ::Dict{Int64,Int64}  # species mapping
-    γ::Dict{Int64,Int64}  # clade ID map for convenience
-    leaves::Dict{Int64,String}
+    tree::Tree                    # rooted tree structure
+    labels::Dict{Int64,String}    # node labeling
+    σ::Dict{Int64,Int64}          # species mapping
+    γ::Dict{Int64,Int64}          # clade ID map for convenience
+    leaves::Dict{Int64,String}    # leaf names
 
     # new RecTree, all specified
     function RecTree(tree::Tree, labels::Dict{Int64,String},
@@ -66,12 +67,12 @@ end
 A consensus reconciled tree struct.
 """
 mutable struct ConRecTree <: AbstractRecTree
-    tree::Tree
-    leaves::Dict{Int64,String}
-    labels::Dict{Int64,String}
-    σ::Dict{Int64,Int64}  # species mapping
-    p::Dict{Int64,Number}
-    recdist::Dict{Int64,Array{Pair{Tuple,Int64},1}}
+    tree::Tree                                        # rooted tree
+    leaves::Dict{Int64,String}                        # leaf names
+    labels::Dict{Int64,String}                        # node labels
+    σ::Dict{Int64,Int64}                              # species mapping
+    support::Dict{Int64,Number}                       # support of rec
+    recdist::Dict{Int64,Array{Pair{Tuple,Int64},1}}   # full rec. dist.
 
     ConRecTree(tree, leaves) = new(tree, leaves, Dict{Int64,Int64}(),
         Dict{Int64,Int64}(), Dict{Int64,Number}(),

@@ -1,185 +1,7 @@
 # Various tree manipulation routines. In particular related to handling
 # reconciled trees
 # © Arthur Zwaenepoel - 2019
-"""
-    read_nw(nw_str::String)
-Read a tree from a newick string. This does not store bootstrap support values
-anywhere.
-"""
-function read_nw(nw_str::String)
-    if nw_str[end] != ';'
-        error("Newick string does not end with ';'")
-    end
-    t = Tree(); leaves = Dict{Int64,String}(); stack = []
-    i = 1; n = 1; bl = 0.0
-    while i < length(nw_str)
-        if nw_str[i] == '('
-            # add an internal node to stack & tree
-            push!(stack, n); n += 1
-            addnode!(t)
-        elseif nw_str[i] == ')'
-            # add branch + collect data on node
-            target = pop!(stack); source = stack[end]
-            # @printf "%s ➞ %s\n" target source
-            addbranch!(t, source, target, bl)
-            sv, bl, i = get_node_info(nw_str, i+1)
-        elseif nw_str[i] == ','
-            # add branch
-            target = pop!(stack); source = stack[end]
-            # @printf "%s ➞ %s\n" target source
-            addbranch!(t, source, target, bl)
-        else
-            # store leaf name and get branch length
-            leaf, i = get_leaf_name(nw_str, i)
-            sv, bl, i = get_node_info(nw_str, i)
-            leaves[n] = leaf
-            # add leaf node to stack & tree
-            push!(stack, n); n += 1
-            addnode!(t)
-        end
-        i += 1
-    end
-    return t, leaves
-end
-
-"""
-    read_trees(file)
-Read trees from a file.
-"""
-function read_trees(file_name::String)
-    trees = LabeledTree[]
-    open(file_name, "r") do f
-        for ln in eachline(f)
-            if ln[end] == ';'
-                t, l = read_nw(ln)
-                push!(trees, LabeledTree(t, l))
-            end
-        end
-    end
-    return trees
-end
-
-"""
-    arbitrary_rooting(tree)
-Resolve root trifurcation arbitrarily.
-"""
-function arbitrary_rooting!(t::Tree)
-    c = childnodes(t, 1)
-    d = distance(t, 1, c[3]) / 2
-    addnode!(t)
-    sub_root = maximum(keys(t.nodes))
-    addbranch!(t, 1, sub_root, d)
-    d1 = t.branches[t.nodes[c[1]].in[1]].length
-    d2 = t.branches[t.nodes[c[2]].in[1]].length
-    deletebranch!(t, t.nodes[c[3]].in[1])
-    deletebranch!(t, t.nodes[c[2]].in[1])
-    deletebranch!(t, t.nodes[c[1]].in[1])
-    addbranch!(t, 1, c[3], d)
-    addbranch!(t, sub_root, c[1], d1)
-    addbranch!(t, sub_root, c[2], d2)
-end
-
-# get the last node added to the tree
-last_node(t::Tree) = maximum(keys(t.nodes))
-
-"""
-    get_leaf_name(nw_str::String, i::Int64)
-Get the leaf name that starts at index i in nw_str.
-"""
-function get_leaf_name(nw_str::String, i::Int64)
-    j = i
-    while (nw_str[j] != ':') & (nw_str[j] != ',') & (nw_str[j] != ')')
-        j += 1
-    end
-    leaf = nw_str[i:j-1]
-    return leaf, j
-end
-
-"""
-    get_node_info(nw_str::String, i::Int64)
-Get all info associated with the node before index i in nw_str.
-"""
-function get_node_info(nw_str, i)
-    # get everything up to the next comma or semicolon
-    substr = nw_str[i:end]
-    substr = split(substr, ',')[1]
-    substr = split(substr, ')')[1]
-    if substr == ";"
-        return -1.0, -1.0, i
-    end
-    substr = split(substr, ';')[1]
-    if occursin(":", substr)
-        sv, bl = split(substr, ':')
-        if sv == ""  # only branch length
-            bl = parse(Float64, bl); sv = 0.0
-        else  # both (B)SV and branch length are there
-            sv = parse(Float64, sv); bl = parse(Float64, bl)
-        end
-    else
-        # nothing there
-        bl = sv = 0.0
-    end
-    return sv, bl, i + length(substr) -1
-end
-
-"""
-    lca_rec!(G::Tree, S::Tree, rec::Dict{Int64,Int64})
-Least common ancestor (LCA) gene tree - species tree reconciliation, using the
-algorithhm of Zmasek & Eddy (2001) which has a worst-case runtime of O(n^2).
-Note that this returns sets of duplication and speciation nodes, not loss
-events. Note this extends the rec dict to a full reconciliation.
-"""
-function lca_rec!(G::Tree, S::Tree, rec::Dict{Int64,Int64})
-    if length(childnodes(G, 1)) > 2
-        error("Can only perform LCA reconciliation for binary trees.")
-    end
-    node_index = preorder_ids(S)
-    # do a post-order traversal and record a mapping from nodes in G to S
-    # nodes of S should be numbered in preorder traversal I think they might
-    # be as a result of read_nw but I'm not sure.
-    node_labeling = Dict{Int64,String}()
-    function walk(node)
-        if isleaf(G, node)
-            return node
-        else
-            children = childnodes(G, node)
-            walk(children[1])
-            walk(children[2])
-            a = rec[children[1]]
-            b = rec[children[2]]
-            while node_index[a] != node_index[b]
-                if node_index[a] > node_index[b]
-                    a = parentnode(S, a)
-                else
-                    b = parentnode(S, b)
-                end
-            end
-            rec[node] = a
-            if rec[node] == rec[children[1]]
-                node_labeling[node] = "D"
-            elseif rec[node] == rec[children[2]]
-                node_labeling[node] = "D"
-            else
-                node_labeling[node] = "S"
-            end
-        end
-    end
-    walk(1)
-    return node_labeling
-end
-
-"""
-    leaf_labeling(leaves_g::Dict, leaves_s::Dict, g2s::Dict)
-Get a mapping from leaves in gene tree to leaves in species tree.
-"""
-function leaf_labeling(leaves_g, leaves_s, g2s)
-    node2sp = Dict{Int64,Int64}()
-    for kv in leaves_g
-        sp = g2s[kv[1]]
-        node2sp[kv[2]] = leaves_s[sp]
-    end
-    return node2sp
-end
+# XXX some dead code here
 
 """
     gene_to_species(genes)
@@ -197,7 +19,7 @@ Get a postorder of nodes in a tree, using a recursive algorithm.
 function postorder_t(T::Tree)
     l = []
     function walk(node)
-        if PhyloTrees.isleaf(T, node)
+        if isleaf(T, node)
             push!(l, node)
             return node
         else
@@ -220,7 +42,7 @@ function preorder_t(tree)
     l = []
     function walk(node, depth=1)
         push!(l, node)
-        if PhyloTrees.isleaf(tree, node)
+        if isleaf(tree, node)
             return
         end
         for c in childnodes(tree, node)
@@ -453,10 +275,31 @@ function Base.write(io::IO, rectree::RecTree)
 end
 
 """
+    write(io::IO, tree::RecTree)
+Write a tree in newick format.
+"""
+function Base.write(io::IO, crt::ConRecTree)
+    root = findroots(crt.tree)[1]
+    function walk(n)
+        if isleaf(crt, n)
+            return crt.labels[n] != "loss" ?
+                "$(crt.leaves[n])_$(crt.σ[n]):$(parentdist(crt, n))" : "loss$n:0.0"
+        else
+            nw_str = ""
+            for c in childnodes(crt, n); nw_str *= walk(c) * ","; end
+            return n != root ?
+                "($(nw_str[1:end-1]))$(crt.support[n]):$(parentdist(crt, n))" :
+                "($(nw_str[1:end-1]));"
+        end
+    end
+    write(io, walk(root) * "\n")
+end
+
+"""
     write(io::IO, tree::RecTree, sptree::SpeciesTree)
 Write a rectree to an IO stream in RecPhyloXML format.
 """
-function Base.write(io::IO, tree::RecTree, sptree::SpeciesTree;
+function Base.write(io::IO, tree::AbstractRecTree, sptree::SpeciesTree;
     family::String="NA")
     write(io, "<recGeneTree\n\txmlns:xsi=\"http://www.w3.org/2001/")
     write(io, "XMLSchema-instance\" ")
