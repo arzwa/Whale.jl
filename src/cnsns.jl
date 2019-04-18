@@ -142,12 +142,14 @@ function consensus_tree_reconciliation(contree::Arboreal,
     T = ConRecTree(contree.tree, contree.leaves)
     function walk(n)
         hsh = hashnode(n, T)
-        cnt, rec = findmax(recdist[hsh])
-        T.labels[n] = rec[1]
-        T.σ[n] = rec[2]
-        T.rsupport[n] = cnt / length(rectrees)
-        T.tsupport[n] = contree.support[n]
-        T.recdist[n] = collect(recdist[hsh])
+        if haskey(recdist, hsh)  # HACK, should test by outdegree?
+            cnt, rec = findmax(recdist[hsh])
+            T.labels[n] = rec[1]
+            T.σ[n] = rec[2]
+            T.rsupport[n] = cnt / length(rectrees)
+            T.tsupport[n] = contree.support[n]
+            T.recdist[n] = collect(recdist[hsh])
+        end
         isleaf(T.tree, n) ? (return) : [walk(c) for c in childnodes(T.tree, n)]
     end
     walk(findroots(T.tree)[1])
@@ -196,6 +198,7 @@ end
 function contreetable(io::IO, contree::ConRecTree, S::SpeciesTree)
     write(io,"gnode,hash,mvrec,mvlabel,mvperc,mvspeciesset\n")
     for (n, node) in contree.tree.nodes
+        haskey(contree.labels, n) ? nothing : continue
         h = hashnode(n, contree)
         s = contree.σ[n]
         l = contree.labels[n]
@@ -206,13 +209,16 @@ function contreetable(io::IO, contree::ConRecTree, S::SpeciesTree)
 end
 
 function write_consensus_reconciliations(rtrees, S, dirname, thresh=0.0)
-    p = Progress(N, 0.1, "| Computing consensus tree reconciliations (N = $N)")
+    p = Progress(length(rtrees), 0.1, "| Computing consensus tree reconciliations")
     for (gf, rts) in rtrees
+        println(gf)
+        gfname = basename(gf)
         rt = [Whale.prune_loss_nodes(t) for t in rts]
         ct = majority_consensus(rt, thresh=thresh)
-        write(stdout, ct)
+        open(joinpath(dirname, "$gfname.ct"), "w") do f
+            write(f, ct.tree, ct.leaves)
+        end
         crt = consensus_tree_reconciliation(ct, rt)
-        gfname = basename(gf)
         open(joinpath(dirname, "$gfname.crt"), "w") do f
             write(f, crt)
         end
