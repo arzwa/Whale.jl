@@ -145,15 +145,10 @@ function consensus_tree_reconciliation(contree::Arboreal,
         cnt, rec = findmax(recdist[hsh])
         T.labels[n] = rec[1]
         T.σ[n] = rec[2]
-        T.support[n] = cnt / length(rectrees)
+        T.rsupport[n] = cnt / length(rectrees)
+        T.tsupport[n] = contree.support[n]
         T.recdist[n] = collect(recdist[hsh])
-        if isleaf(T.tree, n)
-            return
-        else
-            for c in childnodes(T.tree, n)
-                walk(c)
-            end
-        end
+        isleaf(T.tree, n) ? (return) : [walk(c) for c in childnodes(T.tree, n)]
     end
     walk(findroots(T.tree)[1])
     return T
@@ -204,16 +199,18 @@ function contreetable(io::IO, contree::ConRecTree, S::SpeciesTree)
         h = hashnode(n, contree)
         s = contree.σ[n]
         l = contree.labels[n]
-        p = contree.support[n]
+        p = contree.rsupport[n]
         ss = getspecies(S, s, sep=";")
         write(io, "$n,$h,$s,$l,$p,$ss\n")
     end
 end
 
 function write_consensus_reconciliations(rtrees, S, dirname, thresh=0.0)
+    p = Progress(N, 0.1, "| Computing consensus tree reconciliations (N = $N)")
     for (gf, rts) in rtrees
         rt = [Whale.prune_loss_nodes(t) for t in rts]
         ct = majority_consensus(rt, thresh=thresh)
+        write(stdout, ct)
         crt = consensus_tree_reconciliation(ct, rt)
         gfname = basename(gf)
         open(joinpath(dirname, "$gfname.crt"), "w") do f
@@ -222,5 +219,6 @@ function write_consensus_reconciliations(rtrees, S, dirname, thresh=0.0)
         open(joinpath(dirname, "$gfname.csv"), "w") do f
             write(f, crt, S)
         end
+        next!(p)
     end
 end

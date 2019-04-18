@@ -71,15 +71,16 @@ mutable struct ConRecTree <: AbstractRecTree
     leaves::Dict{Int64,String}                        # leaf names
     labels::Dict{Int64,String}                        # node labels
     σ::Dict{Int64,Int64}                              # species mapping
-    support::Dict{Int64,Number}                       # support of rec
+    rsupport::Dict{Int64,Number}                      # support of rec
+    tsupport::Dict{Int64,Number}                      # support of topology
     recdist::Dict{Int64,Array{Pair{Tuple,Int64},1}}   # full rec. dist.
 
     ConRecTree(tree, leaves) = new(tree, leaves, Dict{Int64,Int64}(),
-        Dict{Int64,Int64}(), Dict{Int64,Number}(),
+        Dict{Int64,Int64}(), Dict{Int64,Number}(), Dict{Int64,Number}(),
         Dict{Int64,Pair{Tuple,Int64}}())
 
     ConRecTree(R::RecTree) = new(R.tree, R.leaves, Dict{Int64,Int64}(),
-        Dict{Int64,Number}(), Dict{Int64,Int64}(),
+        Dict{Int64,Number}(), Dict{Int64,Int64}(), Dict{Int64,Number}(),
         Dict{Int64,Pair{Tuple,Int64}}())
 end
 

@@ -68,7 +68,7 @@ function drawtree(rtree::ConRecTree; width::Int64=400, height::Int64=300,
     drawtree(coords, paths, width=width, height=height)
     rectreenodes(rtree, coords, nonretained=nonretained)
     leaflabels(rtree.leaves, coords, fontfamily="monospace", fontsize=fontsize)
-    supportvalues(rtree.support, coords, fontfamily="monospace", fontsize=fontsize)
+    supportvalues(rtree.rsupport, coords, fontfamily="monospace", fontsize=fontsize)
     Luxor.finish()
     Luxor.preview()
 end
