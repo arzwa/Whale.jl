@@ -209,9 +209,9 @@ function contreetable(io::IO, contree::ConRecTree, S::SpeciesTree)
 end
 
 function write_consensus_reconciliations(rtrees, S, dirname, thresh=0.0)
-    p = Progress(length(rtrees), 0.1, "| Computing consensus tree reconciliations")
+    p = Progress(length(rtrees), 0.1, "| Computing consensus reconciliations")
     for (gf, rts) in rtrees
-        println(gf)
+        @debug gf
         gfname = basename(gf)
         rt = [Whale.prune_loss_nodes(t) for t in rts]
         ct = majority_consensus(rt, thresh=thresh)
