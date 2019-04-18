@@ -141,7 +141,7 @@ proper (in contrast with Thorne et al. 1998). See Rannala & Yang 2007 for detail
 information.
 """
 function mcmctree_gbm_lnprior(S::SpeciesTree, r::Array{Float64}, ν::Float64)
-    logp = -log(2π)/2.0*(2*length(S.species)-2)  # every branch has a factor from the Normal.
+    logp = -log(2π)/2.0*(2*length(S.leaves)-2)  # every branch has a factor from the Normal.
     for n in keys(S.tree.nodes) # NOTE: nodes are naturally in preorder → OK
         (isleaf(S.tree, n) || haskey(S.wgd_index, n)) ? continue : nothing
         babies = non_wgd_children(S, n)  # should be non-wgd children!

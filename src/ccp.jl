@@ -61,8 +61,8 @@ function read_ale_observe(ale_file, S::SpeciesTree)
     )
     # m3_ now contains the IDs for gene tree leaf NAMES
 
-    # sp = reverse_labels(S.species)  # species to node names
-    sp = merge(reverse_labels(S.species), reverse_labels(S.ambiguous))
+    # sp = reverse_labels(S.leaves)  # species to node names
+    sp = merge(reverse_labels(S.leaves), reverse_labels(S.ambiguous))
     g2s = gene_to_species(collect(values(m3_)))
     leaf_to_spnode = Dict{Int64,Int64}()
     for (k, v) in m3_

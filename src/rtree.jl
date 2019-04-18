@@ -91,11 +91,11 @@ function subtree_leaves(rtree::RecTree, node::Int64)
 end
 
 function subtree_leaves(S::SpeciesTree, node::Int64)
-    if isleaf(S.tree, node) && haskey(S.species, node)
-        return [S.species[node]]
+    if isleaf(S.tree, node) && haskey(S.leaves, node)
+        return [S.leaves[node]]
     end
     leafnodes = intersect(Set(descendantnodes(S.tree, node)), Set(findleaves(S.tree)))
-    return [S.species[n] for n in leafnodes]
+    return [S.leaves[n] for n in leafnodes]
 end
 
 """
@@ -150,7 +150,7 @@ end
 Get the LCA node of a set of species in a SpeciesTree.
 """
 function lca_node(leaves, S::SpeciesTree)
-    s2n = reverse_labels(S.species)
+    s2n = reverse_labels(S.leaves)
     leaves = Set([s2n[x] for x in leaves])
     return lca_node(leaves, S.tree)
 end
@@ -215,45 +215,6 @@ function set_rates_clade!(node, class, rate_index, S)
 end
 
 """
-    write(io::IO, tree::Tree)
-Write a tree in newick format.
-"""
-function Base.write(io::IO, tree::Tree)
-    root = findroots(tree)[1]
-    function walk(n)
-        if isleaf(tree, n)
-            return "$n:$(distance(tree, n, parentnode(tree, n)))"
-        else
-            nw_str = ""
-            for c in childnodes(tree, n); nw_str *= walk(c) * ","; end
-            return n != root ? "($(nw_str[1:end-1])):$(distance(tree, n, parentnode(tree, n)))" :
-                "($(nw_str[1:end-1]));"
-        end
-    end
-    write(io, walk(root))
-end
-
-"""
-    write(io::IO, tree::Tree, labels::Dict)
-Write a tree in newick format.
-"""
-function Base.write(io::IO, tree::Tree, labels::Dict{Int64,String})
-    root = findroots(tree)[1]
-    function walk(n)
-        if isleaf(tree, n)
-            return "$(labels[n]):$(distance(tree, n, parentnode(tree, n)))"
-        else
-            nw_str = ""
-            for c in childnodes(tree, n); nw_str *= walk(c) * ","; end
-            return n != root ? "($(nw_str[1:end-1])):$(distance(tree, n, parentnode(tree, n)))" :
-                "($(nw_str[1:end-1]));"
-        end
-    end
-    write(io, walk(root))
-end
-
-
-"""
     write(io::IO, tree::RecTree)
 Write a tree in newick format.
 """
@@ -316,8 +277,8 @@ function Base.write(io::IO, tree::AbstractRecTree, sptree::SpeciesTree;
             s  = "\n$l<clade>\n$l\t<name>"
             s *= tree.labels[n] == "loss" ? "LOSS" : tree.leaves[n]
             s *= "</name>\n$l\t<eventsRec><$(tree.labels[n]) speciesLocation=\""
-            s *= haskey(sptree.species, tree.σ[n]) ?
-                sptree.species[tree.σ[n]] : string(tree.σ[n])
+            s *= haskey(sptree.leaves, tree.σ[n]) ?
+                sptree.leaves[tree.σ[n]] : string(tree.σ[n])
             s *= tree.labels[n] == "loss" ?
                 "\" >" : "\" geneName=\"$(tree.leaves[n])\">"
             s *= "</$(tree.labels[n])>"

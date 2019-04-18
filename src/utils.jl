@@ -146,7 +146,7 @@ function add_ambiguous!(S::SpeciesTree, conf)
     !haskey(conf, "ambiguous") ? (return) : nothing
     for (k,v) in conf["ambiguous"]
         @info "Adding ambiguous species ID $k → $v"
-        spid = maximum(keys(S.species)) + 1
+        spid = maximum(keys(S.leaves)) + 1
         S.ambiguous[spid] = k
         for sp in v
             subgenome = get_branchno(S, sp)  # leaf node/branch ID for the subgenome `sp`
@@ -156,7 +156,7 @@ function add_ambiguous!(S::SpeciesTree, conf)
 end
 
 function get_branchno(S::SpeciesTree, sp::String)
-    return [k for (k,v) in S.species if v == sp][1]
+    return [k for (k,v) in S.leaves if v == sp][1]
 end
 
 function ambiguous_to_clades!(S::SpeciesTree, amb, subgenome)

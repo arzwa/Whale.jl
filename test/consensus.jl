@@ -18,3 +18,5 @@ rt = [Whale.prune_loss_nodes(t) for t in rt]
 ct = majority_consensus(rt, thresh=0.0)
 crt = Whale.consensus_tree_reconciliation(ct, rt)
 drawtree(crt)
+
+write(stdout, crt)

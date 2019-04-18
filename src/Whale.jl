@@ -1,5 +1,3 @@
-__precompile__()
-
 module Whale
 
     using Distributed
@@ -16,14 +14,11 @@ module Whale
     using DataFrames  # diagnostics
     using CSV         # diagnostics
     using UUIDs
-    using ColorSchemes
     using KernelDensity
-    import Luxor
 
     export
         # types
         SpeciesTree,
-        RecTree,
         CCD,
         Slices,
         BackTracker,
@@ -33,8 +28,6 @@ module Whale
         read_ale_observe,
         read_ale_from_dir,
         read_ale_from_list,
-        read_nw,
-        write_nw,
         get_ccd,
 
         # misc
@@ -79,13 +72,6 @@ module Whale
         backtrackmcmcpost,
         backtrackmcmcmap,
 
-        # visualization
-        # minimal_tree,
-        # node_labeled_tree,
-        # draw_sp_tree,
-        # draw_rectree,
-        # draw_colortree,
-
         # MCMC
         PriorSettings,
         ProposalSettings,
@@ -101,9 +87,7 @@ module Whale
         diagnostics,
         bayesfactor,
         decide,
-        computebfs,
-        drawtree,
-        AbstractRecTree
+        computebfs
 
     include("types.jl")
     include("rtree.jl")
@@ -121,8 +105,7 @@ module Whale
     include("cnsns.jl")
     include("ccp.jl")
     include("bdp.jl")
-    include("viz.jl")
 
-    @info "This is Whale v0.1 - © Arthur Zwaenepoel 2018-2019"
+    @info "This is Whale v0.2 - © Arthur Zwaenepoel 2018-2019"
     @info "https://doi.org/10.1101/556076 "
 end

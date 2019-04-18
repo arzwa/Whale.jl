@@ -63,7 +63,7 @@ end
 
 function getspecies(S::SpeciesTree, n::Int64; sep=",")
     return join([haskey(S.ambiguous, x) ? S.ambiguous[x] :
-        S.species[x] for x in S.clades[n]], sep)
+        S.leaves[x] for x in S.clades[n]], sep)
 end
 
 # WGD specific summary =========================================================
@@ -119,7 +119,7 @@ function sumambiguous(rt::Array{RecTree}, S::SpeciesTree, ccd::CCD)
         leaf2node = Dict(v=>k for (k,v) in t.leaves)
         ambnodes = [leaf2node[g] for g in ambgenes]
         for (g, n) in zip(ambgenes, ambnodes)
-            sp = S.species[t.σ[n]]
+            sp = S.leaves[t.σ[n]]
             haskey(data[g], sp) ? data[g][sp] += 1/N : data[g][sp] = 1/N
         end
     end

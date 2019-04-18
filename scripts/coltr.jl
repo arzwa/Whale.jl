@@ -8,8 +8,8 @@ function readdict(fname::String; sep=",")
 end
 
 sptree = read_sp_tree("/home/arzwa/whale/data/morris.trees/1701170.nw")
-for (n, s) in sptree.species; sptree.species[n] = join(split(s, "_"), " "); end
-for (n, s) in sptree.species; sptree.species[n] = " "; end
+for (n, s) in sptree.leaves; sptree.leaves[n] = join(split(s, "_"), " "); end
+for (n, s) in sptree.leaves; sptree.leaves[n] = " "; end
 Whale.drawtree(sptree, height=1200, width=800, linewidth=2, fname="/home/arzwa/tmp/largetree.svg")
 
 # 5 taxa -------------------------------------------------------------------------------------------
@@ -18,7 +18,7 @@ dffile = "/home/arzwa/whale/data/ortho5-whale3/gbm2-1.csv"
 leaves = readdict("example/species.txt")
 conf = read_whaleconf("/home/arzwa/whale/data/ortho5-whale2/gbm1.conf")
 q, ids = mark_wgds!(sptree, conf["wgd"])
-for (n, s) in sptree.species; sptree.species[n] = leaves[s]; end
+for (n, s) in sptree.leaves; sptree.leaves[n] = leaves[s]; end
 
 # get mean rates (should it be mean?)
 sumry = diagnostics(dffile, burnin=1000)
@@ -37,7 +37,7 @@ sptree = read_sp_tree("example/morris-6taxa.nw")
 dffile = "/home/arzwa/whale/data/ortho4-whale3/iid1-1.csv"
 conf = read_whaleconf("example/whale6.conf")
 q, ids = mark_wgds!(sptree, conf["wgd"])
-for (n, s) in sptree.species; sptree.species[n] = leaves[s]; end
+for (n, s) in sptree.leaves; sptree.leaves[n] = leaves[s]; end
 
 # get mean rates (should it be mean?)
 sumry = diagnostics(dffile, burnin=1000)
@@ -54,7 +54,7 @@ leaves = readdict("example/species.txt")
 sptree = read_sp_tree("example/morris-9taxa.nw")
 conf = read_whaleconf("../data/ortho3-whale3/gbm1.conf")
 q, ids = mark_wgds!(sptree, conf["wgd"])
-for (n, s) in sptree.species; sptree.species[n] = leaves[s]; end
+for (n, s) in sptree.leaves; sptree.leaves[n] = leaves[s]; end
 
 using CSV
 dffile = "/home/arzwa/whale/data/ortho3-whale3/gbm1-1.csv"
@@ -83,7 +83,7 @@ sptree = read_sp_tree("../data/ortho6/morris-12taxa.nw")
 dffile = "../data/ortho6/gbm1-500ale.csv"
 conf = read_whaleconf("../data/ortho6/gbm1.conf")
 q, ids = mark_wgds!(sptree, conf["wgd"])
-for (n, s) in sptree.species; sptree.species[n] = leaves[s]; end
+for (n, s) in sptree.leaves; sptree.leaves[n] = leaves[s]; end
 
 # get mean rates (should it be mean?)
 sumry = diagnostics(dffile, burnin=1000)
@@ -102,7 +102,7 @@ sptree = read_sp_tree("../data/ortho6/morris-12taxa.nw")
 dffile = "../data/ortho6/gbm1-500ale.csv"
 conf = read_whaleconf("../data/ortho6/gbm1.conf")
 q, ids = mark_wgds!(sptree, conf["wgd"])
-for (n, s) in sptree.species; sptree.species[n] = leaves[s]; end
+for (n, s) in sptree.leaves; sptree.leaves[n] = leaves[s]; end
 
 # get mean rates (should it be mean?)
 sumry = diagnostics(dffile, burnin=1000)

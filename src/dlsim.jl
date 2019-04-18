@@ -81,7 +81,7 @@ function dlsim(S::SpeciesTree, λ::Array{Float64}, μ::Array{Float64}, q::Array{
                 continue
             end
         end
-        ll = get_leaf_labels(labels, S.species)
+        ll = get_leaf_labels(labels, S.leaves)
         if  min <= length(findleaves(T)) <= max
             push!(trees, (T, ll))
             i += 1
@@ -285,7 +285,7 @@ function get_profile(nwdir::String, S::SpeciesTree)
     isdir(nwdir) ? nothing : @error "Not a directory $nwdir"
     profile = Dict{AbstractString,Int64}[]
     for f in readdir(nwdir)
-        d = Dict(x => 0 for x in values(S.species))
+        d = Dict(x => 0 for x in values(S.leaves))
         nw = open(joinpath(nwdir, f), "r") do file
             readlines(file)[1]
         end

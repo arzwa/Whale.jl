@@ -1,87 +1,41 @@
 # Types for Whale.
 # © Arthur Zwaenepoel - 2019
-abstract type AbstractRecTree <: Arboreal end
-
 """
     SpeciesTree(tree, node2sp::Dict)
 Species tree struct, holds the species tree related information (location of
 WGD nodes etc.)
 """
-struct SpeciesTree
-    tree::Tree
-    species::Dict{Int64,String}
-    wgd_index::Dict{Int64,Int64}  # an index relating node to WGD id
-    clades::Dict{Int64,Set{Int64}}
-    ambiguous::Dict{Int64,String}
-    # XXX ambiguous clades (subgenome assignment), since it's a dictionary I
-    # don't think mutability is needed
+struct SpeciesTree <: Arboreal
+    tree::Tree                       # if it has a tree and a leaves field
+    leaves::Dict{Int64,String}       # it's a proper Arboreal object
+    clades::Dict{Int64,Set{Int64}}   # clades under each node
+    wgd_index::Dict{Int64,Int64}     # an index relating node to WGD id
+    ambiguous::Dict{Int64,String}    # 'ambiguous' species (allo-assignment)
 
     function SpeciesTree(tree::Tree, node2sp::Dict{Int64,String})
+        ambiguous = Dict{Int64,Set{String}}()
         wgd_index = Dict{Int64,Int64}()
-        clades = Dict{Int64,Set{Int64}}()
-        function walk(node)
-            if isleaf(tree, node)
-                clades[node] = Set([node])
-            else
-                clades[node] = Set([])
-                for c in childnodes(tree, node)
-                    walk(c)
-                    union!(clades[node], clades[c])
-                end
+        clades = _get_clades(tree)
+        new(tree, node2sp, clades, wgd_index, ambiguous)
+    end
+end
+
+# private to species tree construction
+function _get_clades(tree)
+    clades = Dict{Int64,Set{Int64}}()
+    function walk(node)
+        if isleaf(tree, node)
+            clades[node] = Set([node])
+        else
+            clades[node] = Set([])
+            for c in childnodes(tree, node)
+                walk(c)
+                union!(clades[node], clades[c])
             end
         end
-        walk(1)
-        new(tree, node2sp, wgd_index, clades, Dict{Int64,Set{String}}())
     end
-end
-
-"""
-    RecTree(tree, labels, σ, γ, leaves)
-A reconciled tree struct.
-"""
-mutable struct RecTree <: AbstractRecTree
-    tree::Tree                    # rooted tree structure
-    labels::Dict{Int64,String}    # node labeling
-    σ::Dict{Int64,Int64}          # species mapping
-    γ::Dict{Int64,Int64}          # clade ID map for convenience
-    leaves::Dict{Int64,String}    # leaf names
-
-    # new RecTree, all specified
-    function RecTree(tree::Tree, labels::Dict{Int64,String},
-            σ::Dict{Int64,Int64}, γ::Dict{Int64,Int64},
-            leaves::Dict{Int64,String})
-        new(tree, labels, σ, γ, leaves)
-    end
-
-    # initialize empty RecTree
-    RecTree() = new(Tree(), Dict{Int64,String}(), Dict{Int64,Int64}(),
-            Dict{Int64,Int64}(), Dict{Int64,String}())
-
-    # unreconciled rectree
-    RecTree(tree, leaves) = new(tree, Dict{Int64,String}(), Dict{Int64,Int64}(),
-            Dict{Int64,Int64}(), leaves)
-end
-
-"""
-    ConRecTree(tree, labels, σ, γ, leaves)
-A consensus reconciled tree struct.
-"""
-mutable struct ConRecTree <: AbstractRecTree
-    tree::Tree                                        # rooted tree
-    leaves::Dict{Int64,String}                        # leaf names
-    labels::Dict{Int64,String}                        # node labels
-    σ::Dict{Int64,Int64}                              # species mapping
-    rsupport::Dict{Int64,Number}                      # support of rec
-    tsupport::Dict{Int64,Number}                      # support of topology
-    recdist::Dict{Int64,Array{Pair{Tuple,Int64},1}}   # full rec. dist.
-
-    ConRecTree(tree, leaves) = new(tree, leaves, Dict{Int64,Int64}(),
-        Dict{Int64,Int64}(), Dict{Int64,Number}(), Dict{Int64,Number}(),
-        Dict{Int64,Pair{Tuple,Int64}}())
-
-    ConRecTree(R::RecTree) = new(R.tree, R.leaves, Dict{Int64,Int64}(),
-        Dict{Int64,Number}(), Dict{Int64,Int64}(), Dict{Int64,Number}(),
-        Dict{Int64,Pair{Tuple,Int64}}())
+    walk(findroots(tree)[1])
+    return clades
 end
 
 """
@@ -139,8 +93,8 @@ mutable struct CCD
     end
 end
 
-# show method
-function Base.show(io::IO, ccd::CCD)
-    @printf "CCD of %d (%d) taxa (clades) " length(ccd.leaves) length(ccd.clades)
-    @printf "based on %d samples " ccd.total
+# display method
+function Base.display(io::IO, ccd::CCD)
+    @printf "CCD of %d (%d) taxa " length(ccd.leaves) length(ccd.clades)
+    @printf "(clades) based on %d samples " ccd.total
 end
