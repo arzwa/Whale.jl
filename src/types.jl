@@ -98,3 +98,61 @@ function Base.display(io::IO, ccd::CCD)
     @printf "CCD of %d (%d) taxa " length(ccd.leaves) length(ccd.clades)
     @printf "(clades) based on %d samples " ccd.total
 end
+
+function Base.show(io::IO, ccd::CCD)
+    write(io, "CCD of $(length(ccd.leaves)) ($(length(ccd.clades))) taxa ")
+    write(io, "(clades) based on $(ccd.total) samples")
+end
+
+"""
+    WhaleEM(S::SpeciesTree, L::Slices, C::Array{CCD}; r, η, q)
+ML inference using Expectation-Maximization for the DL(+WGD?) model.
+"""
+mutable struct WhaleEM
+    S::SpeciesTree
+    L::Slices
+    D::DArray{CCD,1,Array{CCD,1}}
+    T::Dict{String,Array{RecTree}}  # backtracked trees
+    r::Dict{Int64,Int64}           # rate index
+    λ::Array{Float64}
+    μ::Array{Float64}
+    q::Array{Float64}
+    η::Float64
+    N::Int64
+
+    function WhaleEM(S, L, C, r; η::Float64=0.80, N::Int64=100)
+        D = distribute(C)
+        T = Dict(i => Rectree[] for i=1:length(C))
+        nwgd = length(S.wgd_index)
+        nrates = length(Set(values(r)))
+        new(S, L, D, T, r, rand(nrates), rand(nrates), rand(nwgd), η, N)
+    end
+end
+
+"""
+BackTracker(S, slices, ri, λ, μ, q, η)
+A struct just for efficient passing around of data across recursions.
+"""
+struct BackTracker
+    S::SpeciesTree
+    slices::Slices
+    ri::Dict{Int64,Int64}
+    ε::Dict{Int64,Array{Float64}}
+    ϕ::Dict{Int64,Array{Float64}}
+    λ::Array{Float64}
+    μ::Array{Float64}
+    q::Array{Float64}
+    η::Float64
+
+    BackTracker(em::WhaleEM) = BackTracker(
+        em.S, em.L, em.r, em.λ, em.μ, em.q, em.η)
+
+    BackTracker(S, slices, ri, ε, ϕ, λ, μ, q, η) = new(
+        S, slices, ri, ε, ϕ, λ, μ, q, η)
+
+    function BackTracker(S, slices, ri, λ, μ, q, η)
+        ε = get_extinction_probabilities(S, slices, λ, μ, q, ri)
+        ϕ = get_propagation_probabilities(S, slices, λ, μ, ε, ri)
+        new(S, slices, ri, ε, ϕ, λ, μ, q, η)
+    end
+end

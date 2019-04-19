@@ -5,32 +5,7 @@ challenge.
 
     10/01/2019: basics seem to work
 ===============================================================================#
-# TODO: How to sample a bunch and make a consensus?
-# TODO: How to get reasonable/correct branch lengths, in particular for WGDs? See also _track.jl
-# TODO: reimplement visualization of rec. trees:w
-"""
-    BackTracker(S, slices, ri, λ, μ, q, η)
-A struct just for efficient passing around of data across recursions.
-"""
-struct BackTracker
-    S::SpeciesTree
-    slices::Slices
-    ri::Dict{Int64,Int64}
-    ε::Dict{Int64,Array{Float64}}
-    ϕ::Dict{Int64,Array{Float64}}
-    λ::Array{Float64}
-    μ::Array{Float64}
-    q::Array{Float64}
-    η::Float64
-
-    BackTracker(S, slices, ri, ε, ϕ, λ, μ, q, η) = new(S, slices, ri, ε, ϕ, λ, μ, q, η)
-
-    function BackTracker(S, slices, ri, λ, μ, q, η)
-        ε = get_extinction_probabilities(S, slices, λ, μ, q, ri)
-        ϕ = get_propagation_probabilities(S, slices, λ, μ, ε, ri)
-        new(S, slices, ri, ε, ϕ, λ, μ, q, η)
-    end
-end
+# TODO: How to get reasonable/correct branch lengths, in particular for WGDs? 
 
 """
     backtrackmcmcmap(sample::DataFrame, ccd, S, slices, N)
@@ -106,8 +81,8 @@ end
 
 """
     backtrack(...)
-Sample a reconciled tree by stochastic backtracking along the dynamic programming
-matrix. Works *recursively*.
+Sample a reconciled tree by stochastic backtracking along the dynamic
+programming matrix. Works *recursively*.
 """
 function backtrack(ccd::CCD, bt::BackTracker)
     R = RecTree()

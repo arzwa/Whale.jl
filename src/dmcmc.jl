@@ -384,15 +384,16 @@ end
             chain::ChainSettings, prior::PriorSettings)
 Evaluate the likelihood when only rates have changed. Does not modify the chain.
 """
-function evaluate_lhood!(D::DArray, η::Float64, chain::ChainSettings, prior::PriorSettings)
-    return evaluate_root!(D, chain.S, chain.slices,  chain.state["λ"], chain.state["μ"],
-            chain.state["q"], η, chain.ri)
+function evaluate_lhood!(D::DArray, η::Float64, chain::ChainSettings,
+        prior::PriorSettings)
+    return evaluate_root!(D, chain.S, chain.slices,  chain.state["λ"],
+        chain.state["μ"], chain.state["q"], η, chain.ri)
 end
 
 function evaluate_lhood!(D::DArray, λ::Array{Float64}, μ::Array{Float64},
         node::Int64, chain::ChainSettings, prior::PriorSettings)
-    return evaluate_partial!(D, node, chain.S, chain.slices, λ, μ, chain.state["q"],
-        chain.state["η"][1], chain.ri)
+    return evaluate_partial!(D, node, chain.S, chain.slices, λ, μ,
+        chain.state["q"], chain.state["η"][1], chain.ri)
 end
 
 function evaluate_lhood!(D::DArray, λ::Array{Float64}, μ::Array{Float64},
@@ -403,18 +404,21 @@ end
 
 function evaluate_lhood!(D::DArray, q::Array{Float64}, node::Int64,
         chain::ChainSettings, prior::PriorSettings)
-    return evaluate_partial!(D, node, chain.S, chain.slices, chain.state["λ"], chain.state["μ"],
-        q, chain.state["η"][1], chain.ri)
+    return evaluate_partial!(D, node, chain.S, chain.slices, chain.state["λ"],
+        chain.state["μ"], q, chain.state["η"][1], chain.ri)
 end
 
-function evaluate_lhood!(D::DArray, λ::Array{Float64}, μ::Array{Float64}, q::Array{Float64},
-        node::Int64, chain::ChainSettings, prior::PriorSettings)
-    return evaluate_partial!(D, node, chain.S, chain.slices, λ, μ, q, chain.state["η"][1], chain.ri)
+function evaluate_lhood!(D::DArray, λ::Array{Float64}, μ::Array{Float64},
+        q::Array{Float64}, node::Int64, chain::ChainSettings,
+        prior::PriorSettings)
+    return evaluate_partial!(D, node, chain.S, chain.slices, λ, μ, q,
+        chain.state["η"][1], chain.ri)
 end
 
-function evaluate_lhood!(D::DArray, λ::Array{Float64}, μ::Array{Float64}, q::Array{Float64},
-        chain::ChainSettings, prior::PriorSettings)
-    return evaluate_lhood!(D, chain.S, chain.slices, λ, μ, q, chain.state["η"][1], chain.ri)
+function evaluate_lhood!(D::DArray, λ::Array{Float64}, μ::Array{Float64},
+        q::Array{Float64}, chain::ChainSettings, prior::PriorSettings)
+    return evaluate_lhood!(D, chain.S, chain.slices, λ, μ, q,
+        chain.state["η"][1], chain.ri)
 end
 
 # logging

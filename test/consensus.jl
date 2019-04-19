@@ -5,7 +5,7 @@ S = read_sp_tree("./example/morris-9taxa.nw")
 conf = read_whaleconf("./example/whalemle.conf")
 slices = get_slices_conf(S, conf["slices"])
 rate_index = Whale.constant_ri(S)
-ccd = get_ccd("./example/example-ale/OG0004540.fasta.nex.treesample.ale", S)[1]
+ccd = get_ccd("./example/example-ale/OG0004518.fasta.nex.treesample.ale", S)[1]
 
 # whale
 results, D = nmwhale(S, [ccd], slices, 0.8)

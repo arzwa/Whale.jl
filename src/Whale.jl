@@ -17,7 +17,7 @@ module Whale
 
     export
         # types
-        SpeciesTree, CCD, Slices, BackTracker,
+        SpeciesTree, CCD, Slices, BackTracker, WhaleEM,
         # I/O
         read_sp_tree, read_ale_observe, read_ale_from_dir, read_ale_from_list,
         get_ccd,
