@@ -187,8 +187,10 @@ function addrectodist!(dist, tree::RecTree)
     walk(findroots(tree.tree)[1])
 end
 
-hashnode(node::Int64, tree::Arboreal) = hash(Set([tree.leaves[n] for n in
-    [node ; descendantnodes(tree.tree, node)] if haskey(tree.leaves, n)]))
+leafset(node::Int64, tree::Arboreal) = [tree.leaves[n] for n in
+    [node ; descendantnodes(tree.tree, node)] if haskey(tree.leaves, n)]
+
+hashnode(node::Int64, tree::Arboreal) = hash(Set(leafset(node, tree)))
 
 function Base.write(io::IO, contree::ConRecTree, S::SpeciesTree; format="table")
     format == "table" ?
@@ -196,19 +198,32 @@ function Base.write(io::IO, contree::ConRecTree, S::SpeciesTree; format="table")
 end
 
 function contreetable(io::IO, contree::ConRecTree, S::SpeciesTree)
-    write(io,"gnode,hash,mvrec,mvlabel,mvperc,mvspeciesset\n")
+    write(io,"gnode,hash,leaves,mvrec,mvlabel,mvperc,mvspeciesset\n")
     for (n, node) in contree.tree.nodes
         haskey(contree.labels, n) ? nothing : continue
         h = hashnode(n, contree)
         s = contree.σ[n]
         l = contree.labels[n]
         p = contree.rsupport[n]
+        ls = join(sort(leafset(n, contree)), ";")
         ss = getspecies(S, s, sep=";")
-        write(io, "$n,$h,$s,$l,$p,$ss\n")
+        write(io, "$n,$h,$ls,$s,$l,$p,$ss\n")
+    end
+end
+
+function write_speciestable(io::IO, S::SpeciesTree)
+    write(io, "node,label,clades\n")
+    for (n, node) in S.tree.nodes
+        clades = join(sort(leafset(n, S)), ";")
+        l = haskey(S.wgd_index, n) ? "wgd" : "speciation"
+        write(io, "$n,$l,$clades\n")
     end
 end
 
 function write_consensus_reconciliations(rtrees, S, dirname, thresh=0.0)
+    open(joinpath(dirname, "species.csv"), "w") do f
+        write_speciestable(f, S)
+    end
     p = Progress(length(rtrees), 0.1, "| Computing consensus reconciliations")
     for (gf, rts) in rtrees
         @debug gf

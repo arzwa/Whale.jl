@@ -249,11 +249,11 @@ function Base.write(io::IO, crt::ConRecTree)
         else
             nw_str = ""
             for c in childnodes(crt, n); nw_str *= walk(c) * ","; end
-            if n != root 
-                supstr = haskey(crt.tsupport, n) ? 
+            if n != root
+                supstr = haskey(crt.tsupport, n) ?
                     "$(crt.tsupport[n])-$(crt.rsupport[n])" : ""
-                return "($(nw_str[1:end-1]))$supstr:$(parentdist(crt, n))" 
-            else 
+                return "($(nw_str[1:end-1]))$supstr:$(parentdist(crt, n))"
+            else
                 return "($(nw_str[1:end-1]));"
             end
         end
