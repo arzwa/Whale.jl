@@ -104,28 +104,61 @@ function Base.show(io::IO, ccd::CCD)
     write(io, "(clades) based on $(ccd.total) samples")
 end
 
+abstract type WhaleEM end
+
 """
     WhaleEM(S::SpeciesTree, L::Slices, C::Array{CCD}; r, η, q)
 ML inference using Expectation-Maximization for the DL(+WGD?) model.
+Assuming branch-wise rates for now.
 """
-mutable struct WhaleEM
+mutable struct WhaleMlEM <: WhaleEM
     S::SpeciesTree
     L::Slices
     D::DArray{CCD,1,Array{CCD,1}}
-    T::Dict{String,Array{RecTree}}  # backtracked trees
-    r::Dict{Int64,Int64}           # rate index
-    λ::Array{Float64}
-    μ::Array{Float64}
-    q::Array{Float64}
+    T::Dict{String,Array{RecTree,1}}  # backtracked trees
+    r::Dict{Int64,Int64}
+    θ::Array{LinearBDP}
+    ε::Dict{Int64,Float64}
     η::Float64
     N::Int64
 
-    function WhaleEM(S, L, C, r; η::Float64=0.80, N::Int64=100)
+    function WhaleMlEM(S, L, C, r; η::Float64=0.80, N::Int64=100)
+        @assert length(S.wgd_index) == 0 "EM not implemented for WGDs"
         D = distribute(C)
-        T = Dict(i => Rectree[] for i=1:length(C))
-        nwgd = length(S.wgd_index)
-        nrates = length(Set(values(r)))
-        new(S, L, D, T, r, rand(nrates), rand(nrates), rand(nwgd), η, N)
+        T = Dict(c.fname => RecTree[] for c in C)
+        nr = length(S.tree.nodes)
+        θ = LinearBDP.(rand(nr), rand(nr))
+        ε = get_extinction_probabilities(S, θ, r)
+        new(S, L, D, T, r, θ, ε, η, N)
+    end
+end
+
+"""
+    WhaleMapEM(S::SpeciesTree, L::Slices, C::Array{CCD}; r, η, q)
+ML inference using Expectation-Maximization for the DL(+WGD?) model.
+Assuming branch-wise rates for now.
+"""
+mutable struct WhaleMapEM <: WhaleEM
+    S::SpeciesTree
+    L::Slices
+    D::DArray{CCD,1,Array{CCD,1}}
+    T::Dict{String,Array{RecTree,1}}  # backtracked trees
+    r::Dict{Int64,Int64}
+    θ::Array{LinearBDP}
+    ε::Dict{Int64,Float64}
+    η::Float64
+    N::Int64
+    πλ::Tuple{Number,Number}  # k (shape) and θ (scale) for Γ prior on λ
+    πμ::Tuple{Number,Number}  # k (shape) and θ (scale) for Γ prior on μ
+
+    function WhaleMapEM(S, L, C, r, πλ, πμ; η::Float64=0.80, N::Int64=100)
+        @assert length(S.wgd_index) == 0 "EM not implemented for WGDs"
+        D = distribute(C)
+        T = Dict(c.fname => RecTree[] for c in C)
+        nr = length(S.tree.nodes)
+        θ = LinearBDP.(rand(nr), rand(nr))
+        ε = get_extinction_probabilities(S, θ, r)
+        new(S, L, D, T, r, θ, ε, η, N, πλ, πμ)
     end
 end
 
@@ -144,8 +177,12 @@ struct BackTracker
     q::Array{Float64}
     η::Float64
 
-    BackTracker(em::WhaleEM) = BackTracker(
-        em.S, em.L, em.r, em.λ, em.μ, em.q, em.η)
+    function BackTracker(em::WhaleEM)
+        λ = [bdp.λ for bdp in em.θ]
+        μ = [bdp.μ for bdp in em.θ]
+        q = Float64[]
+        return BackTracker(em.S, em.L, em.r, λ, μ, q, em.η)
+    end
 
     BackTracker(S, slices, ri, ε, ϕ, λ, μ, q, η) = new(
         S, slices, ri, ε, ϕ, λ, μ, q, η)

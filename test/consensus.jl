@@ -1,5 +1,7 @@
 using Whale
 using ConsensusTrees
+using PalmTree
+using PhyloTrees
 
 S = read_sp_tree("./example/morris-9taxa.nw")
 conf = read_whaleconf("./example/whalemle.conf")
