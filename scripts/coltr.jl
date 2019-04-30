@@ -1,6 +1,20 @@
 using Whale
 using PhyloTrees
+using PalmTree
 
+sptree = read_sp_tree("example/coffee.nw")
+dffile = "/home/arzwa/coffee/whale/1000-whaleamb-gbm2.csv"
+conf = read_whaleconf("/home/arzwa/coffee/whale/gbm2.conf")
+
+# get mean rates (should it be mean?)
+sumry = diagnostics(dffile, burnin=1000)
+λ = sumry[[startswith(string(var), "l") for var in sumry[:variable]], :mean][1:end-1]
+μ = sumry[[startswith(string(var), "m") for var in sumry[:variable]], :mean][1:end]
+q = sumry[[startswith(string(var), "q") for var in sumry[:variable]], :mean][1:end]
+
+coltree(sptree, μ)
+
+#==============================================================================#
 # simple readdict function
 function readdict(fname::String; sep=",")
     lines = open(fname) do file ; readlines(file) ; end

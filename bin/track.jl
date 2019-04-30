@@ -29,7 +29,7 @@ function main(ARGS, sample)
     q, ids = mark_wgds!(S, conf["wgd"])
     slices = get_slices_conf(S, conf["slices"])
     if haskey(conf, "ml")
-        error("ML: Not yet implemented")
+        error("ML: Not implemented")
     elseif haskey(conf, "mcmc")
         rtrees = Whale.backtrackmcmcpost(sample, ccd, S, slices, N; q1=false)
         prefix = conf["mcmc"]["outfile"][1]
@@ -40,7 +40,7 @@ function main(ARGS, sample)
         df1 = Whale.summarize_wgds(rtrees, S)
         CSV.write(prefix * ".wgdsum.csv", df1)
         @info "Writing consensus reconciliations ($prefix.conrec/)"
-        try mkdir("$prefix.conrec/"); catch ; end            
+        try mkdir("$prefix.conrec/"); catch ; end
         Whale.write_consensus_reconciliations(rtrees, S, "$prefix.conrec/")
         if trees
             @info "Writing trees ($prefix.rectrees.xml)"

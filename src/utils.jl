@@ -91,7 +91,8 @@ sort_wgds_by_age(wgd_conf) = sort([(v[2], k) for (k, v) in wgd_conf])
 Get slices based on the configuration.
 """
 function get_slices_conf(S::SpeciesTree, slice_conf::Dict{String,Tuple})
-    return get_slices(S.tree, slice_conf["length"][1], slice_conf["min"][1])
+    return get_slices(S.tree, slice_conf["length"][1], round(Int64,
+        slice_conf["min"][1]))
 end
 
 """

@@ -110,6 +110,25 @@ function summarize_wgds(rtrees::Array{RecTree}, S::SpeciesTree)
 end
 
 # Subgenome assignment =========================================================
+function write_ambiguous_annotation(fname::String, data::Dict)
+    open(fname, "w") do f
+        for (g, a) in dict
+            write(f, "$g,")
+            for (k, v) in a; write(f, "$k,$v");  end
+            write(f, "\n")
+        end
+    end
+end    
+
+function sumambiguous(rt::Dict, S::SpeciesTree, ccd::Array{CCD})
+    data = Dict()
+    for (i,(k, v)) in enumerate(rt)
+        d = sumambiguous(v, S, ccd[i])
+        length(d) > 0 ? data = merge(d, data) : nothing
+    end
+    return data
+end
+
 function sumambiguous(rt::Array{RecTree}, S::SpeciesTree, ccd::CCD)
     length(S.ambiguous) == 0 ? (return) : nothing
     ambgenes = [ccd.leaves[k] for (k, v) in ccd.m3 if haskey(S.ambiguous, v)]
