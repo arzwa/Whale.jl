@@ -1,4 +1,6 @@
 using Whale
+using PhyloTrees
+using PalmTree
 using ConsensusTrees
 
 S = read_sp_tree("./example/morris-9taxa.nw")

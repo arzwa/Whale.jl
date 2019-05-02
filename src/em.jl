@@ -18,7 +18,7 @@ end
 function bactrack!(em::WhaleEM)
     bt = BackTracker(em)
     for c in em.D
-        em[c.fname] = [backtrack(c, bt) for i=1:em.N]
+        em.T[c.fname] = [backtrack(c, bt) for i=1:em.N]
     end
 end
 
@@ -48,29 +48,34 @@ function 𝔼step(em::WhaleEM, y::Array)
     # species tree branch => (𝔼u, 𝔼d, 𝔼t)
 end
 
-function get_transitions(S::SpeciesTree, trees::Dict{String,Array{RecTree}})
-    transitions = Dict{Int64,Tuple{Int64,Int64}}[]
+function get_transitions(S::SpeciesTree, trees::Dict{String,Array{RecTree,1}})
+    transitions = Dict(n => zeros(Int64, 0, 2) for (n, node) in S.tree.nodes)
     for (k, v) in trees
-        push!(transitions, get_transitions(S, v))
+        ts = get_transitions(S, v)
+        for (n, node) in S.tree.nodes
+            transitions[n] = [
+                transitions[n] ; vcat([collect(t[n]) for t in ts]...)]
+        end
     end
+    return transitions
 end
 
 function get_transitions(S::SpeciesTree, trees::Array{RecTree})
     # for every branch of the species tree, compute the number of lineages
     # entering and leaving the branch
-    transitions = Dict{Int64,Tuple{Int64,Int64}}[]
+    transitions = Dict{Int64,Array{Int64,2}}[]
     root = findroots(S.tree)[1]
     for t in trees
-        d = Dict{Int64,Tuple{Int64,Int64}}()
+        d = Dict{Int64,Array{Int64,2}}()
         function walk(n)
             if isroot(S.tree, n)
-                d[n] = (-1, length([k for (k, v) in t.σ if v == n]))
+                d[n] = [-1 length([k for (k, v) in t.σ if v == n])]
             else
                 pnode = parentnode(S.tree, n)
                 startcount = d[pnode][2]
                 endcount = length([k for (k, v) in t.σ
                     if (v == n && t.labels[k] != "duplication")])
-                d[n] = (startcount, endcount)
+                d[n] = [startcount endcount]
                 isleaf(S.tree, n) ? (return) : nothing
             end
             [walk(c) for c in childnodes(S.tree, n)]
