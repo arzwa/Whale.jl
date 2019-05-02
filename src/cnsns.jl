@@ -112,18 +112,18 @@ end
 # Subgenome assignment =========================================================
 function write_ambiguous_annotation(fname::String, data::Dict)
     open(fname, "w") do f
-        for (g, a) in dict
+        for (g, a) in data
             write(f, "$g,")
-            for (k, v) in a; write(f, "$k,$v");  end
-            write(f, "\n")
+            l = []; for (k, v) in a; l = [l ; [k, round(v, digits=5)]]; end
+            write(f, join(l, ",") * "\n")
         end
     end
-end    
+end
 
-function sumambiguous(rt::Dict, S::SpeciesTree, ccd::Array{CCD})
+function sumambiguous(rt::Dict, S::SpeciesTree, ccd::Dict)
     data = Dict()
-    for (i,(k, v)) in enumerate(rt)
-        d = sumambiguous(v, S, ccd[i])
+    for (k, v) in rt
+        d = sumambiguous(v, S, ccd[k])
         length(d) > 0 ? data = merge(d, data) : nothing
     end
     return data
@@ -243,8 +243,7 @@ function write_consensus_reconciliations(rtrees, S, dirname, thresh=0.0)
     open(joinpath(dirname, "species.csv"), "w") do f
         write_speciestable(f, S)
     end
-    p = Progress(length(rtrees), 0.1, "| Computing consensus reconciliations")
-    for (gf, rts) in rtrees
+    @showprogress 1 "Consensus reconciliations " for (gf, rts) in rtrees
         @debug gf
         gfname = basename(gf)
         rt = [Whale.prune_loss_nodes(t) for t in rts]
@@ -259,6 +258,5 @@ function write_consensus_reconciliations(rtrees, S, dirname, thresh=0.0)
         open(joinpath(dirname, "$gfname.csv"), "w") do f
             write(f, crt, S)
         end
-        next!(p)
     end
 end
