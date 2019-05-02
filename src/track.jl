@@ -9,7 +9,7 @@ challenge.
 
 # Backtracking in parallel
 function backtrackall(ccd::DArray, bt::BackTracker, N::Int64)
-    rtrees = ppeval(backtrack, ccd, [bt], [N], dims=(2,2))
+    rtrees = ppeval(backtrack, ccd, [bt], [N])
     return Dict(ccd[i].fname => Array(rtrees[:, i]) for i=1:length(ccd))
 end
 
