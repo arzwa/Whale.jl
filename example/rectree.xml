@@ -1,6 +1,0 @@
-<recGeneTree
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
-	xmlns="http://www.recgenetreexml.org"
-	xsi:schemaLocation="http://www.recgenetreexml.org ../../xsd/recGeneTreeXML.xsd"> 
-	<phylogeny rooted="true">
-		<id>/home/arzwa/coffee/ale-out.1/OG0001012.fasta.nex.treesample.ale</id>

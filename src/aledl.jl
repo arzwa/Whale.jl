@@ -179,8 +179,8 @@ end
         max_n_slices::Int64=1000)
 Slicing function. Maybe put Δt and min_n_slices as keyword args.
 """
-function get_slices(T::Tree, Δt::Float64, min_n_slices::Int64; root::Float64=-1.,
-        max_n_slices::Int64=1000)
+function get_slices(T::Tree, Δt::Float64, min_n_slices::Int64;
+        root::Float64=-1., max_n_slices::Int64=1000)
     slices = Dict{Int64,Int64}()
     slice_lengths = Dict{Int64,Array{Float64}}()
     branches = Int64[]
@@ -195,26 +195,19 @@ function get_slices(T::Tree, Δt::Float64, min_n_slices::Int64; root::Float64=-1
             for c in childnodes(T, node)
                 walk(c)
             end
-            # HACK/NOTE: This was a hack that is no longer necessary since we ---
-            # introduced the prior on the root
             if !(isroot(T, node))
                 l = distance(T, node, parentnode(T, node))
             else
-                # l = slice_lengths[2][2] * min_n_slices # original idea
-                if root < 0.
-                    l = Δt*min_n_slices*5 # PsDL implementation
-                else
-                    l = root
-                end
+                l = root < 0. ? Δt*min_n_slices*5 : root
             end
-            # --------------------------------------------------------------------
-            n = max(ceil(Int64, l / Δt), min_n_slices)  # the number of slices we use
+            # the number of slices we use
+            n = max(ceil(Int64, l / Δt), min_n_slices)
             slices[node] = n + 1
             slice_lengths[node] = get_slice_lengths(n , l)
             push!(branches, node)
         end
     end
-    walk(1)
+    walk(findroots(T)[1])
     slices[1] = 1; slice_lengths[1] = [0.]
     return Slices(slices, slice_lengths, branches)
 end

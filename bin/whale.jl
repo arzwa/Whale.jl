@@ -11,6 +11,8 @@ using DistributedArrays
 using ArgParse
 using Logging
 using CSV
+using PhyloTrees
+using ProgressMeter
 @everywhere using Whale
 
 # main routine
@@ -38,8 +40,10 @@ function do_ml(S::SpeciesTree, ccd::Array{CCD}, slices::Slices,
     @info "Maximum-likelihood estimation"
     haskey(config, "rates") ? ri = get_rateindex(S, config["rates"]) :
         ri = Dict(x => 1 for x in 1:length(S.tree.nodes))
-    init = haskey(config["ml"], "init") ? [x for x in config["ml"]["init"]] : Float64[]
-    mxit = haskey(config["ml"], "maxiter") ? Integer(config["ml"]["maxiter"][1]) : 5000
+    init = haskey(config["ml"], "init") ?
+        [x for x in config["ml"]["init"]] : Float64[]
+    mxit = haskey(config["ml"], "maxiter") ?
+        Integer(config["ml"]["maxiter"][1]) : 5000
     @show mxit
     @info ri
     @info q
@@ -48,6 +52,53 @@ function do_ml(S::SpeciesTree, ccd::Array{CCD}, slices::Slices,
     @show out
     @show out.minimizer
     @show out.minimum
+    haskey(config, "track") ?
+        do_track_ml(out, D, S, slices, ri, η, config) : nothing
+end
+
+#XXX should go partly to src/track.jl
+function do_track_ml(out, ccd, S, slices, rate_index, η, config)
+    nr = length(Set(values(rate_index)))
+    λh = out.minimizer[1:nr]
+    μh = out.minimizer[nr+1:2nr]
+    qh = out.minimizer[2nr+1:end]
+    bt = BackTracker(S, slices, rate_index, λh, μh, qh, η)
+    rtrees = Dict{Any,Array{RecTree}}(
+        ccd[i].fname => RecTree[] for i in 1:length(ccd))
+    #= NOTE should be parallel
+    @showprogress 1 "Backtracking... " for i = 1:length(ccd)
+        for j = 1:config["track"]["N"][1]
+            push!(rtrees[ccd[i].fname], backtrack(ccd[i], bt))
+        end
+    end =#
+    rtrees = Whale.backtrackall(ccd, bt, round(Int64, config["track"]["N"][1]))
+    prefix = config["track"]["outfile"][1]
+    @info "Getting ALE-like summary ($prefix.alesum.csv)"
+    df2 = Whale.alelike_summary(rtrees, S)
+    CSV.write(prefix * ".alesum.csv", df2)
+    @info "Summarizing WGDs ($prefix.wgdsum.csv)"
+    df1 = Whale.summarize_wgds(rtrees, S)
+    CSV.write(prefix * ".wgdsum.csv", df1)
+    @info "Writing consensus reconciliations ($prefix.conrec/)"
+    try mkdir("$prefix.conrec/"); catch ; end
+    Whale.write_consensus_reconciliations(rtrees, S, "$prefix.conrec/")
+    if haskey(config["track"], "trees")
+        @info "Writing trees ($prefix.rectrees.xml)"
+        Whale.write_rectrees(rtrees, S, prefix * ".rectrees.xml")
+        @info "Writing trees ($prefix.nw/)"
+        mkdir("$prefix.nw/")
+        for (k, rts) in rtrees
+            open("$prefix.nw/$(basename(k)).nws", "w") do f
+                for rt in rts ; write(f, Whale.prune_loss_nodes(rt)) ; end
+            end
+        end
+    end
+    if haskey(config, "ambiguous")
+        @info "Writing inferred annotation for ambiguous genes"
+        ccds = Dict(c.fname => c for c in ccd)  # HACK
+        annotation = Whale.sumambiguous(rtrees, S, ccds)
+        Whale.write_ambiguous_annotation("$prefix.ambsum.csv", annotation)
+    end
 end
 
 # MCMC and MAP programs
@@ -55,8 +106,10 @@ function do_mcmc(S, ccd, slices, conf, ids; burnin=1000)
     @info "MCMC computation"
     prior, prop, chain = configure_mcmc(S, slices, conf["mcmc"])
     if haskey(conf["mcmc"], "map")
-        init = haskey(conf["mcmc"], "init") ? [x for x in conf["mcmc"]["init"]] : Float64[]
-        mxit = haskey(conf["mcmc"], "maxiter") ? Integer(conf["mcmc"]["maxiter"][1]) : 5000
+        init = haskey(conf["mcmc"], "init") ?
+            [x for x in conf["mcmc"]["init"]] : Float64[]
+        mxit = haskey(conf["mcmc"], "maxiter") ?
+            Integer(conf["mcmc"]["maxiter"][1]) : 5000
         out = map_nmwhale(ccd, chain, prior; init=init, max_iter=mxit)
         @show out
         @show out.minimizer

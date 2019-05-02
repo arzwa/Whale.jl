@@ -88,7 +88,8 @@ end
     get_extinction_probabilities(S::SpeciesTree, slices::Slices, λ::Float64, μ::Float64)
 Compute all extinction probabilities, assuming no WGDs.
 """
-function get_extinction_probabilities(S::SpeciesTree, slices::Slices, λ::Float64, μ::Float64)
+function get_extinction_probabilities(S::SpeciesTree, slices::Slices,
+        λ::Float64, μ::Float64)
     #e_vtx, e_arc = p_extinction(S, λ, μ, [])
     ε = Dict{Int64,Array{Float64}}()
     for e in slices.branches
@@ -132,8 +133,8 @@ end
         q::Array{Float64})
 Compute all extinction probabilities with WGDs.
 """
-function get_extinction_probabilities(S::SpeciesTree, slices::Slices, λ::Float64, μ::Float64,
-        q::Array{Float64})
+function get_extinction_probabilities(S::SpeciesTree, slices::Slices,
+        λ::Float64, μ::Float64, q::Array{Float64})
     ε = Dict{Int64,Array{Float64}}()
     for e in slices.branches  # this is in post-order
         if isleaf(S.tree, e)
@@ -178,8 +179,9 @@ end
 Compute all extinction probabilities, with WGDs. With arbitrary
 rates for each branch (given in the rate_index).
 """
-function get_extinction_probabilities(S::SpeciesTree, slices::Slices, λ::Array{Float64},
-        μ::Array{Float64}, q::Array{Float64}, rate_index::Dict{Int64,Int64})
+function get_extinction_probabilities(S::SpeciesTree, slices::Slices,
+        λ::Array{Float64}, μ::Array{Float64}, q::Array{Float64},
+        rate_index::Dict{Int64,Int64})
     # note that we also compute the extinction probabilities in the branch
     # above the root, but in most implementations of the likelihood model we
     # don't use this.
@@ -205,6 +207,33 @@ function get_extinction_probabilities(S::SpeciesTree, slices::Slices, λ::Array{
             push!(ε[e], p_extinction_slice(λe, μe, slices.slice_lengths[e][i], ε[e][i-1]))
         end
     end
+end
+
+"""
+    get_extinction_probabilities(...)
+Compute all extinction probabilities, with WGDs. With arbitrary
+rates for each branch (given in the rate_index).
+"""
+function get_extinction_probabilities(S::SpeciesTree, θ::Array{LinearBDP},
+        rate_index::Dict{Int64,Int64})
+    # note that we also compute the extinction probabilities in the branch
+    # above the root, but in most implementations of the likelihood model we
+    # don't use this.
+    ε = Dict{Int64,Float64}()
+    for e in postorder(S.tree)
+        if isleaf(S.tree, e)
+            ε[e] = 0.
+        else
+            ϵ = 1.
+            for n in childnodes(S.tree, e)
+                λn = θ[rate_index[n]].λ
+                μn = θ[rate_index[n]].μ
+                ϵ *= p_extinction_slice(λn, μn, parentdist(S, n), ε[n])
+            end
+            ε[e] = ϵ
+        end
+    end
+    return ε
 end
 
 """

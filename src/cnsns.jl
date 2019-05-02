@@ -25,7 +25,7 @@ note really a consensus reconciliation...
 """
     alelike_summary(rectrees::Dict,)
 """
-function alelike_summary(rt::Dict{Any,Array{RecTree}}, S::SpeciesTree)
+function alelike_summary(rt::Dict, S::SpeciesTree)
     dfs = []
     for (k, v) in rt
         push!(dfs, alelike_summary(v, S, fname=k))
@@ -72,7 +72,7 @@ end
     summarize_wgds(nrtrees::Dict, S::SpeciesTree)
 Summarize retained WGD events for every gene family.
 """
-function summarize_wgds(nrtrees::Dict{Any,Array{RecTree}}, S::SpeciesTree)
+function summarize_wgds(nrtrees::Dict, S::SpeciesTree)
     data = DataFrame(:gf => Any[], :wgd_id => Int64[], :wgd_node => Int64[],
         :rectree_node => Int64[], :gleft => String[], :gright => String[],
         :sleft => String[], :sright => String[], :count => Int64[])
@@ -110,6 +110,25 @@ function summarize_wgds(rtrees::Array{RecTree}, S::SpeciesTree)
 end
 
 # Subgenome assignment =========================================================
+function write_ambiguous_annotation(fname::String, data::Dict)
+    open(fname, "w") do f
+        for (g, a) in data
+            write(f, "$g,")
+            l = []; for (k, v) in a; l = [l ; [k, round(v, digits=5)]]; end
+            write(f, join(l, ",") * "\n")
+        end
+    end
+end
+
+function sumambiguous(rt::Dict, S::SpeciesTree, ccd::Dict)
+    data = Dict()
+    for (k, v) in rt
+        d = sumambiguous(v, S, ccd[k])
+        length(d) > 0 ? data = merge(d, data) : nothing
+    end
+    return data
+end
+
 function sumambiguous(rt::Array{RecTree}, S::SpeciesTree, ccd::CCD)
     length(S.ambiguous) == 0 ? (return) : nothing
     ambgenes = [ccd.leaves[k] for (k, v) in ccd.m3 if haskey(S.ambiguous, v)]
@@ -224,8 +243,7 @@ function write_consensus_reconciliations(rtrees, S, dirname, thresh=0.0)
     open(joinpath(dirname, "species.csv"), "w") do f
         write_speciestable(f, S)
     end
-    p = Progress(length(rtrees), 0.1, "| Computing consensus reconciliations")
-    for (gf, rts) in rtrees
+    @showprogress 1 "Consensus reconciliations " for (gf, rts) in rtrees
         @debug gf
         gfname = basename(gf)
         rt = [Whale.prune_loss_nodes(t) for t in rts]
@@ -240,6 +258,5 @@ function write_consensus_reconciliations(rtrees, S, dirname, thresh=0.0)
         open(joinpath(dirname, "$gfname.csv"), "w") do f
             write(f, crt, S)
         end
-        next!(p)
     end
 end

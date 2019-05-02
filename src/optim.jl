@@ -32,7 +32,8 @@ Nelder-Mead (Downhill simplex method) optimizer for Whale. In parallel.
 """
 function nmwhale(S::SpeciesTree, ccd::Array{CCD}, slices::Slices, η::Float64,
         q::Array{Float64}, rate_index::Dict{Int64,Int64}; oib::Bool=true,
-        max_iter::Int64=5000, restart_every::Int64=0, init::Array{Float64}=Float64[])
+        max_iter::Int64=5000, restart_every::Int64=0,
+        init::Array{Float64}=Float64[])
     @info "Starting Nelder-Mead optimization"
     nw = length(workers())
     @info " .. Distributing over $nw workers"
@@ -67,7 +68,7 @@ function nmwhale(S::SpeciesTree, ccd::Array{CCD}, slices::Slices, η::Float64,
         out = optimize(
             joint_p, result,
             NelderMead(initial_simplex = Optim.AffineSimplexer()),
-            Optim.Options(g_tol = 1e-5, iterations=restart_every)
+            Optim.Options(g_tol = 1e-6, iterations=restart_every)
         )
         result = out.minimizer
         ml = -Optim.minimum(out)
