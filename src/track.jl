@@ -5,38 +5,24 @@ challenge.
 
     10/01/2019: basics seem to work
 ===============================================================================#
-# TODO: How to get reasonable/correct branch lengths, in particular for WGDs? 
+# TODO: How to get reasonable/correct branch lengths, in particular for WGDs?
 
-"""
-    backtrackmcmcmap(sample::DataFrame, ccd, S, slices, N)
-Backtrack sets of trees using the posterior mean estimates.
-"""
-function backtrackmcmcmap(sample::DataFrame, ccd, S, slices, N)
-    D = distribute(ccd)
-    sumry = describe(sample[2:end], stats=[:mean, :std, :q25, :median, :q75])
-    η = sumry[[startswith(string(var), "eta")
-        for var in sumry[:variable]], :mean][1]
-    λ = sumry[[startswith(string(var), "l")
-        for var in sumry[:variable]], :mean][1:end-1]
-    μ = sumry[[startswith(string(var), "m")
-        for var in sumry[:variable]], :mean][1:end]
-    q = sumry[[startswith(string(var), "q")
-        for var in sumry[:variable]], :mean][1:end]
-    @info "η" η
-    @info "λ" λ
-    @info "μ" μ
-    @info "q" q
-    ri = Dict(x => 1 for x in keys(S.tree.nodes))
-    bt = BackTracker(S, slices, ri, λ, μ, q, η)
-    Whale.evaluate_lhood!(D, S, slices, λ, μ, q, η, ri)
-    Whale.set_recmat!(D)
-    allrtrees = Dict{Int64,Array{RecTree}}()
-    for (i, c) in enumerate(D)
-        allrtrees[i] = [backtrack(c, bt) for i = 1:N]
-    end
-    return allrtrees
+# Backtracking in parallel
+function backtrackall(ccd::DArray, bt::BackTracker, N::Int64)
+    rtrees = ppeval(backtrack, ccd, [bt], [N], dims=(2,2))
+    return Dict(ccd[i].fname => Array(rtrees[:, i]) for i=1:length(ccd))
 end
 
+function backtrack(ccd, bt, N)
+    rtrees = RecTree[]
+    for i=1:N[1]
+        push!(rtrees, backtrack(ccd[1], bt[1]))
+    end
+    @show size(rtrees)
+    return rtrees
+end
+
+# Backtracking from posterior distribution
 """
     backtrackmcmcpost(sample::DataFrame, ccd, S, slices, N)
 Backtrack using samples from the posterior

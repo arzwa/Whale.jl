@@ -25,7 +25,7 @@ note really a consensus reconciliation...
 """
     alelike_summary(rectrees::Dict,)
 """
-function alelike_summary(rt::Dict{Any,Array{RecTree}}, S::SpeciesTree)
+function alelike_summary(rt::Dict, S::SpeciesTree)
     dfs = []
     for (k, v) in rt
         push!(dfs, alelike_summary(v, S, fname=k))
@@ -72,7 +72,7 @@ end
     summarize_wgds(nrtrees::Dict, S::SpeciesTree)
 Summarize retained WGD events for every gene family.
 """
-function summarize_wgds(nrtrees::Dict{Any,Array{RecTree}}, S::SpeciesTree)
+function summarize_wgds(nrtrees::Dict, S::SpeciesTree)
     data = DataFrame(:gf => Any[], :wgd_id => Int64[], :wgd_node => Int64[],
         :rectree_node => Int64[], :gleft => String[], :gright => String[],
         :sleft => String[], :sright => String[], :count => Int64[])

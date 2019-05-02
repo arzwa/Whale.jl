@@ -65,11 +65,13 @@ function do_track_ml(out, ccd, S, slices, rate_index, η, config)
     bt = BackTracker(S, slices, rate_index, λh, μh, qh, η)
     rtrees = Dict{Any,Array{RecTree}}(
         ccd[i].fname => RecTree[] for i in 1:length(ccd))
+    #= NOTE should be parallel
     @showprogress 1 "Backtracking... " for i = 1:length(ccd)
         for j = 1:config["track"]["N"][1]
             push!(rtrees[ccd[i].fname], backtrack(ccd[i], bt))
         end
-    end
+    end =#
+    rtrees = Whale.backtrackall(ccd, bt, round(Int64, config["track"]["N"][1]))
     prefix = config["track"]["outfile"][1]
     @info "Getting ALE-like summary ($prefix.alesum.csv)"
     df2 = Whale.alelike_summary(rtrees, S)
