@@ -76,16 +76,6 @@ function whale_emstep!(em::WhaleMapEM, ys; nt::Int64=20, nk::Int64=5)
     update_ε!(em)
 end
 
-<<<<<<< HEAD
-function get_transitions(S::SpeciesTree, trees::Dict{String,Array{RecTree,1}})
-    transitions = Dict(n => zeros(Int64, 0, 2) for (n, node) in S.tree.nodes)
-    for (k, v) in trees
-        ts = get_transitions(S, v)
-        for (n, node) in S.tree.nodes
-            transitions[n] = [
-                transitions[n] ; vcat([collect(t[n]) for t in ts]...)]
-        end
-=======
 update_ε!(em::WhaleEM) = em.ε = get_extinction_probabilities(em.S, em.θ, em.r)
 
 function get_transitions(S::SpeciesTree, trees::Dict{String,Array{RecTree,1}})
@@ -93,7 +83,6 @@ function get_transitions(S::SpeciesTree, trees::Dict{String,Array{RecTree,1}})
         Dict{Tuple{Int64,Int64},Int64}() for (n,node) in S.tree.nodes)
     for (k, v) in trees
         get_transitions!(transitions, S, v)
->>>>>>> 07a419c67fa7d95b63344536feadba30284c2c6c
     end
     return transitions
 end
@@ -108,15 +97,6 @@ end
 function get_transitions!(d::Dict{}, S::SpeciesTree, trees::Array{RecTree})
     # for every branch of the species tree, compute the number of lineages
     # entering and leaving the branch
-<<<<<<< HEAD
-    transitions = Dict{Int64,Array{Int64,2}}[]
-    root = findroots(S.tree)[1]
-    for t in trees
-        d = Dict{Int64,Array{Int64,2}}()
-        function walk(n)
-            if isroot(S.tree, n)
-                d[n] = [-1 length([k for (k, v) in t.σ if v == n])]
-=======
     # d = Dict(n=>Dict{Tuple{Int64,Int64},Int64}() for (n,node) in S.tree.nodes)
     root = findroots(S.tree)[1]
     for t in trees
@@ -126,19 +106,14 @@ function get_transitions!(d::Dict{}, S::SpeciesTree, trees::Array{RecTree})
                 trans = (-1, length([k for (k, v) in t.σ if v == n]))
                 endcounts[n] = trans[2]
                 haskey(d[n], trans) ? d[n][trans] += 1 : d[n][trans] = 1
->>>>>>> 07a419c67fa7d95b63344536feadba30284c2c6c
             else
                 pnode = parentnode(S.tree, n)
                 startcount = endcounts[pnode]
                 endcount = length([k for (k, v) in t.σ
                     if (v == n && t.labels[k] != "duplication")])
-<<<<<<< HEAD
-                d[n] = [startcount endcount]
-=======
                 endcounts[n] = endcount
                 trans = (startcount, endcount)
                 haskey(d[n], trans) ? d[n][trans] += 1 : d[n][trans] = 1
->>>>>>> 07a419c67fa7d95b63344536feadba30284c2c6c
                 isleaf(S.tree, n) ? (return) : nothing
             end
             [walk(c) for c in childnodes(S.tree, n)]
