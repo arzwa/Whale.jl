@@ -23,21 +23,26 @@ note really a consensus reconciliation...
 =#
 # ALE-like summary =============================================================
 """
-    alelike_summary(rectrees::Dict,)
+    alelike_summary(ccd, S::SpeciesTree)
+
+Obtain a summary of # of events of each type on each species tree branch like
+in ALE.
 """
-function alelike_summary(rt::Dict, S::SpeciesTree)
+function alelike_summary(ccd, S::SpeciesTree)
     dfs = []
-    for (k, v) in rt
-        push!(dfs, alelike_summary(v, S, fname=k))
+    @showprogress 1 "Getting ALE-like summary " for c in ccd
+        push!(dfs, alelike_summary(c.rectrs, S, fname=c.fname))
     end
     return vcat(dfs...)
 end
 
 # this is implemented for rectrees of one family
 function alelike_summary(rt::Array{RecTree}, S::SpeciesTree; fname="")
-    df = DataFrame(family=String[], branch=Int64[], speciation=Float64[], leaf=Float64[],
-        wgd=Float64[], duplication=Float64[], loss=Float64[], retained=Float64[],
-        species=String[], total=Int64[])
+    df = DataFrame(
+            family=String[], branch=Int64[], speciation=Float64[],
+            leaf=Float64[],  wgd=Float64[], duplication=Float64[],
+            loss=Float64[],  retained=Float64[], species=String[],
+            total=Int64[])
     for n in keys(S.tree.nodes)
         push!(df, [fname; alesum(rt, n); getspecies(S, n); length(rt)])
     end
@@ -69,15 +74,16 @@ end
 # WGD specific summary =========================================================
 # this is implemented for rectrees over all families
 """
-    summarize_wgds(nrtrees::Dict, S::SpeciesTree)
+    summarize_wgds(ccd, S::SpeciesTree)
+
 Summarize retained WGD events for every gene family.
 """
-function summarize_wgds(nrtrees::Dict, S::SpeciesTree)
+function summarize_wgds(ccd, S::SpeciesTree)
     data = DataFrame(:gf => Any[], :wgd_id => Int64[], :wgd_node => Int64[],
         :rectree_node => Int64[], :gleft => String[], :gright => String[],
         :sleft => String[], :sright => String[], :count => Int64[])
-    for (gf, rtrees) in nrtrees
-        for (wgd, x) in summarize_wgds(rtrees, S)
+    @showprogress 1 "Summarizing WGD retention " for c in ccd
+        for (wgd, x) in summarize_wgds(c.rectrs, S)
             push!(data, [gf ; x])
         end
     end
@@ -120,21 +126,21 @@ function write_ambiguous_annotation(fname::String, data::Dict)
     end
 end
 
-function sumambiguous(rt::Dict, S::SpeciesTree, ccd::Dict)
+function sumambiguous(ccd, S::SpeciesTree)
     data = Dict()
-    for (k, v) in rt
-        d = sumambiguous(v, S, ccd[k])
+    @showprogress 1 "Inferring annotation for ambiguous genes" for c in ccd
+        d = sumambiguous(c, S)
         length(d) > 0 ? data = merge(d, data) : nothing
     end
     return data
 end
 
-function sumambiguous(rt::Array{RecTree}, S::SpeciesTree, ccd::CCD)
+function sumambiguous(ccd::CCD, S::SpeciesTree)
     length(S.ambiguous) == 0 ? (return) : nothing
     ambgenes = [ccd.leaves[k] for (k, v) in ccd.m3 if haskey(S.ambiguous, v)]
     data = Dict{String,Dict}(g=>Dict() for g in ambgenes)
-    N = length(rt)
-    for t in rt
+    N = length(ccd.rectrs)
+    for t in ccd.rectrs
         leaf2node = Dict(v=>k for (k,v) in t.leaves)
         ambnodes = [leaf2node[g] for g in ambgenes]
         for (g, n) in zip(ambgenes, ambnodes)
@@ -239,14 +245,14 @@ function write_speciestable(io::IO, S::SpeciesTree)
     end
 end
 
-function write_consensus_reconciliations(rtrees, S, dirname, thresh=0.0)
+function write_consensus_reconciliations(ccd, S, dirname, thresh=0.0)
     open(joinpath(dirname, "species.csv"), "w") do f
         write_speciestable(f, S)
     end
-    @showprogress 1 "Consensus reconciliations " for (gf, rts) in rtrees
-        @debug gf
-        gfname = basename(gf)
-        rt = [Whale.prune_loss_nodes(t) for t in rts]
+    @showprogress 1 "Getting consensus reconciliations " for c in ccd
+        @debug c.fname
+        gfname = basename(c.fname)
+        rt = [Whale.prune_loss_nodes(t) for t in c.rectrs]
         ct = majority_consensus(rt, thresh=thresh)
         open(joinpath(dirname, "$gfname.ct"), "w") do f
             write(f, ct.tree, ct.leaves)

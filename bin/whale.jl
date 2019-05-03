@@ -63,40 +63,25 @@ function do_track_ml(out, ccd, S, slices, rate_index, η, config)
     μh = out.minimizer[nr+1:2nr]
     qh = out.minimizer[2nr+1:end]
     bt = BackTracker(S, slices, rate_index, λh, μh, qh, η)
-    rtrees = Dict{Any,Array{RecTree}}(
-        ccd[i].fname => RecTree[] for i in 1:length(ccd))
-    #= NOTE should be parallel
-    @showprogress 1 "Backtracking... " for i = 1:length(ccd)
-        for j = 1:config["track"]["N"][1]
-            push!(rtrees[ccd[i].fname], backtrack(ccd[i], bt))
-        end
-    end =#
-    rtrees = Whale.backtrackall(ccd, bt, round(Int64, config["track"]["N"][1]))
+    Whale.backtrack!(ccd, bt, round(Int64, config["track"]["N"][1]))
     prefix = config["track"]["outfile"][1]
-    @info "Getting ALE-like summary ($prefix.alesum.csv)"
-    df2 = Whale.alelike_summary(rtrees, S)
+    df2 = Whale.alelike_summary(ccd, S)
     CSV.write(prefix * ".alesum.csv", df2)
-    @info "Summarizing WGDs ($prefix.wgdsum.csv)"
-    df1 = Whale.summarize_wgds(rtrees, S)
+    df1 = Whale.summarize_wgds(ccd, S)
     CSV.write(prefix * ".wgdsum.csv", df1)
-    @info "Writing consensus reconciliations ($prefix.conrec/)"
     try mkdir("$prefix.conrec/"); catch ; end
-    Whale.write_consensus_reconciliations(rtrees, S, "$prefix.conrec/")
+    Whale.write_consensus_reconciliations(ccd, S, "$prefix.conrec/")
     if haskey(config["track"], "trees")
-        @info "Writing trees ($prefix.rectrees.xml)"
-        Whale.write_rectrees(rtrees, S, prefix * ".rectrees.xml")
-        @info "Writing trees ($prefix.nw/)"
+        Whale.write_rectrees(ccd, S, prefix * ".rectrees.xml")
         mkdir("$prefix.nw/")
-        for (k, rts) in rtrees
+        @showprogress 1 "... and again " for (k, rts) in rtrees
             open("$prefix.nw/$(basename(k)).nws", "w") do f
                 for rt in rts ; write(f, Whale.prune_loss_nodes(rt)) ; end
             end
         end
     end
     if haskey(config, "ambiguous")
-        @info "Writing inferred annotation for ambiguous genes"
-        ccds = Dict(c.fname => c for c in ccd)  # HACK
-        annotation = Whale.sumambiguous(rtrees, S, ccds)
+        annotation = Whale.sumambiguous(ccd, S)
         Whale.write_ambiguous_annotation("$prefix.ambsum.csv", annotation)
     end
 end

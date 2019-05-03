@@ -62,7 +62,7 @@ function nmwhale(S::SpeciesTree, ccd::Array{CCD}, slices::Slices, η::Float64,
         restart_every = max_iter
     end
 
-    length(init) > 0 ? result = init : result = zeros(n_cat*2 + free_q) .+ rand()
+    result = length(init) > 0 ? init : zeros(n_cat*2 + free_q) .+ rand()
     ml = -Inf; converged = false; out = nothing; total = 0
     while !(converged) && total < max_iter
         out = optimize(
@@ -76,11 +76,18 @@ function nmwhale(S::SpeciesTree, ccd::Array{CCD}, slices::Slices, η::Float64,
         total += restart_every
     end
 
-    set_recmat!(D)
+    # Make sure the recmat corresponds to the final ML estimates, which may
+    # not be exactly the values from the last iteration.
     q_ = update_q(q, result, i=2*n_cat+1)
+    λ = out.minimizer[1:n_cat]
+    μ = out.minimizer[n_cat+1:2*n_cat]
+    evaluate_lhood!(D, S, slices, λ, μ, q_, η, rate_index)
+    set_recmat!(D)
+
+    # logging final results to the screen
     @printf "Maximum: log(L) = %.4f\n" ml
     @printf "ML estimates (η = %.2f): " η
-    log_iteration(result[1:n_cat], result[n_cat+1:2*n_cat], q_)
+    log_iteration(λ, μ, q_)
     println()
     return out, D
 end

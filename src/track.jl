@@ -7,21 +7,6 @@ challenge.
 ===============================================================================#
 # TODO: How to get reasonable/correct branch lengths, in particular for WGDs?
 
-# Backtracking in parallel
-function backtrackall(ccd::DArray, bt::BackTracker, N::Int64)
-    rtrees = ppeval(backtrack, ccd, [bt], [N])
-    return Dict(ccd[i].fname => Array(rtrees[:, i]) for i=1:length(ccd))
-end
-
-function backtrack(ccd, bt, N)
-    rtrees = RecTree[]
-    for i=1:N[1]
-        push!(rtrees, backtrack(ccd[1], bt[1]))
-    end
-    @show size(rtrees)
-    return rtrees
-end
-
 # Backtracking from posterior distribution
 """
     backtrackmcmcpost(sample::DataFrame, ccd, S, slices, N)
@@ -66,7 +51,26 @@ function backtrackmcmcpost(sample::DataFrame, ccd, S, slices, N; q1::Bool=false)
 end
 
 """
-    backtrack(...)
+    backtrack(ccd::DArray{CCD}, bt::BackTracker, N::Int64)
+
+Sample N reconciled trees by backtracking from the dynamic programming matrix,
+which should be stored in `recmat` field of the CCD object.
+"""
+function backtrack!(ccd::DArray, bt::BackTracker, N::Int64)
+    ppeval(backtrack!, ccd, [bt], [N])
+end
+
+function backtrack!(ccd, bt, N)
+    @info "Sampling $(N[1]) trees for $(ccd[1].fname)"
+    for i=1:N[1]
+        push!(ccd[1].rectrs, backtrack(ccd[1], bt[1]))
+    end
+    return N[1]
+end
+
+"""
+    backtrack(ccd::CCD, bt::BackTracker)
+
 Sample a reconciled tree by stochastic backtracking along the dynamic
 programming matrix. Works *recursively*.
 """

@@ -308,10 +308,9 @@ end
 """
     write_rectrees()
 """
-function write_rectrees(rtrees::Dict{Any,Array{RecTree}}, S::SpeciesTree,
-        fname::String)
+function write_rectrees(ccd, S::SpeciesTree, fname::String)
     open(fname, "w") do f
-        for (k, v) in rtrees
+        @showprogress 1 "Writing reconciled trees " for (k, v) in rtrees
             for t in v
                 write(f, t, S, family=k)
             end

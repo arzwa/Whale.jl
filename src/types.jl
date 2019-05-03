@@ -38,6 +38,7 @@ function _get_clades(tree)
     return clades
 end
 
+# NOTE: Maybe it would be better design to have a SlicedSpeciesTree type
 """
     Slices(slices, slice_lengths, branches)
 Species tree slices structure.
@@ -52,7 +53,7 @@ struct Slices
     end
 end
 
-# I don't think the set_ids are used? - I skipped them
+# NOTE: should add a field for backtracked rectrees, would be more convenient
 """
     CCD(...)
 CCD composite type, holds an approximation of the posterior distribution over
@@ -71,6 +72,7 @@ mutable struct CCD
     species::Dict{Int64,Set{Int64}}                 # clade to species nodes
     tmpmat::Dict{Int64,Array{Float64,2}}            # tmp reconciliation matrix
     recmat::Dict{Int64,Array{Float64,2}}            # the reconciliation matrix
+    rectrs::Array{RecTree}                          # backtracked rectrees
     fname::String
 
     # the idea of the `tmpmat` and `recmat` fields is that the latter contains
@@ -86,10 +88,11 @@ mutable struct CCD
     # acceptance. The nice thing about encoding this in the CCD type is that it
     # is straightforward (I think) to do this efficiently in a parallel setting.
 
-    function CCD(total, m1, m2, m3, l, blens, clades, species, Γ, ccp, fname)
+    function CCD(N, m1, m2, m3, l, blens, clades, species, Γ, ccp, fname)
         m  = Dict{Int64,Array{Float64,2}}()
         m_ = Dict{Int64,Array{Float64,2}}()
-        new(Γ, total, m1, m2, m3, ccp, l, blens, clades, species, m, m_, fname)
+        r  = RecTree[]
+        new(Γ, N, m1, m2, m3, ccp, l, blens, clades, species, m, m_, r, fname)
     end
 end
 
