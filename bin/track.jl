@@ -18,6 +18,7 @@ using CSV
 using DataFrames
 sample = CSV.read(ARGS[3])[parse(Int64, ARGS[4])+1:end, :]
 using DistributedArrays
+using ProgressMeter
 @everywhere using Whale
 
 function main(ARGS, sample)
@@ -28,28 +29,30 @@ function main(ARGS, sample)
     trees = length(ARGS) == 7 ? parse(Bool, ARGS[7]) : false
     q, ids = mark_wgds!(S, conf["wgd"])
     slices = get_slices_conf(S, conf["slices"])
+    D = distribute(ccd)
     if haskey(conf, "ml")
         error("ML: Not implemented")
     elseif haskey(conf, "mcmc")
-        rtrees = Whale.backtrackmcmcpost(sample, ccd, S, slices, N; q1=false)
+        Whale.backtrackmcmcpost!(D, sample, S, slices, N; q1=false)
         prefix = conf["mcmc"]["outfile"][1]
         @info "Getting ALE-like summary ($prefix.alesum.csv)"
-        df2 = Whale.alelike_summary(rtrees, S)
+        df2 = Whale.alelike_summary(D, S)
         CSV.write(prefix * ".alesum.csv", df2)
         @info "Summarizing WGDs ($prefix.wgdsum.csv)"
-        df1 = Whale.summarize_wgds(rtrees, S)
+        df1 = Whale.summarize_wgds(D, S)
         CSV.write(prefix * ".wgdsum.csv", df1)
         @info "Writing consensus reconciliations ($prefix.conrec/)"
         try mkdir("$prefix.conrec/"); catch ; end
-        Whale.write_consensus_reconciliations(rtrees, S, "$prefix.conrec/")
+        Whale.write_consensus_reconciliations(D, S, "$prefix.conrec/")
         if trees
             @info "Writing trees ($prefix.rectrees.xml)"
-            Whale.write_rectrees(rtrees, S, prefix * ".rectrees.xml")
+            Whale.write_rectrees(D, S, prefix * ".rectrees.xml")
             @info "Writing trees ($prefix.nw/)"
             mkdir("$prefix.nw/")
-            for (k, rts) in rtrees
+            @showprogress 1 "... and again " for c in D
                 open("$prefix.nw/$(basename(k)).nws", "w") do f
-                    for rt in rts ; write(f, Whale.prune_loss_nodes(rt)) ; end
+                    for t in c.rectrs ; write(f, Whale.prune_loss_nodes(t)) ;
+                    end
                 end
             end
         end

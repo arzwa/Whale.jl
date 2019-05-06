@@ -35,7 +35,7 @@ module Whale
         nm_aledl, nm_whale, nm_whale_bw, nm_whale_parallel,
         joint_likelihood_parallel, update_q, nm_whale_bw_parallel, mhmcmc,
         backtrack, partial_recompute!, recompute_at_root!, nmwhale, map_nmwhale,
-        backtrackmcmcpost, backtrackmcmcmap,
+        backtrackmcmcpost!,
         # MCMC
         PriorSettings, ProposalSettings, ChainSettings, IidRates,
         GeometricBrownianMotion, Chain, UvAdaptiveProposals, UvProposal,

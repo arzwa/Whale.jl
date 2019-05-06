@@ -12,21 +12,20 @@ challenge.
     backtrackmcmcpost(sample::DataFrame, ccd, S, slices, N)
 Backtrack using samples from the posterior
 """
-function backtrackmcmcpost(sample::DataFrame, ccd, S, slices, N; q1::Bool=false)
-    D = distribute(ccd)
-    λc = [i for (i, var) in enumerate(names(sample))
-        if startswith(string(var), "l")][1:end-1]
-    μc = [i for (i, var) in enumerate(names(sample))
-        if startswith(string(var), "m")][1:end]
-    qc = [i for (i, var) in enumerate(names(sample))
-        if startswith(string(var), "q")][1:end]
-    allrtrees = Dict{Any,Array{RecTree}}(ccd[i].fname => RecTree[]
-        for i in 1:length(ccd))
-    p = Progress(N, 0.1, "| backtracking (N = $N)")
-    for i in rand(1:size(sample)[1], N)
-        # HACK: fix your package dependencies!
+function backtrackmcmcpost!(D::DArray, sample::DataFrame, S, slices, N;
+        q1::Bool=false)
+    λc = getλcolidx(sample)
+    μc = getμcolidx(sample)
+    qc = getqcolidx(sample)
+    ri = get_rateindex(S)
+    rows = rand(1:size(sample)[1], N)
+    @showprogress 1 "Sampling $N × $(length(D)) trees " for i in rows
         λ = [] ; μ = [] ; q = []
-        try
+        λ = collect(sample[i, λc])
+        μ = collect(sample[i, μc])
+        q1 ? q = ones(length(qc)) .- 0.001 : q = collect(sample[i, qc])
+        # HACK: fix your package dependencies!
+        #= try
             λ = collect(sample[i, λc])
             μ = collect(sample[i, μc])
             q1 ? q = ones(length(qc)) .- 0.001 : q = collect(sample[i, qc])
@@ -36,19 +35,22 @@ function backtrackmcmcpost(sample::DataFrame, ccd, S, slices, N; q1::Bool=false)
             μ = collect(DataFrameRow(sample[i, μc], 1))
             q1 ? q = ones(length(qc)) .- 0.001 :
                 q = collect(DataFrameRow(sample[i, qc], 1))
-        end
+        end =#
         η = sample[i, :eta]
-        ri = Dict(x => 1 for x in keys(S.tree.nodes))
+        # ri = Dict(x => 1 for x in keys(S.tree.nodes))  # XXX???
         bt = BackTracker(S, slices, ri, λ, μ, q, η)
         Whale.evaluate_lhood!(D, S, slices, λ, μ, q, η, ri)
         Whale.set_recmat!(D)
-        for c in D
-            push!(allrtrees[c.fname], backtrack(c, bt))
-        end
-        next!(p)
+        backtrack!(D, bt, 1)
     end
-    return allrtrees
 end
+
+getλcolidx(d) = [
+    i for (i, v) in enumerate(names(d)) if startswith(string(v), "l")][1:end-1]
+getμcolidx(d) = [
+    i for (i, v) in enumerate(names(d)) if startswith(string(v), "m")][1:end]
+getqcolidx(d) = [
+    i for (i, v) in enumerate(names(d)) if startswith(string(v), "q")][1:end]
 
 """
     backtrack(ccd::DArray{CCD}, bt::BackTracker, N::Int64)
@@ -61,7 +63,6 @@ function backtrack!(ccd::DArray, bt::BackTracker, N::Int64)
 end
 
 function backtrack!(ccd, bt, N)
-    @info "Sampling $(N[1]) trees for $(ccd[1].fname)"
     for i=1:N[1]
         push!(ccd[1].rectrs, backtrack(ccd[1], bt[1]))
     end

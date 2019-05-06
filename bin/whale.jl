@@ -74,9 +74,9 @@ function do_track_ml(out, ccd, S, slices, rate_index, η, config)
     if haskey(config["track"], "trees")
         Whale.write_rectrees(ccd, S, prefix * ".rectrees.xml")
         mkdir("$prefix.nw/")
-        @showprogress 1 "... and again " for (k, rts) in rtrees
+        @showprogress 1 "... and again " for c in ccd
             open("$prefix.nw/$(basename(k)).nws", "w") do f
-                for rt in rts ; write(f, Whale.prune_loss_nodes(rt)) ; end
+                for t in c.rectrs ; write(f, Whale.prune_loss_nodes(t)) ; end
             end
         end
     end

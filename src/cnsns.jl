@@ -84,7 +84,7 @@ function summarize_wgds(ccd, S::SpeciesTree)
         :sleft => String[], :sright => String[], :count => Int64[])
     @showprogress 1 "Summarizing WGD retention " for c in ccd
         for (wgd, x) in summarize_wgds(c.rectrs, S)
-            push!(data, [gf ; x])
+            push!(data, [c.fname ; x])
         end
     end
     return data
