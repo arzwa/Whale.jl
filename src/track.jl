@@ -24,6 +24,7 @@ function backtrackmcmcpost!(D::DArray, sample::DataFrame, S, slices, N;
         λ = collect(sample[i, λc])
         μ = collect(sample[i, μc])
         q1 ? q = ones(length(qc)) .- 0.001 : q = collect(sample[i, qc])
+        length(qc) == 0 ? q = Float64[] : nothing
         # HACK: fix your package dependencies!
         #= try
             λ = collect(sample[i, λc])
