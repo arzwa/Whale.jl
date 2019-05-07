@@ -27,6 +27,7 @@ function main(ARGS, sample)
     ccd = get_ccd(ARGS[2], S)
     conf = read_whaleconf(ARGS[6])
     trees = length(ARGS) == 7 ? parse(Bool, ARGS[7]) : false
+    add_ambiguous!(S, conf)
     q, ids = mark_wgds!(S, conf["wgd"])
     slices = get_slices_conf(S, conf["slices"])
     D = distribute(ccd)
