@@ -126,9 +126,13 @@ function write_ambiguous_annotation(fname::String, data::Dict)
     end
 end
 
-function sumambiguous(ccd, S::SpeciesTree)
+function sumambiguous(ccd::DArray, S::SpeciesTree)
     data = Dict()
-    @showprogress 1 "Inferring annotation for ambiguous genes" for c in ccd
+    if length(S.ambiguous) == 0
+        @warn "No ambiguous a species tree labels found!"
+        return data
+    end
+    @showprogress 1 "Inferring annotation for ambiguous genes " for c in ccd
         d = sumambiguous(c, S)
         length(d) > 0 ? data = merge(d, data) : nothing
     end
@@ -136,8 +140,9 @@ function sumambiguous(ccd, S::SpeciesTree)
 end
 
 function sumambiguous(ccd::CCD, S::SpeciesTree)
-    length(S.ambiguous) == 0 ? (return) : nothing
     ambgenes = [ccd.leaves[k] for (k, v) in ccd.m3 if haskey(S.ambiguous, v)]
+    @show ambgenes
+    @show ccd.rectrs
     data = Dict{String,Dict}(g=>Dict() for g in ambgenes)
     N = length(ccd.rectrs)
     for t in ccd.rectrs

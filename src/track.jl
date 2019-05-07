@@ -25,18 +25,6 @@ function backtrackmcmcpost!(D::DArray, sample::DataFrame, S, slices, N;
         μ = collect(sample[i, μc])
         q1 ? q = ones(length(qc)) .- 0.001 : q = collect(sample[i, qc])
         length(qc) == 0 ? q = Float64[] : nothing
-        # HACK: fix your package dependencies!
-        #= try
-            λ = collect(sample[i, λc])
-            μ = collect(sample[i, μc])
-            q1 ? q = ones(length(qc)) .- 0.001 : q = collect(sample[i, qc])
-        catch MethodError
-            @warn "DataFrames not up to date, have to convert to DataFrameRow"
-            λ = collect(DataFrameRow(sample[i, λc], 1))
-            μ = collect(DataFrameRow(sample[i, μc], 1))
-            q1 ? q = ones(length(qc)) .- 0.001 :
-                q = collect(DataFrameRow(sample[i, qc], 1))
-        end =#
         η = sample[i, :eta]
         # ri = Dict(x => 1 for x in keys(S.tree.nodes))  # XXX???
         bt = BackTracker(S, slices, ri, λ, μ, q, η)
