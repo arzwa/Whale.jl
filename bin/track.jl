@@ -56,6 +56,10 @@ function main(ARGS, sample)
                 end
             end
         end
+        if haskey(conf, "ambiguous")
+            annotation = Whale.sumambiguous(D, S)
+            Whale.write_ambiguous_annotation("$prefix.ambsum.csv", annotation)
+        end
     else
         @error "No [mcmc] or [ml] section, no idea what to do"
         exit(1)
