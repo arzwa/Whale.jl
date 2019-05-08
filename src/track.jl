@@ -20,7 +20,6 @@ function backtrackmcmcpost!(D::DArray, sample::DataFrame, S, slices, N;
     ri = get_rateindex(S)
     rows = rand(1:size(sample)[1], N)
     @showprogress 1 "Sampling $N × $(length(D)) trees " for i in rows
-        λ = [] ; μ = [] ; q = []
         λ = collect(sample[i, λc])
         μ = collect(sample[i, μc])
         q1 ? q = ones(length(qc)) .- 0.001 : q = collect(sample[i, qc])

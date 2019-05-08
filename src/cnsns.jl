@@ -141,8 +141,6 @@ end
 
 function sumambiguous(ccd::CCD, S::SpeciesTree)
     ambgenes = [ccd.leaves[k] for (k, v) in ccd.m3 if haskey(S.ambiguous, v)]
-    @show ambgenes
-    @show ccd.rectrs
     data = Dict{String,Dict}(g=>Dict() for g in ambgenes)
     N = length(ccd.rectrs)
     for t in ccd.rectrs

@@ -16,7 +16,7 @@ using Distributed
 using Logging
 using CSV
 using DataFrames
-sample = CSV.read(ARGS[3])[parse(Int64, ARGS[4])+1:end, :]
+sample = CSV.read(ARGS[3], type=Float64)[parse(Int64, ARGS[4])+1:end, :]
 using DistributedArrays
 using ProgressMeter
 @everywhere using Whale
@@ -24,12 +24,12 @@ using ProgressMeter
 function main(ARGS, sample)
     S = read_sp_tree(ARGS[1])
     N = parse(Int64, ARGS[5])
-    ccd = get_ccd(ARGS[2], S)
     conf = read_whaleconf(ARGS[6])
     trees = length(ARGS) == 7 ? parse(Bool, ARGS[7]) : false
     add_ambiguous!(S, conf)
     q, ids = mark_wgds!(S, conf["wgd"])
     slices = get_slices_conf(S, conf["slices"])
+    ccd = get_ccd(ARGS[2], S)  # XXX must be after adding the ambiguous node!
     D = distribute(ccd)
     if haskey(conf, "ml")
         error("ML: Not implemented")

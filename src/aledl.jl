@@ -12,9 +12,9 @@ the nature of the geometric distribution, setting η to 1 amounts to a
 probability of 1 for 1 lineage at the root (so effectively assuming strictly 1
 lineage at the root).
 """
-function whale_likelihood_bw(S::SpeciesTree, ccd::CCD, slices::Slices, λ::Array{Float64},
-        μ::Array{Float64}, q::Array{Float64}, η::Float64, rate_index::Dict{Int64,Int64};
-        one_in_both::Bool=true)
+function whale_likelihood_bw(S::SpeciesTree, ccd::CCD, slices::Slices,
+        λ::Array{Float64}, μ::Array{Float64}, q::Array{Float64}, η::Float64,
+        rate_index::Dict{Int64,Int64}; one_in_both::Bool=true)
     results = initialize_dp_matrix(S.tree, ccd, slices)
     if ccd.Γ == -1 ; return results, 0. ; end  # HACK dummy data
     valid = validate_params(λ, μ, q)
@@ -26,8 +26,9 @@ function whale_likelihood_bw(S::SpeciesTree, ccd::CCD, slices::Slices, λ::Array
     return results, l
 end
 
-function whale_likelihood_bw!(results::Dict{Int64,Array{Float64,2}}, S::SpeciesTree, ccd::CCD,
-        slices::Slices, λ::Array{Float64}, μ::Array{Float64}, q::Array{Float64}, η::Float64,
+function whale_likelihood_bw!(results::Dict{Int64,Array{Float64,2}},
+        S::SpeciesTree, ccd::CCD, slices::Slices, λ::Array{Float64},
+        μ::Array{Float64}, q::Array{Float64}, η::Float64,
         rate_index::Dict{Int64,Int64}, ε, ϕ; one_in_both::Bool=true)
     if ccd.Γ == -1 ; return 0. ; end  # HACK dummy data
     valid = validate_params(λ, μ, q)
