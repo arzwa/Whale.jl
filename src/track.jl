@@ -5,7 +5,6 @@ challenge.
 
     10/01/2019: basics seem to work
 ===============================================================================#
-# TODO: How to get reasonable/correct branch lengths, in particular for WGDs?
 
 # Backtracking from posterior distribution
 """
