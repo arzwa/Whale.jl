@@ -1,26 +1,4 @@
-#= Posterior reconciled tree summary
-1. Consensus trees I believe this would be the most interesting strategy: -
-Sample reconciled trees from MAP parameter values and compute consensus -
-Compute for every event (dup/loss/wgd/speciation) in the MAP tree the posterior
-probability based on a sample of (consensus) reconciled trees from the posterior
-
-Alternatively, the consensus tree could be computed from the full posterior?
-The best way to compute a consensus tree is probably by means of MRP
-
-TODO: The fitch parsimony is working but haven't implemented good tree
-rearrangement schemes yet... It's orders of magnitude slower than pars from
-phylip...
-
-NOTE: the MRP seems to work when not including loss nodes (tested with
-`pars` from phylip), so we have everything to get a consensus topology, but
-note really a consensus reconciliation...
-
-2. ALE-like summary of number of dups and losses/branch
-3. WGD summary
-4. Consensus reconciliation
-    - get consensus topology
-    - get majority vote reconciliation for each node in consensus topology
-=#
+# Posterior reconciled tree summary
 # ALE-like summary =============================================================
 """
     alelike_summary(ccd, S::SpeciesTree)
@@ -105,8 +83,9 @@ function summarize_wgds(rtrees::Array{RecTree}, S::SpeciesTree)
                     sright = sort(Whale.subtree_leaves(S,  rt.σ[children[2]]))
                     wgd_node = rt.σ[n]
                     wgd_id = S.wgd_index[wgd_node]
-                    d[h] = [wgd_id, wgd_node, n, join(left, ";"), join(right, ";"),
-                            join(sleft, ";"), join(sright, ";"), 0]
+                    d[h] = [wgd_id, wgd_node, n,
+                        join(left, ";"), join(right, ";"),
+                        join(sleft, ";"), join(sright, ";"), 0]
                 end
                 d[h][end] += 1
             end

@@ -14,11 +14,30 @@
                                                        `-.,'
 ```
 
-- This library implements the duplication, loss and whole genome duplication (DL + WGD) model for performing joint gene tree - reconciliation inference using amalgamated likelihood estimation (ALE).
+- This library implements the duplication, loss and whole genome duplication (DL + WGD) model for performing joint gene tree - reconciliation inference using amalgamated likelihood estimation (ALE). By using amalgamation, uncertainty in the gene tree topology is taken into account during reconciliation.
 
-- This method, called Whale, can be used to assess WGD hypotheses using gene family phylogenetic trees. It can also be used to estimate branch-specific duplication and loss rates for a species tree under various models of rate evolution.
+- This method, called Whale, can be used to assess WGD hypotheses using gene family phylogenetic trees. It can also be used to estimate branch-specific duplication and loss rates for a species tree under different models of rate evolution.
 
-- To install `Whale`, you will need a julia installation (v1.x). Currently you should clone this repository, open a julia session, type `]` to enter the package manager and then do `add /path/to/Whale`. Then you should be able to type `using Whale` in a julia session, after which you can use the library. Note that this is still a development version. You might want to get some minimal familiarity with the Julia REPL and its package manager, see [the julia docs](https://docs.julialang.org/en/v1/).
+- To install `Whale`, you will need a julia installation (v1.x). You should fire up the julia REPL (typically by typing `julia`), once in the julia REPL, you should type `]` and enter `add https://github.com/arzwa/Whale.jl`. It should look somewhat like below:
+
+```
+$ julia
+               _
+   _       _ _(_)_     |  Documentation: https://docs.julialang.org
+  (_)     | (_) (_)    |
+   _ _   _| |_  __ _   |  Type "?" for help, "]?" for Pkg help.
+  | | | | | | |/ _` |  |
+  | | |_| | | | (_| |  |  Version 1.0.0 (2018-08-08)
+ _/ |\__'_|_|_|\__'_|  |  Official https://julialang.org/ release
+|__/                   |
+
+(v1.0) pkg> add https://github.com/arzwa/Whale.jl
+   Cloning git-repo `https://github.com/arzwa/Whale.jl`
+  Updating git-repo `https://github.com/arzwa/Whale.jl`
+  ...
+```
+
+You might want to get some minimal familiarity with the Julia REPL and its package manager when using Whale, see [the julia docs](https://docs.julialang.org/en/v1/).
 
 - To do analyses with Whale, you will need (1) a dated species tree, (2) a set of gene families with for each gene family a sample from the posterior distribution of gene trees (bootstrap replicates can also be used in principle), summarized as a *conditional clade distribution* in an `ale` file ([see below](#aleobserve)) and (3) a configuration file.
 
@@ -30,7 +49,7 @@ julia -p <n_cores> whale.jl <species tree> <ale directory|file|filelist> <config
 
 - `julia` can have a rather slow startup time, if you plan to use `Whale` a lot, you may want to open a julia session, load the Whale package and do your analyses in the session. However for the typical rather long analyses performed with Whale, you will probably just submit your job to some cluster.
 
-- Below we explain how to use Whale in a maximum-likelihood and Bayesian framework.
+- Below I explain how to use Whale in a maximum-likelihood and Bayesian framework.
 
 ## Testing WGD hypotheses by maximum likelihood
 
@@ -65,7 +84,7 @@ SEED = GBIL,ATHA 3.9 -1.
 
 Where `SEED` is the name of the WGD, `GBIL,ATHA` reflects the common ancestor node for the largest clade that shares this WGD (*i.e.* the node that is the common ancestor of `ATHA` and `GBIL` in the species tree). `3.9` is the estimated age of this WGD. `-1` indicates that the retention rate for this WGD should be estimated. Specifying a value between 0 and 1 (boundaries included) will fix this retention rate in the analysis (and not estimate it).
 
-To specify branch wise rates one can use the `[rates]` section. This looks like the following
+To specify branch-wise rates one can use the `[rates]` section. This looks as follows:
 
 ```
 [rates]
@@ -87,6 +106,7 @@ julia -p 1 bin/whale.jl example/morris-9taxa.nw example/example-ale example/whal
 The output should be something like this:
 
 ```
+<lots of stuff>
 ...
 λ = ( 0.245,  0.093,  0.092,  0.106) ; μ = ( 0.345,  0.086,  0.121,  0.176) ; q = ( 0.174,  0.000,  0.418) ; ⤷ log[P(Γ)] = -280.143
 Maximum: log(L) = -280.1426
@@ -104,6 +124,18 @@ out = Results of Optimization Algorithm
 out.minimizer = [0.244595, 0.0933796, 0.0916083, 0.106514, 0.344514, 0.0863275, 0.120583, 0.175975, 0.173878, 9.11622e-7, 0.41785]
 out.minimum = 280.1426206365062
 ```
+
+## Sampling reconciled trees with ML
+
+As in ALE, reconciled trees can be sampled from the dynamic programming matrix by backtracking. To do so, add a section in the config file looking like:
+
+```
+[track]
+outfile = whaleml-track
+N = 100
+```
+
+This will, after optimizing the rates to find the MLEs, sample 100 trees for every family and write them, along with some summaries, to some files prefixed with the `outfile` setting.
 
 ## Testing WGD hypotheses and inferring branch-wise duplication and loss rates using MCMC
 
@@ -155,28 +187,22 @@ $ head -n3 whalebay-gbm.csv
 ...
 ```
 
+## Sampling reconciled trees from the posterior
+
+Reconciled trees can be sampled from the posterior by backtracking similar to what is described above for the ML case. However, to do so, a separate program is provided in `bin/track.jl`. This can be run with the following arguments
+
+```
+julia -p <n_cpus> track.jl <sptree> <ale> <sample> <burnin> <N> <config> <trees?>
+```
+
+Where `sample` is the `csv` file with the samples from the posterior distribution obtained using MCMC (output from `whale.jl`), `N` is the number of trees per family to sample, `config` is the same config file used in the MCMC analyses. When providing a 7th argument all individual trees will be written to files.
+
 ## <a name="aleobserve"></a>Getting the CCD (ale) files
 
 Whale requires as input for each gene family a sample from the posterior distribution of topologies, summarized as a conditional clade distribution (CCD). These can be acquired using the program `ALEobserve` from the [ALE software suite](https://github.com/ssolo/ALE). If you have for each gene family a file with on each line a newick tree, you can run  for example `ALEobserve trees.nw burnin=1000` to get a CCD file (discarding the firt 1000 tree as burn-in in this example). **Note** that the gene IDs should be prefixed with the corresponding species name, separated by an `_` character. For example, the gene `AT2G02000` corresponding to the species with ID `ATHA` in the species tree file should be named `ATHA_AT2G02000` in the gene family trees file.
 
 ## Extra
 
-There are some scripts and pieces of julia code in the `scripts` dir that might be of interest if you would like to make trace plots (`trace.py`), or plot a species tree with branches colored by duplication or loss rates and WGDs marked along the phylogeny. The `viz.jl` code in the `src` dir contains other functions to plot reconciled trees. This will however require you to use Whale as a julia package in a julia session (I would recommend downloading the Juno editor and playing around with Julia there, it's a lot like R or Python!).
+Tools for visualizations of species trees and reconciled trees are available in the `PalmTree.jl` package. Some hints on how to used these can be found in the `scripts/coltree.jl` file. A small python program for generating trace plots and marginal posterior densities as histograms is also provided in that directory.
 
-For example, to backtrack reconciled trees after an MCMC analysis you could use the following code in a julia session:
-
-```julia
-using Whale
-
-S = read_sp_tree("example/morris-9taxa.nw")
-post = CSV.read("<path to your csv file with results>/whalebay.csv")[1000:end,:]  # discard 1000 generations as burn-in
-conf = read_whaleconf("example/whalebay.conf")
-q, ids = mark_wgds!(S, conf["wgd"])
-slices = get_slices_conf(S, conf["slices"])
-ccd = get_ccd("example/100.nw.ale", S)
-rtrees = backtrackmcmcpost(post, ccd_, S, slices, 100)  # do the backtracking (sample 100 trees)
-drawtree(rtrees[1][1], width=200, height=120)
-```
-In a `julia` session you can always use `?` to fetch documentation of particular functions.
-
-I hope to be updating this software soon and frequently, so please check the latest commits on Github.
+I am aware that `Whale` is not fantastically documented, and this is mainly because the code is still prone to many changes both in design as well as implementation. Since the user base will probably quite small (actually tiny), it might be more efficient for now to handle unclarities by e-mail or the issues section than by providing in-depth docs. **So do not hesitate to contact me for questions, suggestions etc.**
