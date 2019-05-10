@@ -4,7 +4,6 @@ authors = ["arzwa <arthur.zwaenepoel@gmail.com>"]
 version = "0.1.0"
 
 [deps]
-BirthDeathProcesses = "306aff9e-5df6-11e9-2ccf-256e3a748119"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
 ConsensusTrees = "d3d4590a-60df-11e9-122f-f56e3d820c59"

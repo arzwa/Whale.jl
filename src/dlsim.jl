@@ -43,9 +43,9 @@ function dlsim(S::SpeciesTree, λ::Array{Float64}, μ::Array{Float64},
 end
 
 # dlsim with trees written to files
-function dlsim(S::SpeciesTree, λ::Array{Float64}, μ::Array{Float64}, q::Array{Float64},
-        η::Float64, ri::Dict{Int64,Int64}, N::Int64, outdir::String; oib::Bool=false,
-        min::Int64=3, max=1000)
+function dlsim(S::SpeciesTree, λ::Array{Float64}, μ::Array{Float64},
+        q::Array{Float64}, η::Float64, ri::Dict{Int64,Int64}, N::Int64,
+        outdir::String; oib::Bool=false, min::Int64=3, max=1000)
     @info "Simulating $N gene families ..."
     trees = dlsim(S, λ, μ, q, η, ri, N; oib=oib, min=min, max=max)
     for (T, ll) in trees
@@ -60,8 +60,9 @@ end
           η::Float64, N::Int64; oib::Bool=false)
 Simulate a bunch of duplication-loss model trees.
 """
-function dlsim(S::SpeciesTree, λ::Array{Float64}, μ::Array{Float64}, q::Array{Float64},
-        η::Float64, ri::Dict{Int64,Int64}, N::Int64; oib::Bool=false, min::Int64=3, max=1000)
+function dlsim(S::SpeciesTree, λ::Array{Float64}, μ::Array{Float64},
+        q::Array{Float64}, η::Float64, ri::Dict{Int64,Int64}, N::Int64;
+        oib::Bool=false, min::Int64=3, max=1000)
     c = childnodes(S.tree, 1)
     left = sp_leaves(S.tree, c[1])
     right = sp_leaves(S.tree, c[2])

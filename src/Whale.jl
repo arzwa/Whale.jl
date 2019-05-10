@@ -1,7 +1,6 @@
 module Whale
     using PhyloTrees
     using ConsensusTrees
-    using BirthDeathProcesses
     using Distributed
     using DistributedArrays
     using Optim
@@ -18,7 +17,7 @@ module Whale
 
     export
         # types
-        SpeciesTree, CCD, Slices, BackTracker, WhaleEM, WhaleMapEM, WhaleMlEM,
+        SpeciesTree, CCD, Slices, BackTracker,
         # I/O
         read_sp_tree, read_ale_observe, read_ale_from_dir, read_ale_from_list,
         get_ccd,
@@ -58,7 +57,6 @@ module Whale
     include("cnsns.jl")
     include("ccp.jl")
     include("bdp.jl")
-    include("em.jl")
 
     @info "This is Whale v0.2 - © Arthur Zwaenepoel 2018-2019"
     @info "https://doi.org/10.1101/556076 "

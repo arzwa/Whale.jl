@@ -31,13 +31,6 @@ git-tree-sha1 = "055eb2690182ebc31087859c3dd8598371d3ef9e"
 uuid = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
 version = "0.5.3"
 
-[[BirthDeathProcesses]]
-git-tree-sha1 = "a524afe6e79aa971bdefc6838e932496c425c9b1"
-repo-rev = "master"
-repo-url = "/home/arzwa/BirthDeathProcesses"
-uuid = "306aff9e-5df6-11e9-2ccf-256e3a748119"
-version = "0.1.0"
-
 [[BufferedStreams]]
 deps = ["Compat", "Test"]
 git-tree-sha1 = "5d55b9486590fdda5905c275bb21ce1f0754020f"
@@ -569,17 +562,10 @@ uuid = "0796e94c-ce3b-5d07-9a54-7f471281c624"
 version = "0.5.3"
 
 [[TranscodingStreams]]
-<<<<<<< HEAD
 deps = ["Random", "Test"]
 git-tree-sha1 = "a25d8e5a28c3b1b06d3859f30757d43106791919"
 uuid = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
 version = "0.9.4"
-=======
-deps = ["Pkg", "Random", "Test"]
-git-tree-sha1 = "d4718bd4db6b7850af3c3833556c6aedbb8e9904"
-uuid = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
-version = "0.9.2"
->>>>>>> ebe15332d96f9aa9211906aab0536897d05eee54
 
 [[URIParser]]
 deps = ["Test", "Unicode"]
