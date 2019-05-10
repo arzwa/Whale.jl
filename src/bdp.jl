@@ -209,6 +209,7 @@ function get_extinction_probabilities(S::SpeciesTree, slices::Slices,
     end
 end
 
+#=
 """
     get_extinction_probabilities(...)
 Compute all extinction probabilities, with WGDs. With arbitrary
@@ -234,7 +235,7 @@ function get_extinction_probabilities(S::SpeciesTree, θ::Array{LinearBDP},
         end
     end
     return ε
-end
+end =#
 
 """
     get_propagation_probabilities(...)

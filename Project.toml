@@ -1,7 +1,7 @@
 name = "Whale"
 uuid = "aac3ca20-b8cc-11e8-39ce-5b7b76af0ca6"
 authors = ["arzwa <arthur.zwaenepoel@gmail.com>"]
-version = "0.1.0"
+version = "0.2.0"
 
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"

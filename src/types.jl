@@ -107,6 +107,7 @@ function Base.show(io::IO, ccd::CCD)
     write(io, "(clades) based on $(ccd.total) samples")
 end
 
+#=
 abstract type WhaleEM end
 
 """
@@ -164,6 +165,7 @@ mutable struct WhaleMapEM <: WhaleEM
         new(S, L, D, T, r, θ, ε, η, N, πλ, πμ)
     end
 end
+=#
 
 """
 BackTracker(S, slices, ri, λ, μ, q, η)
@@ -180,12 +182,12 @@ struct BackTracker
     q::Array{Float64}
     η::Float64
 
-    function BackTracker(em::WhaleEM)
+    #=function BackTracker(em::WhaleEM)
         λ = [bdp.λ for bdp in em.θ]
         μ = [bdp.μ for bdp in em.θ]
         q = Float64[]
         return BackTracker(em.S, em.L, em.r, λ, μ, q, em.η)
-    end
+    end=#
 
     BackTracker(S, slices, ri, ε, ϕ, λ, μ, q, η) = new(
         S, slices, ri, ε, ϕ, λ, μ, q, η)
