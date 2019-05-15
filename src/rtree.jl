@@ -224,7 +224,7 @@ function Base.write(io::IO, rectree::RecTree)
     function walk(n)
         if isleaf(tree, n)
             return rectree.labels[n] != "loss" ?
-                "$(rectree.leaves[n])_$(rectree.σ[n]):$(distance(tree, n, parentnode(tree, n)))" : "loss$n:0.0"
+                "$(rectree.leaves[n]):$(distance(tree, n, parentnode(tree, n)))" : "loss$n:0.0"
         else
             nw_str = ""
             for c in childnodes(tree, n); nw_str *= walk(c) * ","; end
@@ -244,7 +244,7 @@ function Base.write(io::IO, crt::ConRecTree)
     function walk(n)
         if isleaf(crt, n)
             return crt.labels[n] != "loss" ?
-                "$(crt.leaves[n])_$(crt.σ[n]):$(parentdist(crt, n))" :
+                "$(crt.leaves[n]):$(parentdist(crt, n))" :
                     "loss$n:0.0"
         else
             nw_str = ""
