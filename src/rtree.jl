@@ -243,16 +243,14 @@ function Base.write(io::IO, crt::ConRecTree)
     root = findroots(crt.tree)[1]
     function walk(n)
         if isleaf(crt, n)
-            return crt.labels[n] != "loss" ?
-                "$(crt.leaves[n]):$(parentdist(crt, n))" :
-                    "loss$n:0.0"
+            return crt.labels[n] != "loss" ? "$(crt.leaves[n])" : "loss$n:0.0"
         else
             nw_str = ""
             for c in childnodes(crt, n); nw_str *= walk(c) * ","; end
             if n != root
                 supstr = haskey(crt.tsupport, n) ?
                     "$(crt.tsupport[n])-$(crt.rsupport[n])" : ""
-                return "($(nw_str[1:end-1]))$supstr:$(parentdist(crt, n))"
+                return "($(nw_str[1:end-1]))$supstr"
             else
                 return "($(nw_str[1:end-1]));"
             end
