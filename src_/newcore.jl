@@ -18,29 +18,53 @@ at the core code again and we might get a more efficient/reliable/maintainable
 result in the end.
 
 More tricky is how to recompute all those speedups like the partial recompute
-etc.? By storing the parameter values associted with the lat computation in
-the CCD object? Perhaps a separate CCDArray type would work for thoe purposes =#
+etc.? By storing the parameter values associated with the last computation in
+the CCD object? Perhaps a separate CCDArray type would work for thoe purposes
+
+XXX PROBLEM: when Mamba is exectuted with julia in parallel, it runs chains in
+parallel, but I want the likelihood to be computed in parallel.
+=#
 
 # XXX: OK here I start some rewrites with new structs etc. to make the code
 # generally better and allow MCMC with Mamba (at least in principle).
 
-struct SlicedTree <: Arboreal
-    tree::Tree
-    index::Dict{Symbol,Dict{Int64,Int64}}  # {:wgd => Dict, :λ => Dict, ...}
-    leaves::Dict{Int64,String}
-    clades::Dict{Int64,Set{Int64}}
-    border::Array{Int64}  # postorder of species tree branches
-    slices::Dict{Int64,Array{Float64,1}}
-end
+# I'm starting to like Ruring.jl better...
+model = Model(
+    ν = Logical(() -> 0.1, false)
+    η = Stochastic(() -> Beta(4, 2))
+    θ = Stochastic(1,
+        () -> MvNormal([log(0.2), log(0.2)], [0.5 0.25; 0.25 0.5]), false)
+    λ0 = Logical((θ)->exp(θ[1]), false)
+    μ0 = Logical((θ)->exp(θ[2]), false)
+    λ = Stochastic(1, (λ0, ν, tree) -> GeometricBrownianMotion(tree, λ0, ν))
+    μ = Stochastic(1, (μ0, ν, tree) -> GeometricBrownianMotion(tree, μ0, ν))
+    q = Stochastic(1, (tree) -> UnivariateDistribution[
+        Beta(1,1) for i=1:length(tree.qindex)])
+    X = Stochastic(1, (λ, μ, q, η, tree) -> WhaleSamplingDist(λ, μ, q, η, tree,
+        "oib"))
+)
 
-struct WhaleSamplingDist <: DiscreteUnivariateDistribution
+
+
+
+struct WhaleSamplingDist # <: DiscreteUnivariateDistribution
     λ::Array{Float64}
     μ::Array{Float64}
     q::Array{Float64}
+    η::Float64
     S::SlicedTree
     cond::String
 end
 
+
 # this should automatically result in partial recomputation when applicable...
 # somewhere (maybe in the SlicedTree) there should be a `lastnode` field or so
+# or if the update is in a fixed order, we might do it more clever?
 logpdf(d::WhaleSamplingDist, x::CCD) = alepdf(x, d.S, d.λ, d.μ, d.q, d.cond)
+
+# P({CCD}|θ, SlicedTree)
+
+
+conf = read_whaleconf("./example/whalebay.conf")
+tree = readtree("/home/arzwa/Whale.jl/example/morris-9taxa.nw")
+st = getslicedtree(tree, conf)

@@ -14,6 +14,7 @@ module Whale
     using CSV         # diagnostics
     using UUIDs
     using KernelDensity
+    using BirthDeathProcesses
 
     export
         # types
