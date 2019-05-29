@@ -28,7 +28,7 @@ parallel, but I want the likelihood to be computed in parallel.
 # XXX: OK here I start some rewrites with new structs etc. to make the code
 # generally better and allow MCMC with Mamba (at least in principle).
 
-# I'm starting to like Ruring.jl better...
+#= Mamba sketch; I'm starting to like Turing.jl better...
 model = Model(
     ν = Logical(() -> 0.1, false)
     η = Stochastic(() -> Beta(4, 2))
@@ -43,7 +43,25 @@ model = Model(
     X = Stochastic(1, (λ, μ, q, η, tree) -> WhaleSamplingDist(λ, μ, q, η, tree,
         "oib"))
 )
+=#
 
+#= Turing.jl
+@model Whale(X, S) = begin
+    # X is the observed data (a DArray of CCDs?)
+    # S is the sliced species tree
+    ν = 0.1
+    η ~ Beta
+    θ ~ MultivariateNormal
+    l = θ[1]
+    m = θ[2]
+    λ ~ GeometricBrownianMotion(l, ν, S)
+    μ ~ GeometricBrownianMotion(m, ν, S)
+    q = tzeros(length(S.qindex))
+    for i=1:length(S.qindex)
+        q[i] ~ Beta(1., 1.)
+    end
+    X ~ WhaleSamplingDist(λ, μ, q, η, S, "oib")
+end =#
 
 
 
