@@ -1,7 +1,7 @@
 # config parser
 
 """
-    $(SIGNATURES)
+    read_whaleconf(cfile::String)
 
 Read the Whale configuration to a dictionary.
 """
