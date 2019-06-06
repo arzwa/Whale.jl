@@ -1,62 +1,48 @@
-# XXX: OK here I start some rewrites with new structs etc. to make the code
-# generally better and allow MCMC with Mamba (at least in principle).
-
-#= Mamba sketch; I'm starting to like Turing.jl better...
-model = Model(
-    ν = Logical(() -> 0.1, false)
-    η = Stochastic(() -> Beta(4, 2))
-    θ = Stochastic(1,
-        () -> MvNormal([log(0.2), log(0.2)], [0.5 0.25; 0.25 0.5]), false)
-    λ0 = Logical((θ)->exp(θ[1]), false)
-    μ0 = Logical((θ)->exp(θ[2]), false)
-    λ = Stochastic(1, (λ0, ν, tree) -> GeometricBrownianMotion(tree, λ0, ν))
-    μ = Stochastic(1, (μ0, ν, tree) -> GeometricBrownianMotion(tree, μ0, ν))
-    q = Stochastic(1, (tree) -> UnivariateDistribution[
-        Beta(1,1) for i=1:length(tree.qindex)])
-    X = Stochastic(1, (λ, μ, q, η, tree) -> WhaleSamplingDist(λ, μ, q, η, tree,
-        "oib"))
-)
-=#
-
-#= Turing.jl
-@model Whale(X, S) = begin
-    # X is the observed data (a DArray of CCDs?)
-    # S is the sliced species tree
-    ν = 0.1
-    η ~ Beta
-    θ ~ MultivariateNormal
-    l = θ[1]
-    m = θ[2]
-    λ ~ GeometricBrownianMotion(l, ν, S)
-    μ ~ GeometricBrownianMotion(m, ν, S)
-    q = tzeros(length(S.qindex))
-    for i=1:length(S.qindex)
-        q[i] ~ Beta(1., 1.)
-    end
-    X ~ WhaleSamplingDist(λ, μ, q, η, S, "oib")
-end =#
-
-# Every CCD object stores it's own rec. matrix
-# Where should the extinction and propagation probabilities be stored? I guess
-# at the WhaleModel level, because they result from applying the
-# WhaleParams to the tree?
-
+# Arthur Zwaenepoel - 2019
 const PDict = Dict{Int64,Array{Float64,1}}
 const DPMat = Dict{Int64,Array{Float64,2}}
 
+"""
+    $(TYPEDEF)
+
+Parameterization of the Whale model (λ, μ, q and η).
+
+```julia
+WhaleParams(λ::Array, μ::Array, q::Array, η::Float)
+```
+"""
 mutable struct WhaleParams{T<:Real}
     λ::Array{T}
     μ::Array{T}
     q::Array{T}
     η::T
 
-    function WhaleParams(λ::Array{T}, μ::Array{T}, q::Array{T}, η::T,) where T
-        @check_args(WhaleParams, all([λ; μ] .> 0) &&
-            all(1. .>= [[η]; q] .>= 0))
+    function WhaleParams(λ::Array{T}, μ::Array{T}, q::Array{T}, η::T) where T
+        @check_args(WhaleParams,
+            all([λ; μ] .> 0) && all(1. .>= [[η]; q] .>= 0))
         return new{T}(λ, μ, q, η)
     end
 end
 
+function Base.show(io::IO, w::WhaleParams)
+    n = min(length(w.λ), 5)
+    write(io, "λ: $(w.λ[1:n])...\n")
+    write(io, "μ: $(w.μ[1:n])...\n")
+    write(io, "q: $(w.q)\n")
+    write(io, "η: $(w.η)")
+end
+
+"""
+    $(TYPEDEF)
+
+The full Whale model, containing both the sliced species tree, parameters and
+fields for extinction and propagation probabilities.
+
+```julia
+WhaleModel(S::SlicedTree, M::WhaleParams)
+WhaleModel(S::SlicedTree, M::WhaleParams, cond::String)
+```
+"""
 struct WhaleModel
     S::SlicedTree
     M::WhaleParams
@@ -74,30 +60,29 @@ end
 # this should automatically result in partial recomputation when applicable...
 # somewhere (maybe in the SlicedTree) there should be a `lastnode` field or so
 # or if the update is in a fixed order, we might do it more clever?
-logpdf(x::CCD, m::WhaleModel, node::Int64=-1) =
+@everywhere logpdf(x::CCD, m::WhaleModel, node::Int64=-1) =
     x.Γ == -1 ? 0. : whale!(x, m.S, m.M, m.ε, m.ϕ, m.cond, node::Int64)
 
 # main whale algorithm
 function whale!(x::CCD, s::SlicedTree, m::WhaleParams, ε::PDict, ϕ::PDict,
         cond::String, node::Int64)
-    branches = (node == -1) ? s.border[1:end-1] : get_branches(s, node)
+    branches = (node == -1) ? s.border[1:end-1] : get_parentbranches(s, node)
     set_tmpmat!(x, s, branches)
 
     for e in branches  # skip the root branch
         qnode = haskey(s.qindex, e)
         sleaf = isleaf(s.tree, e)
-        λe = m.λ[s.rindex[e]]
-        μe = m.μ[s.rindex[e]]
+        λe, μe  = get_rates(m, s, e)
 
         for γ in x.clades
             !(x.species[γ] ⊆ s.clades[e]) ? (continue) : nothing
-            γleaf = haskey(x.m3, γ)
+            γleaf = isleaf(x, γ)
 
-            for i in 1:length(s.slices[e])
+            for i in 1:nslices(s, e)
                 # speciation or WGD node
                 if i == 1
                     if γleaf && x.m3[γ] == e
-                        x.tmpmat[e][γ, i] = 1.0
+                        setp!(x, e, γ, i, 1.0)
                     elseif !(sleaf || qnode)
                         f, g = childnodes(s.tree, e)
                         if !(γleaf)
@@ -105,7 +90,7 @@ function whale!(x::CCD, s::SlicedTree, m::WhaleParams, ε::PDict, ϕ::PDict,
                         end
                         Π_loss!(x, e, γ, ε, f, g)
                     elseif qnode
-                        qe = m.q[s.qindex[e]]
+                        qe = get_q(m, s, e)
                         f = childnodes(s.tree, e)[1]
                         if !(γleaf)
                             Π_wgd_retention!(x, e, γ, qe, f)
@@ -125,7 +110,6 @@ function whale!(x::CCD, s::SlicedTree, m::WhaleParams, ε::PDict, ϕ::PDict,
             end
         end
     end
-
     whale_root!(x, s, ε, m.η)
     cond_lhood(x, s, ε, m.η, cond)
 end
@@ -221,7 +205,7 @@ function Π_duplication!(x::CCD, e::Int64, i::Int64, γ::Int64, Δt::Float64,
     from one lineage to two lineages. In practice it doesn't make a
     difference as long as the slice lengths (Δt) are  short enough (∼ [λ/10,
     λ/5]) and using the approximation seems to counteract some bias. =#
-    x.tmpmat[e][γ, i] += p * λe * Δt #* 2
+    x.tmpmat[e][γ, i] += p * λe * Δt
 end
 
 function set_εϕ!(w::WhaleModel)
@@ -290,3 +274,6 @@ function set_tmpmat!(x::CCD, s::SlicedTree, branches::Array{Int64})
         x.tmpmat[b] = zeros(length(x.clades), length(s.slices[b]))
     end
 end
+
+get_rates(m, s, e) = m.λ[s.rindex[e]], m.μ[s.rindex[e]]
+get_q(m, s, e) = m.q[s.qindex[e]]
