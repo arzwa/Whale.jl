@@ -1,30 +1,3 @@
-#= It should be possible to use Mamba as MCMC engine, since we are actually not
-doing a very special MCMC algorithm like e.g. in tree inference (where the
-tree structure requires a lot of non-standard stuff in the algorithms). In the
-(WH)ALE case however, the MCMC itself is more amenable to implementation in
-external MCMC engines.
-
-What we need would be the following:
-
-- A struct analogous to a UnivariateDistribution but where the variate is a
-CCD. This 'distribution' object should have a `logpdf` method which returns
-the likelihood of a CCD given S, λ, μ, q, ... (which are the 'parameters' of
-the distribution)
-
-- Similar structs for the rate priors (GBM, IID).
-
-That will be some work to implement but it's a nice opportunity to have alook
-at the core code again and we might get a more efficient/reliable/maintainable
-result in the end.
-
-More tricky is how to recompute all those speedups like the partial recompute
-etc.? By storing the parameter values associated with the last computation in
-the CCD object? Perhaps a separate CCDArray type would work for thoe purposes
-
-XXX PROBLEM: when Mamba is exectuted with julia in parallel, it runs chains in
-parallel, but I want the likelihood to be computed in parallel.
-=#
-
 # XXX: OK here I start some rewrites with new structs etc. to make the code
 # generally better and allow MCMC with Mamba (at least in principle).
 
@@ -66,7 +39,7 @@ end =#
 # Every CCD object stores it's own rec. matrix
 # Where should the extinction and propagation probabilities be stored? I guess
 # at the WhaleModel level, because they result from applying the
-# WhaleSamplingDist to the tree?
+# WhaleParams to the tree?
 
 const PDict = Dict{Int64,Array{Float64,1}}
 const DPMat = Dict{Int64,Array{Float64,2}}
@@ -105,7 +78,8 @@ logpdf(x::CCD, m::WhaleModel, node::Int64=-1) =
     x.Γ == -1 ? 0. : whale!(x, m.S, m.M, m.ε, m.ϕ, m.cond, node::Int64)
 
 # main whale algorithm
-function whale!(x::CCD, s::SlicedTree, m::WhaleParams, ε, ϕ, cond, node)
+function whale!(x::CCD, s::SlicedTree, m::WhaleParams, ε::PDict, ϕ::PDict,
+        cond::String, node::Int64)
     branches = (node == -1) ? s.border[1:end-1] : get_branches(s, node)
     set_tmpmat!(x, s, branches)
 
