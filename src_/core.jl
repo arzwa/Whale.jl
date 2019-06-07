@@ -18,9 +18,11 @@ mutable struct WhaleParams{T<:Real}
     η::T
 
     function WhaleParams(λ::Array{T}, μ::Array{T}, q::Array{T}, η::T) where T
-        @check_args(WhaleParams,
-            all([λ; μ] .> 0) && all(1. .>= [[η]; q] .>= 0))
         return new{T}(λ, μ, q, η)
+    end
+
+    function WhaleParams(λ, μ, q::Array{T}, η::T) where T
+        return new{T}([λ], [μ], q, η)
     end
 end
 
@@ -57,11 +59,22 @@ struct WhaleModel
     end
 end
 
+function Base.show(io::IO, w::WhaleModel)
+    write(io, "Tree of $(ntaxa(w.S)) taxa with $(nrates(w.S)) rate classes")
+    write(io, " and $(nwgd(w.S)) WGDs\n")
+    show(io, w.M)
+end
+
 # this should automatically result in partial recomputation when applicable...
 # somewhere (maybe in the SlicedTree) there should be a `lastnode` field or so
 # or if the update is in a fixed order, we might do it more clever?
-@everywhere logpdf(x::CCD, m::WhaleModel, node::Int64=-1) =
+@everywhere function logpdf(x::CCD, m::WhaleModel, node::Int64=-1)
+    if ~check_args(m.M) ; return -Inf; end
     x.Γ == -1 ? 0. : whale!(x, m.S, m.M, m.ε, m.ϕ, m.cond, node::Int64)
+end
+
+check_args(m::WhaleParams) =
+    all([m.λ; m.μ] .> 0) && all(1. .>= [[m.η]; m.q] .>= 0)
 
 # main whale algorithm
 function whale!(x::CCD, s::SlicedTree, m::WhaleParams, ε::PDict, ϕ::PDict,
@@ -85,14 +98,14 @@ function whale!(x::CCD, s::SlicedTree, m::WhaleParams, ε::PDict, ϕ::PDict,
                         setp!(x, e, γ, i, 1.0)
                     elseif !(sleaf || qnode)
                         f, g = childnodes(s.tree, e)
-                        if !(γleaf)
+                        if !γleaf
                             Π_speciation!(x, e, γ, f, g)
                         end
                         Π_loss!(x, e, γ, ε, f, g)
                     elseif qnode
                         qe = get_q(m, s, e)
                         f = childnodes(s.tree, e)[1]
-                        if !(γleaf)
+                        if !γleaf
                             Π_wgd_retention!(x, e, γ, qe, f)
                         end
                         Π_wgd_non_retention!(x, e, γ, qe, f)
@@ -103,7 +116,7 @@ function whale!(x::CCD, s::SlicedTree, m::WhaleParams, ε::PDict, ϕ::PDict,
                 else
                     Δt = s.slices[e][i]
                     x.tmpmat[e][γ, i] += ϕ[e][i] * x.tmpmat[e][γ, i-1]
-                    if !(γleaf)
+                    if !γleaf
                         Π_duplication!(x, e, i, γ, Δt, λe, μe)
                     end
                 end
@@ -143,11 +156,11 @@ function whale_root!(x::CCD, s::SlicedTree, ε::PDict, η::Float64)
         γleaf = haskey(x.m3, γ)
         x.tmpmat[root][γ, 1] = 0.
         Π_loss!(x, root, γ, ε, f, g)
-        if !(γleaf)
+        if ~γleaf
             Π_speciation!(x, root, γ, f, g)
         end
         x.tmpmat[root][γ, 1] *= η_
-        if !(γleaf)
+        if ~γleaf
             Π_root!(x, root, γ, η, ε0)
         end
     end
@@ -213,7 +226,7 @@ function set_εϕ!(w::WhaleModel)
     w.ϕ = get_ϕ(w.S, w.M, w.ε)
 end
 
-function get_ε(s::SlicedTree, w::WhaleParams)
+function get_ε(s::SlicedTree, m::WhaleParams)
     ε = get_pdict(s)
     for e in s.border
         if isleaf(s.tree, e)
@@ -221,16 +234,16 @@ function get_ε(s::SlicedTree, w::WhaleParams)
         elseif haskey(s.qindex, e)
             qe = m.q[s.qindex[e]]
             f = childnodes(s.tree, e)[1]
-            ε_wgd = ε[f][length(s.slices[f])]
+            ε_wgd = ε[f][nslices(s, f)]
             ε[e][1] = qe * ε_wgd^2 + (1-qe) * ε_wgd
         else
             f, g = childnodes(s.tree, e)
-            ε[e][1] = ε[f][length(s.slices[f])] * ε[g][length(s.slices[g])]
+            ε[e][1] = ε[f][nslices(s, f)] * ε[g][nslices(s, g)]
         end
         if isroot(s.tree, e)
             return ε
         end
-        for i in 2:length(s.slices[e])
+        for i in 2:nslices(s, e)
             λe = m.λ[s.rindex[e]]
             μe = m.μ[s.rindex[e]]
             ε[e][i] = ε_slice(λe, μe, s.slices[e][i], ε[e][i-1])

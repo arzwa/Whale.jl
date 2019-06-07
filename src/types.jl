@@ -11,13 +11,13 @@ struct SpeciesTree <: Arboreal
     clades::Dict{Int64,Set{Int64}}   # clades under each node
     wgd_index::Dict{Int64,Int64}     # an index relating node to WGD id
     ambiguous::Dict{Int64,String}    # 'ambiguous' species (allo-assignment)
+end
 
-    function SpeciesTree(tree::Tree, node2sp::Dict{Int64,String})
-        ambiguous = Dict{Int64,Set{String}}()
-        wgd_index = Dict{Int64,Int64}()
-        clades = _get_clades(tree)
-        new(tree, node2sp, clades, wgd_index, ambiguous)
-    end
+function SpeciesTree(tree::Tree, node2sp::Dict{Int64,String})
+    ambiguous = Dict{Int64,Set{String}}()
+    wgd_index = Dict{Int64,Int64}()
+    clades = _get_clades(tree)
+    SpeciesTree(tree, node2sp, clades, wgd_index, ambiguous)
 end
 
 # private to species tree construction

@@ -43,4 +43,8 @@ Every CCD object stores it's own rec. matrix Where should the extinction and
 propagation probabilities be stored? I guess at the WhaleModel level, because
 they result from applying the WhaleParams to the tree?
 
-A way to clean up further is to provide methods for the CCD, instead of using the `.` to access fields. like `get_triples(x::CCD, γ::Int64)` etc.
+A way to clean up further is to provide methods for the CCD, instead of using
+the `.` to access fields. like `get_triples(x::CCD, γ::Int64)` etc.
+
+New version shouldn't use configuration files anymore, just use the library
+directly.

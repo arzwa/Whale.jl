@@ -21,19 +21,22 @@ end
 
 Get a SlicedTree from a given tree and a configuration file (read into a dict).
 """
-function SlicedTree(tree::Arboreal, conf::Dict)
+function SlicedTree(tree::Arboreal, wgdconf=Dict(), Δt=0.05, minn=5, maxn=Inf)
     tree = deepcopy(tree)
-    qindex, nindex = add_wgds!(tree, conf["wgd"])
+    qindex, nindex = add_wgds!(tree, wgdconf)
     rindex = getrindex(tree.tree, qindex)
     border = postorder(tree.tree)
     clades = getclades(tree.tree)
-    slices = getslices(tree.tree, conf["slices"])
+    slices = getslices(tree.tree, Δt, minn, maxn)
     SlicedTree(tree.tree, qindex, rindex, tree.leaves, clades, slices, border)
 end
 
 nslices(s::SlicedTree, e::Int64) = length(s.slices[e])
+
 nrates(s::SlicedTree) = length(Set(values(s.rindex)))
+
 nwgd(s::SlicedTree) = length(s.qindex)
+
 ntaxa(s::SlicedTree) = length(s.leaves)
 
 function getslices(T::Tree, Δt::Real, minn::Int64=5, maxn::Number=Inf)
@@ -54,7 +57,7 @@ end
 
 getslices(T, d::Dict) = getslices(T, d["length"], d["min"], d["max"])
 
-function add_wgds!(T::Arboreal, conf::Dict{String,Any})
+function add_wgds!(T::Arboreal, conf::Dict)
     qindex = Index()
     nindex = Dict{Int64,String}()
     for (i, (wgd, tup)) in enumerate(conf)
@@ -124,4 +127,10 @@ function get_parentbranches(s::SlicedTree, node::Int64)
         n = parentnode(s.tree, n)
     end
     return [branches; [1]]
+end
+
+function set_constantrates!(s::SlicedTree)
+    for (k, v) in s.rindex
+        s.rindex[k] = 1
+    end
 end
