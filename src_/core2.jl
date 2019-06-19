@@ -1,15 +1,11 @@
 # Arthur Zwaenepoel - 2019
 # some helper types
 const PDict{T} = Dict{Int64,Array{T,1}} where T<:Real
-const DPMat{T} = Dict{Int64,Array{T,2}} where T<:Real
 
 Base.getindex(d::PDict{T}, e::Int64, i::Int64) where T<:Real = d[e][i]
+
 Base.setindex!(d::PDict{T}, x::T, e::Int64, i::Int64) where T<:Real =
     d[e][i] = x
-
-Base.getindex(d::DPMat{T}, e::Int64, γ::Int64, i::Int64) where T<:Real = d[e][γ, i]
-Base.getindex(d::DPMat{T}, e::Int64, γ::Int64) where T<:Real = d[e][γ, :]
-Base.setindex!(d::DPMat{T}, x::T, e::Int64, γ::Int64, i::Int64) where T<:Real = d[e][γ, i] = x
 
 """
     $(TYPEDEF)
@@ -43,7 +39,7 @@ function Base.show(io::IO, w::WhaleModel)
 end
 
 function get_ε(s::SlicedTree, λ, μ, q, η)
-    ε = PDict{Float64}(e => zeros(nslices(s, e)) for e in s.border)
+    ε = PDict{typeof(η)}(e => zeros(nslices(s, e)) for e in s.border)
     for e in s.border
         if isleaf(s.tree, e)
             ε[e, 1] = 0.
@@ -206,31 +202,31 @@ end
 function Π_speciation!(x::CCD, e::Int64, γ::Int64, f::Int64, g::Int64)
     p = 0.
     for (γ1, γ2, count) in x.m2[γ]
-        p += x.ccp[(γ, γ1, γ2)] * x.tmpmat[f, γ1][end] * x.tmpmat[g, γ2][end]
-        p += x.ccp[(γ, γ1, γ2)] * x.tmpmat[g, γ1][end] * x.tmpmat[f, γ2][end]
+        p += x.ccp[(γ, γ1, γ2)] * x.tmpmat[f][γ1, end] * x.tmpmat[g][γ2, end]
+        p += x.ccp[(γ, γ1, γ2)] * x.tmpmat[g][γ1, end] * x.tmpmat[f][γ2, end]
     end
     x.tmpmat[e, γ, 1] += p
 end
 
 function Π_loss!(x::CCD, e::Int64, γ::Int64, ε, f::Int64, g::Int64)
-    x.tmpmat[e, γ, 1] += x.tmpmat[f, γ][end] * ε[g][end] +
-        x.tmpmat[g, γ][end] * ε[f][end]
+    x.tmpmat[e, γ, 1] += x.tmpmat[f][γ, end] * ε[g][end] +
+        x.tmpmat[g][γ, end] * ε[f][end]
 end
 
 function Π_wgd_retention!(x::CCD, e::Int64, γ::Int64, q, f::Int64)
     p = 0.
     for (γ1, γ2, count) in x.m2[γ]
-        p += x.ccp[(γ, γ1, γ2)] * x.tmpmat[f, γ1][end] * x.tmpmat[f, γ2][end]
+        p += x.ccp[(γ, γ1, γ2)] * x.tmpmat[f][γ1,end] * x.tmpmat[f][γ2,end]
     end
     x.tmpmat[e, γ, 1] += p * q
 end
 
 function Π_wgd_non_retention!(x::CCD, e::Int64, γ::Int64, q, f::Int64)
-    x.tmpmat[e, γ, 1] += (1-q) * x.tmpmat[f, γ][end]
+    x.tmpmat[e, γ, 1] += (1-q) * x.tmpmat[f][γ, end]
 end
 
 function Π_wgd_loss!(x::CCD, e::Int64, γ::Int64, q, ε, f::Int64)
-    x.tmpmat[e, γ, 1] += 2 * q * ε * x.tmpmat[f, γ][end]
+    x.tmpmat[e, γ, 1] += 2 * q * ε * x.tmpmat[f][γ, end]
 end
 
 function Π_duplication!(x::CCD, e::Int64, i::Int64, γ::Int64, Δt, λe, μe)

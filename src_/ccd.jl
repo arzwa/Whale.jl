@@ -1,6 +1,16 @@
 
 const DPMat{T} = Dict{Int64,Array{T,2}} where T<:Real
+
 const TripleDict = Dict{Int64,Array{Tuple{Int64,Int64,Int64}}}
+
+Base.getindex(d::DPMat{T}, e::Int64, γ::Int64) where T<:Real = d[e][γ, :]
+
+Base.getindex(d::DPMat{T}, e::Int64, γ::Int64, i::Int64) where T<:Real =
+    d[e][γ, i]
+
+Base.setindex!(d::DPMat{T}, x::T, e::Int64, γ::Int64, i::Int64) where T<:Real =
+    d[e][γ, i] = x
+
 
 """
     $(SIGNATURES)
@@ -8,7 +18,7 @@ const TripleDict = Dict{Int64,Array{Tuple{Int64,Int64,Int64}}}
 CCD composite type, holds an approximation of the posterior distribution over
 trees. This version is adapted for the parallel MCMC algorithm, using recmat.
 """
-mutable struct CCD
+mutable struct CCD{T<:Real,RecTree}
     Γ::Int64                                        # ubiquitous clade
     total::Int64                                    # total # of samples
     m1::Dict{Int64,Int64}                           # counts for every clade
@@ -19,18 +29,22 @@ mutable struct CCD
     blens::Dict{Int64,Float64}                      # branch lengths for γ's'
     clades::Array{Int64,1}                          # clades ordered by size
     species::Dict{Int64,Set{Int64}}                 # clade to species nodes
-    tmpmat::DPMat                                   # tmp reconciliation matrix
-    recmat::DPMat                                   # the reconciliation matrix
+    tmpmat::DPMat{T}                                # tmp reconciliation matrix
+    recmat::DPMat{T}                                # the reconciliation matrix
     rectrs::Array{RecTree}                          # backtracked rectrees
     fname::String
 
-    function CCD(N, m1, m2, m3, l, blens, clades, species, Γ, ccp, fname)
-        m  = DPMat{Float64}()
-        m_ = DPMat{Float64}()
+    function CCD{T}(N, m1, m2, m3, l, blens,
+            clades, species, Γ, ccp, fname) where T<:Real
+        #m  = DPMat{Real}()
+        #m_ = DPMat{Real}()
+        m  = DPMat{T}()
+        m_ = DPMat{T}()
         #m  = DPMat()
         #m_ = DPMat()
         r  = RecTree[]
-        new(Γ, N, m1, m2, m3, ccp, l, blens, clades, species, m, m_, r, fname)
+        new{T,RecTree}(Γ, N, m1, m2, m3, ccp, l, blens, clades,
+            species, m, m_, r, fname)
     end
 end
 
@@ -193,7 +207,8 @@ function read_ale_observe(fname::String, S::Arboreal)
     blens[Γ] = minimum(values(blens))
     species[Γ] = Set(values(m3))
     ccp = compute_ccps(m1, m2)
-    ccd = CCD(total, m1, m2, m3, leaves, blens, clades, species, Γ, ccp, fname)
+    ccd = CCD{Float64}(total, m1, m2, m3, leaves,
+        blens, clades, species, Γ, ccp, fname)
     return ccd
 end
 

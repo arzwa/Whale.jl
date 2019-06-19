@@ -13,7 +13,7 @@ struct SlicedTree <: Arboreal
     leaves::Dict{Int64,String}
     clades::Dict{Int64,Set{Int64}}
     slices::Dict{Int64,Array{Float64,1}}
-    border::Array{Int64}  # postorder of species tree branches
+    border::Array{Int64,1}  # postorder of species tree branches
 end
 
 """

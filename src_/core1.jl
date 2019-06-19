@@ -1,7 +1,6 @@
 # this version is much faster than the other, not sure why, due to prametric
 # typing?
 const PDict = Dict{Int64,Array{Float64,1}}
-const DPMat = Dict{Int64,Array{Float64,2}}
 
 """
     $(TYPEDEF)
