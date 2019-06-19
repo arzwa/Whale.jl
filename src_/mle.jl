@@ -34,7 +34,7 @@ function nmwhale(D::CCDArray, w::WhaleModel, cons=Constraints(), η=0.9)
         apply_bounds!(v_, 2*nrates(w.S)+1)
         print(v_)
         m = WhaleModel(v_, w.S, η)
-        lp = logpdf(D, m)
+        lp = logpdf(m, D)
         @printf "⤷ log[P(Γ)] = %.3f\n"  lp; flush(stdout)
         return -lp
     end

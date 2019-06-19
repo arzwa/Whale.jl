@@ -1,5 +1,5 @@
 
-const DPMat = Dict{Int64,Array{Float64,2}}
+const DPMat{T} = Dict{Int64,Array{T,2}} where T<:Real
 const TripleDict = Dict{Int64,Array{Tuple{Int64,Int64,Int64}}}
 
 """
@@ -25,8 +25,10 @@ mutable struct CCD
     fname::String
 
     function CCD(N, m1, m2, m3, l, blens, clades, species, Γ, ccp, fname)
-        m  = DPMat()
-        m_ = DPMat()
+        m  = DPMat{Float64}()
+        m_ = DPMat{Float64}()
+        #m  = DPMat()
+        #m_ = DPMat()
         r  = RecTree[]
         new(Γ, N, m1, m2, m3, ccp, l, blens, clades, species, m, m_, r, fname)
     end

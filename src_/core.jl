@@ -1,4 +1,5 @@
-# Arthur Zwaenepoel - 2019
+# this version is much faster than the other, not sure why, due to prametric
+# typing?
 const PDict = Dict{Int64,Array{Float64,1}}
 const DPMat = Dict{Int64,Array{Float64,2}}
 
@@ -21,7 +22,7 @@ mutable struct WhaleParams{T<:Real}
         return new{T}(λ, μ, q, η)
     end
 
-    function WhaleParams(λ, μ, q::Array{T}, η::T) where T
+    function WhaleParams(λ::T, μ::T, q::Array{T}, η::T) where T
         return new{T}([λ], [μ], q, η)
     end
 end
@@ -68,9 +69,9 @@ end
 # this should automatically result in partial recomputation when applicable...
 # somewhere (maybe in the SlicedTree) there should be a `lastnode` field or so
 # or if the update is in a fixed order, we might do it more clever?
-@everywhere function logpdf(x::CCD, m::WhaleModel, node::Int64=-1)
+@everywhere function logpdf(m::WhaleModel, x::CCD, node::Int64=-1)
     if ~check_args(m.M) ; return -Inf; end
-    x.Γ == -1 ? 0. : whale!(x, m.S, m.M, m.ε, m.ϕ, m.cond, node::Int64)
+    return x.Γ == -1 ? 0. : whale!(x, m.S, m.M, m.ε, m.ϕ, m.cond, node::Int64)
 end
 
 check_args(m::WhaleParams) =

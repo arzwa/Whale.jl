@@ -1,13 +1,15 @@
 """
     $(TYPEDEF)
 """
-struct GeometricBrownianMotion{T<:Real}
+struct GeometricBrownianMotion{T<:Real} <: ContinuousMultivariateDistribution
     T::SlicedTree
-    ν::T  # autocorrelation strength
     r::T  # rate at root
+    ν::T  # autocorrelation strength
 end
 
 const GBM = GeometricBrownianMotion
+
+Base.length(d::GBM) = nrates(d.T)
 
 function rand(d::GBM)
     s = d.T
@@ -35,7 +37,7 @@ midpoints of branches, and where a correction is performed to ensure that the
 correlation is proper (in contrast with Thorne et al. 1998). See Rannala & Yang
 2007 for detailed information.
 """
-function logpdf(d::GBM{T}, x::Array{T}) where {T<:Real}
+function logpdf(d::GBM{T}, x::Array{T}; ν::T=d.ν, r::T=d.r) where {T<:Real}
     s = d.T
     logp = -log(2π)/2.0*(2*ntaxa(s)-2)  # factor from the Normal (every branch).
     for n in preorder(s)

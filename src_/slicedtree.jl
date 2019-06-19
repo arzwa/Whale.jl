@@ -31,7 +31,17 @@ function SlicedTree(tree::Arboreal, wgdconf=Dict(), Δt=0.05, minn=5, maxn=Inf)
     SlicedTree(tree.tree, qindex, rindex, tree.leaves, clades, slices, border)
 end
 
-nslices(s::SlicedTree, e::Int64) = length(s.slices[e])
+Base.getindex(s::SlicedTree, e::Int64, i::Int64) = s.slices[e][i]
+Base.getindex(s::SlicedTree, e::Int64) = s.slices[e]
+Base.getindex(s::SlicedTree, e::Int64, q::Symbol) =
+    q == :q ? s.qindex[e] : s.rindex[e]
+
+Base.lastindex(s::SlicedTree, e::Int64) = length(s[e])
+
+Base.setindex!(s::SlicedTree, x::Float64, e::Int64, i::Int64) =
+    s.slices[e][i] = x
+
+nslices(s::SlicedTree, e::Int64) = length(s[e])
 
 nrates(s::SlicedTree) = length(Set(values(s.rindex)))
 
