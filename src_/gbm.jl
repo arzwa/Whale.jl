@@ -5,17 +5,19 @@ struct GeometricBrownianMotion{T<:Real} <: ContinuousMultivariateDistribution
     T::SlicedTree
     r::T  # rate at root
     ν::T  # autocorrelation strength
+
+    GeometricBrownianMotion{T}(s, r::T, v::T) where T = new(s, r, v)
 end
 
 const GBM = GeometricBrownianMotion
 
 Base.length(d::GBM) = nrates(d.T)
 
-function rand(d::GBM)
+# should work but it doesn't!
+function _rand!(d::GBM, r::AbstractVector{T}) where T<:Real
     s = d.T
-    r = zeros(nrates(s))
-    r[findroot(s)] = d.r
-    function walk(n)
+    @show r[findroot(s)] = d.r
+    function walk(n::Int64)
         if !isroot(s.tree, n) && !(haskey(s.qindex, n))
             p = non_wgd_parent(s, n)
             t = distance(s.tree, n, p)
@@ -37,7 +39,7 @@ midpoints of branches, and where a correction is performed to ensure that the
 correlation is proper (in contrast with Thorne et al. 1998). See Rannala & Yang
 2007 for detailed information.
 """
-function logpdf(d::GBM{T}, x::Array{T}; ν::T=d.ν, r::T=d.r) where {T<:Real}
+function logpdf(d::GBM{T}, x::Vector{T}, ν=d.ν, r=d.r) where T<:Real
     s = d.T
     logp = -log(2π)/2.0*(2*ntaxa(s)-2)  # factor from the Normal (every branch).
     for n in preorder(s)

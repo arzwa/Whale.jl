@@ -1,17 +1,13 @@
-#= Reimplementation of the core likelihood routine with goal to support
-automatic differentiation.
-
-The main problem is that during AD, all structures should allow <:Real
-types and be unrestricted. This makes the current tmpmat approach
-infeasible, since this is modifying an array in place, whcih has already
-a determined Float type. =#
-
 # Arthur Zwaenepoel - 2019
 # some helper types
+# Distributed CCD array
+const CCDArray = DArray{CCD,1,Array{CCD,1}}
+const CCDSub = SubArray{CCD,0,Array{CCD,1},Tuple{Int64},false}
+
+# tree probability dict
 const PDict{T} = Dict{Int64,Array{T,1}} where T<:Real
 
 Base.getindex(d::PDict{T}, e::Int64, i::Int64) where T<:Real = d[e][i]
-
 Base.setindex!(d::PDict{T}, x::T, e::Int64, i::Int64) where T<:Real =
     d[e][i] = x
 
@@ -23,16 +19,16 @@ fields for extinction and propagation probabilities.
 """
 struct WhaleModel{T<:Real,CCD} <: DiscreteUnivariateDistribution
     S::SlicedTree
-    λ::Array{T}
-    μ::Array{T}
-    q::Array{T}
+    λ::Array{T,1}
+    μ::Array{T,1}
+    q::Array{T,1}
     η::T
     ε::PDict{T}
     ϕ::PDict{T}
     cond::String
 
-    function WhaleModel(S::SlicedTree, λ::Array{T}, μ::Array{T},
-            q::Array{T}=T[], η::T=0.9, cond="oib") where {T<:Real}
+    function WhaleModel(S::SlicedTree, λ::Array{T,1}, μ::Array{T,1},
+            q::Array{T,1}=T[], η::T=0.9, cond="oib") where {T<:Real}
         ε = get_ε(S, λ, μ, q, η)
         ϕ = get_ϕ(S, λ, μ, q, η, ε)
         new{T,CCD}(S, λ, μ, q, η, ε, ϕ, cond)
@@ -44,6 +40,22 @@ eltype(w::WhaleModel{_,T}) where {_,T} = T
 function Base.show(io::IO, w::WhaleModel)
     write(io, "Tree of $(ntaxa(w.S)) taxa with $(nrates(w.S)) rate classes")
     write(io, " and $(nwgd(w.S)) WGDs")
+end
+
+check_args(m::WhaleModel) =
+    all([m.λ; m.μ] .> 0) && all(1. .>= [[m.η]; m.q] .>= 0)
+
+function logpdf(m::WhaleModel, x::CCD, node::Int64=-1; matrix=false)
+    if ~check_args(m)
+        return -Inf
+    end
+    if x.Γ == -1
+        return 0.
+    else
+        l, M = whale!(x, m.S, m.λ, m.μ, m.q, m.η, m.ε, m.ϕ, m.cond, node::Int64)
+        matrix ? set_tmpmat!(x, M) : nothing
+        return l
+    end
 end
 
 function get_ε(s::SlicedTree, λ, μ, q, η)
@@ -97,19 +109,6 @@ function ϕ_slice(λ, μ, t, ε)
         b = λ - (x * μ)
         c = (x - 1.) * λ * ε
         return a / (b + c)^2
-    end
-end
-
-check_args(m::WhaleModel) =
-    all([m.λ; m.μ] .> 0) && all(1. .>= [[m.η]; m.q] .>= 0)
-
-function logpdf(m::WhaleModel, x::CCD, node::Int64=-1; matrix=true)
-    if ~check_args(m) ; return -Inf; end
-    if x.Γ == -1
-        return 0.
-    else
-        l, M = whale!(x, m.S, m.λ, m.μ, m.q, m.η, m.ε, m.ϕ, m.cond, node::Int64)
-        return matrix ? (l, M) : l
     end
 end
 
@@ -265,4 +264,18 @@ function init_matrix!(M::DPMat{T}, x::CCD, s::SlicedTree, bs) where T<:Real
             M[b] = x.tmpmat[b]
         end
     end
+end
+
+set_tmpmat!(x::CCD, M::DPMat) = x.tmpmat = M
+
+logpdf(m::WhaleModel, x::CCDArray, node::Int64=-1) =
+    sum(ppeval(_logpdf, x, [m], [node]))
+
+_logpdf(x::CCDSub, w, n) = logpdf(w[1], x[1], n[1])
+
+set_recmat!(D::CCDArray) = ppeval(_set_recmat!, D)
+
+function _set_recmat!(x::CCDSub)
+    x[1].recmat = x[1].tmpmat
+    return 0.
 end

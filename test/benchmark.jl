@@ -7,9 +7,10 @@ using Optim
 using Printf
 using BenchmarkTools
 using Random
+using ForwardDiff
 import PhyloTrees: isleaf
 import ProgressMeter: @showprogress
-import Distributions: logpdf, @check_args, rand, eltype
+import Distributions: logpdf, @check_args, rand, eltype, _rand!
 import DocStringExtensions: TYPEDSIGNATURES, SIGNATURES, TYPEDEF
 
 Random.seed!(1234)
@@ -31,6 +32,7 @@ wgdconf = Dict(
     "SEED" => ("GBIL,ATHA", 3.9, -1.0),
     "MONO" => ("OSAT", 0.91, -1.0),
     "ALPH" => ("ATHA", 0.501, -1.0))
+#wgdconf = Dict()
 tree = readtree("/home/arzwa/Whale.jl/example/morris-9taxa.nw")
 st = SlicedTree(tree, wgdconf)
 ccd = read_ale("/home/arzwa/Whale.jl/example/example-ale/", st)
@@ -42,6 +44,7 @@ q = rand(length(st.qindex))
 
 #=
 Benchmarks on the first ccd in the example directory [carey]
+using logpdf(w, x)
 
 version in core.jl:
 BenchmarkTools.Trial:
@@ -73,15 +76,15 @@ BenchmarkTools.Trial:
 
 version in core3.jl (allows AD...)
 BenchmarkTools.Trial:
-  memory estimate:  630.78 KiB
-  allocs estimate:  6074
+  memory estimate:  644.58 KiB
+  allocs estimate:  6095
   --------------
-  minimum time:     814.420 μs (0.00% GC)
-  median time:      832.352 μs (0.00% GC)
-  mean time:        951.050 μs (7.90% GC)
-  maximum time:     6.666 ms (84.16% GC)
+  minimum time:     833.437 μs (0.00% GC)
+  median time:      852.538 μs (0.00% GC)
+  mean time:        965.943 μs (8.44% GC)
+  maximum time:     93.400 ms (98.92% GC)
   --------------
-  samples:          5242
+  samples:          5163
   evals/sample:     1
 
 
@@ -105,7 +108,7 @@ w = WhaleModel(st, m)
 @time logpdf(w, x)
 @benchmark logpdf(w, x)
 
-# core2
+# core2/3
 w = WhaleModel(st, λ, μ, q, η)
 @time logpdf(w, x)
 @benchmark logpdf(w, x)
@@ -122,3 +125,7 @@ v = [λ ; μ ; q; η]
 f = flogpdf(w, x)
 g = v -> ForwardDiff.gradient(f, v)
 g(v)
+
+
+D = distribute(ccd)
+logpdf()
