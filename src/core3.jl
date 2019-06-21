@@ -12,7 +12,7 @@ Base.setindex!(d::PDict{T}, x::T, e::Int64, i::Int64) where T<:Real =
     d[e][i] = x
 
 """
-    $(TYPEDEF)
+    WhaleModel{T<:Real,CCD}
 
 The full Whale model, containing both the sliced species tree, parameters and
 fields for extinction and propagation probabilities.
@@ -29,6 +29,7 @@ struct WhaleModel{T<:Real,CCD} <: DiscreteUnivariateDistribution
 
     function WhaleModel(S::SlicedTree, λ::Array{T,1}, μ::Array{T,1},
             q::Array{T,1}=T[], η::T=0.9, cond="oib") where {T<:Real}
+        @check_args(WhaleModel, all([λ; μ] .> 0) && all(1. .>= [[η]; q] .>= 0))
         ε = get_ε(S, λ, μ, q, η)
         ϕ = get_ϕ(S, λ, μ, q, η, ε)
         new{T,CCD}(S, λ, μ, q, η, ε, ϕ, cond)
@@ -37,18 +38,9 @@ end
 
 eltype(w::WhaleModel{_,T}) where {_,T} = T
 
-function Base.show(io::IO, w::WhaleModel)
-    write(io, "Tree of $(ntaxa(w.S)) taxa with $(nrates(w.S)) rate classes")
-    write(io, " and $(nwgd(w.S)) WGDs")
-end
-
-check_args(m::WhaleModel) =
-    all([m.λ; m.μ] .> 0) && all(1. .>= [[m.η]; m.q] .>= 0)
+Base.show(io::IO, w::WhaleModel) = show(io, w, (:λ, :μ, :q, :η))
 
 function logpdf(m::WhaleModel, x::CCD, node::Int64=-1; matrix=false)
-    if ~check_args(m)
-        return -Inf
-    end
     if x.Γ == -1
         return 0.
     else
@@ -247,12 +239,7 @@ function Π_duplication!(M, x::CCD, e::Int64, i::Int64, γ::Int64, Δt, λe, μe
     for (γ1, γ2, count) in x.m2[γ]
         p += x.ccp[(γ, γ1, γ2)] * M[e, γ1, i-1] * M[e, γ2, i-1]
     end
-    # p12 = p_transition_kendall(2, Δt, λ, μ)
-    # return p * p12
-    #= NOTE: it would be more correct to use the BD transition probability to go
-    from one lineage to two lineages. In practice it doesn't make a
-    difference as long as the slice lengths (Δt) are  short enough (∼ [λ/10,
-    λ/5]) and using the approximation seems to counteract some bias. =#
+    # XXX instead of λe*Δt? p_transition_kendall(2, Δt, λe, μe)
     M[e, γ, i] += p * λe * Δt
 end
 
@@ -268,10 +255,12 @@ end
 
 set_tmpmat!(x::CCD, M::DPMat) = x.tmpmat = M
 
-logpdf(m::WhaleModel, x::CCDArray, node::Int64=-1) =
-    sum(ppeval(_logpdf, x, [m], [node]))
+logpdf(m::WhaleModel, x::Array{CCD,1}, node::Int64=-1) =
+    sum(logpdf.(m, x))
 
-_logpdf(x::CCDSub, w, n) = logpdf(w[1], x[1], n[1])
+# distributed computing
+logpdf(m::WhaleModel, x::CCDArray, node::Int64=-1) =
+    sum(ppeval((x)->logpdf(m, x[1], node), x))
 
 set_recmat!(D::CCDArray) = ppeval(_set_recmat!, D)
 

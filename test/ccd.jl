@@ -2,9 +2,8 @@ using Whale
 using PhyloTrees
 using Test
 
-tree = readtree("/home/arzwa/Whale.jl/example/morris-9taxa.nw")
-st = SlicedTree(tree)
-ccd = read_ale("/home/arzwa/Whale.jl/example/example-ale/", st)
+st = Whale.example_tree()
+ccd = read_ale("../example/example-ale/", st)
 @test length(ccd) == 12
 
 x = ccd[1]

@@ -1,46 +1,37 @@
+using Whale
 using PhyloTrees
-using Distributions
-using Distributed
-using DataFrames
-using DistributedArrays
-using Optim
-using Printf
-using BenchmarkTools
-using Random
-using ForwardDiff
-import PhyloTrees: isleaf
-import ProgressMeter: @showprogress
-import Distributions: logpdf, @check_args, rand, eltype, _rand!
-import DocStringExtensions: TYPEDSIGNATURES, SIGNATURES, TYPEDEF
 
-Random.seed!(1234)
-
-base = "/home/arzwa/Whale.jl/src_/"
-
-include("$base/slicedtree.jl")
-include("$base/ccd.jl")
-include("$base/core3.jl")
-#include("$base/core2.jl")
-#include("$base/core.jl")
-
-# benchmark data
-wgdconf = Dict(
-    "PPAT" => ("PPAT", 0.655, -1.0),
-    "CPAP" => ("CPAP", 0.275, -1.0),
-    "BETA" => ("ATHA", 0.55, -1.0),
-    "ANGI" => ("ATRI,ATHA", 3.08, -1.0),
-    "SEED" => ("GBIL,ATHA", 3.9, -1.0),
-    "MONO" => ("OSAT", 0.91, -1.0),
-    "ALPH" => ("ATHA", 0.501, -1.0))
-#wgdconf = Dict()
-tree = readtree("/home/arzwa/Whale.jl/example/morris-9taxa.nw")
-st = SlicedTree(tree, wgdconf)
+st = Whale.example_tree()
 ccd = read_ale("/home/arzwa/Whale.jl/example/example-ale/", st)
 x = ccd[1]
 λ = rand(length(Set(collect(values(st.rindex)))))
 μ = rand(length(Set(collect(values(st.rindex)))))
 q = rand(length(st.qindex))
 η = 0.9
+
+# core2/3
+w = WhaleModel(st, λ, μ, q, η)
+@time logpdf(w, x)
+@benchmark logpdf(w, x)
+@code_warntype Whale.whale!(x, st, w.λ, w.μ, w.q, w.η, w.ε, w.ϕ, w.cond, -1)
+@time Whale.whale!(x, st, w.λ, w.μ, w.q, w.η, w.ε, w.ϕ, w.cond, -1)
+
+# AD tests
+@everywhere getparams(v, n) = v[1:n], v[n+1:2n], v[2n+1:end-1], v[end]
+
+function flogpdf(w, x)
+    n = nrates(w.S)
+    return (v) -> logpdf(WhaleModel(st, getparams(v, n)...), x)
+end
+v = [λ ; μ ; q; η]
+f = flogpdf(w, ccd)
+cfg = ForwardDiff.GradientConfig(nothing, v)
+g = v -> ForwardDiff.gradient(f, v, cfg)
+g(v)
+
+
+D = distribute(ccd)
+logpdf(w, D)
 
 #=
 Benchmarks on the first ccd in the example directory [carey]
@@ -101,31 +92,3 @@ BenchmarkTools.Trial:
   samples:          534
   evals/sample:     1
 =#
-
-# core1
-m = WhaleParams(λ, μ, q, η)
-w = WhaleModel(st, m)
-@time logpdf(w, x)
-@benchmark logpdf(w, x)
-
-# core2/3
-w = WhaleModel(st, λ, μ, q, η)
-@time logpdf(w, x)
-@benchmark logpdf(w, x)
-@code_warntype whale!(x, st, w.λ, w.μ, w.q, w.η, w.ε, w.ϕ, w.cond, -1)
-@time whale!(x, st, w.λ, w.μ, w.q, w.η, w.ε, w.ϕ, w.cond, -1)
-
-# AD tests
-function flogpdf(w, x)
-    n = nrates(w.S)
-    return (v) -> logpdf(WhaleModel(st, v[1:n], v[n+1:2n],
-        v[2n+1:end-1], v[end]), x, matrix=false)
-end
-v = [λ ; μ ; q; η]
-f = flogpdf(w, x)
-g = v -> ForwardDiff.gradient(f, v)
-g(v)
-
-
-D = distribute(ccd)
-logpdf()

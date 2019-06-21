@@ -1,7 +1,8 @@
 using Whale
 using Test
+using Random
 
-const tests = ["slicedtree.jl"]
+const tests = ["slicedtree", "ccd"]
 
 for t in tests
     @testset "Test $t" begin

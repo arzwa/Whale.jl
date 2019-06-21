@@ -1,19 +1,15 @@
-
+# CCD etc.
 const DPMat{T} = Dict{Int64,Array{T,2}} where T<:Real
-
 const TripleDict = Dict{Int64,Array{Tuple{Int64,Int64,Int64}}}
 
 Base.getindex(d::DPMat{T}, e::Int64, γ::Int64) where T<:Real = d[e][γ, :]
-
 Base.getindex(d::DPMat{T}, e::Int64, γ::Int64, i::Int64) where T<:Real =
     d[e][γ, i]
-
 Base.setindex!(d::DPMat{T}, x::T, e::Int64, γ::Int64, i::Int64) where T<:Real =
     d[e][γ, i] = x
 
-
 """
-    $(SIGNATURES)
+    CCD{<:Real,RecTree}
 
 CCD composite type, holds an approximation of the posterior distribution over
 trees. This version is adapted for the parallel MCMC algorithm, using recmat.
@@ -60,7 +56,7 @@ function Base.show(io::IO, ccd::CCD)
 end
 
 """
-    $(SIGNATURES)
+    read_ale(fname::String, s::SlicedTree)
 
 Read in a bunch of conditional clade distributions (CCD) from ALEobserve
 (`.ale`) files. Either provide
@@ -70,25 +66,26 @@ Read in a bunch of conditional clade distributions (CCD) from ALEobserve
 - a single `.ale` file
 - an empty file, for running MCMC under the prior alone
 """
-function read_ale(fname::String, s::SlicedTree)
+function read_ale(fname::String, s::SlicedTree; d=true)
     if isfile(fname) && endswith(fname, ".ale")
-        return [read_ale_observe(fname, s)]
+        D = [read_ale_observe(fname, s)]
     elseif isfile(fname)
         if filesize(fname) == 0
             @warn "$ale_in is an empty file, will create a dummy CCD"
-            return [get_dummy_ccd()]
+            D = [get_dummy_ccd()]
         else
             lines = open(fname, "r") do f
                 readlines(f)
             end
-            return read_ale(lines, s)
+            D = read_ale(lines, s)
         end
     elseif isdir(fname)
         fnames = [joinpath(fname, x) for x in readdir(fname)]
-        return read_ale(fnames, s)
+        D = read_ale(fnames, s)
     else
         @error "Could not read ale files"
     end
+    return d ? distribute(D) : D
 end
 
 # Read a bunch of ALE files
@@ -107,7 +104,7 @@ function read_ale(fnames::Array{String,1}, s::Arboreal)
 end
 
 """
-    $(SIGNATURES)
+    read_ale_observe(fname::String, S::Arboreal)
 
 Read the output from ALEobserve from a file. Note that the branch lengths field
 is the total sum of branchlengths for that clade in the sample!
@@ -266,4 +263,4 @@ addp!(x::CCD, e::Int64, γ::Int64, i::Int64, p::Float64) = x.tmpmat[e][γ, i] +=
 
 get_triples(x::CCD, γ::Int64) = x.m2[γ]
 get_species(x::CCD, γ::Int64) = x.species[γ]
-isleaf(x::CCD, γ::Int64) = haskey(x.m3, γ)
+PhyloTrees.isleaf(x::CCD, γ::Int64) = haskey(x.m3, γ)

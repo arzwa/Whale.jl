@@ -2,21 +2,37 @@
     $(TYPEDEF)
 """
 struct GeometricBrownianMotion{T<:Real} <: ContinuousMultivariateDistribution
-    T::SlicedTree
+    t::SlicedTree
     r::T  # rate at root
     ν::T  # autocorrelation strength
-
-    GeometricBrownianMotion{T}(s, r::T, v::T) where T = new(s, r, v)
 end
 
 const GBM = GeometricBrownianMotion
+GBM(t::SlicedTree, r::T, v::T) where {T<:Real} = GBM{T}(t, r, v)
+GBM(t::SlicedTree, r::Real, v::Real) = GBM(t, promote(r, v)...)
 
-Base.length(d::GBM) = nrates(d.T)
+# Base extensions
+Base.length(d::GBM) = nrates(d.t)
+Base.convert(::Type{GBM{T}}, s::SlicedTree, r::S,
+    v::S) where {T<:Real,S<:Real} = GBM(s, convert(T, r), convert(T, v))
+Base.convert(::Type{GBM{T}}, d::GBM{S}) where {T<:Real,S<:Real} = GBM(d.t, r, v)
 
-# should work but it doesn't!
-function _rand!(d::GBM, r::AbstractVector{T}) where T<:Real
-    s = d.T
-    @show r[findroot(s)] = d.r
+# Distributions interface
+function Distributions.insupport(d::GBM, x::AbstractVector{T}) where {T<:Real}
+    for i=1:length(x)
+        @inbounds 0.0 < x[i] < Inf ? continue : (return false)
+    end
+    true
+end
+
+Distributions.assertinsupport(::Type{D}, m::AbstractVector) where {D<:GBM} =
+    @assert insupport(D, m) "[GBM] rates should be positive"
+
+Distributions.sampler(d::GBM) = d
+
+function Distributions._rand!(rng::AbstractRNG, d::GBM, r::AbstractVector)
+    s = d.t
+    r[findroot(s)] = d.r
     function walk(n::Int64)
         if !isroot(s.tree, n) && !(haskey(s.qindex, n))
             p = non_wgd_parent(s, n)
@@ -26,7 +42,7 @@ function _rand!(d::GBM, r::AbstractVector{T}) where T<:Real
         isleaf(s.tree, n) ? (return) : [walk(c) for c in childnodes(s, n)]
     end
     walk(findroot(s))
-    return r
+    return float(r)
 end
 
 """
@@ -39,8 +55,11 @@ midpoints of branches, and where a correction is performed to ensure that the
 correlation is proper (in contrast with Thorne et al. 1998). See Rannala & Yang
 2007 for detailed information.
 """
-function logpdf(d::GBM{T}, x::Vector{T}, ν=d.ν, r=d.r) where T<:Real
-    s = d.T
+function Distributions._logpdf(d::GBM, x::AbstractVector{T}) where T<:Real
+    if !insupport(d, x)
+        return -Inf
+    end
+    s = d.t
     logp = -log(2π)/2.0*(2*ntaxa(s)-2)  # factor from the Normal (every branch).
     for n in preorder(s)
         (isleaf(s.tree, n) || haskey(s.qindex, n)) ? continue : nothing

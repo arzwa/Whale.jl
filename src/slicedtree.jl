@@ -2,7 +2,7 @@
 const Index = Dict{Int64,Int64}
 
 """
-    $(TYPEDEF)
+    SlicedTree
 
 Sliced species tree with WGD nodes.
 """
@@ -17,7 +17,7 @@ struct SlicedTree <: Arboreal
 end
 
 """
-    $(TYPEDSIGNATURES)
+    SlicedTree(tree::Arboreal, wgdconf=Dict(), Δt=0.05, minn=5, maxn=Inf)
 
 Get a SlicedTree from a given tree and a configuration file (read into a dict).
 """
@@ -31,6 +31,12 @@ function SlicedTree(tree::Arboreal, wgdconf=Dict(), Δt=0.05, minn=5, maxn=Inf)
     SlicedTree(tree.tree, qindex, rindex, tree.leaves, clades, slices, border)
 end
 
+function SlicedTree(treefile::String, wgdconf=Dict(), Δt=0.05, minn=5, maxn=Inf)
+    SlicedTree(readtree(treefile))
+end
+
+Base.show(io::IO, s::SlicedTree) = write(io, 
+    "SlicedTree($(ntaxa(s)), $(nrates(s)), $(nwgd(s)))")
 Base.getindex(s::SlicedTree, e::Int64, i::Int64) = s.slices[e][i]
 Base.getindex(s::SlicedTree, e::Int64) = s.slices[e]
 Base.getindex(s::SlicedTree, e::Int64, q::Symbol) =
@@ -42,11 +48,8 @@ Base.setindex!(s::SlicedTree, x::Float64, e::Int64, i::Int64) =
     s.slices[e][i] = x
 
 nslices(s::SlicedTree, e::Int64) = length(s[e])
-
 nrates(s::SlicedTree) = length(Set(values(s.rindex)))
-
 nwgd(s::SlicedTree) = length(s.qindex)
-
 ntaxa(s::SlicedTree) = length(s.leaves)
 
 function getslices(T::Tree, Δt::Real, minn::Int64=5, maxn::Number=Inf)
@@ -143,4 +146,17 @@ function set_constantrates!(s::SlicedTree)
     for (k, v) in s.rindex
         s.rindex[k] = 1
     end
+end
+
+function example_tree()
+    tree = LabeledTree(read_nw("((MPOL:4.752,PPAT:4.752):0.292,(SMOE:4.457,(((OSAT:1.555,(ATHA:0.5548,CPAP:0.5548):1.0002):0.738,ATRI:2.293):1.225,(GBIL:3.178,PABI:3.178):0.34):0.939):0.587);")[1:2]...)
+    wgdconf = Dict(
+        "PPAT" => ("PPAT", 0.655, -1.0),
+        "CPAP" => ("CPAP", 0.275, -1.0),
+        "BETA" => ("ATHA", 0.55, -1.0),
+        "ANGI" => ("ATRI,ATHA", 3.08, -1.0),
+        "SEED" => ("GBIL,ATHA", 3.9, -1.0),
+        "MONO" => ("OSAT", 0.91, -1.0),
+        "ALPH" => ("ATHA", 0.501, -1.0))
+    SlicedTree(tree, wgdconf)
 end

@@ -19,7 +19,18 @@ partial recomputation scheme. This should implement adaptation.
 Similarly for η
 =#
 # Turing =======================================================================
+using Distributed
+using Distributions
+@everywhere using Turing
+if nworkers() <= 1
+    addprocs(2)
+end
+@everywhere using Whale
+
+using Whale
 using Turing
+st = Whale.example_tree()
+ccd = read_ale("example/example-ale/", st, d=false)
 
 # worked!
 @model gbmwhale(x) = begin
@@ -43,8 +54,8 @@ end
     x ~ WhaleModel(st, λ, μ, float.(q), η)
 end
 
-# worked
-@model gbmwhale(x) = begin
+# worked, this is effectively an iid model
+@model iidwhale(x) = begin
     ν ~ InverseGamma(10.)
     η ~ Beta(10, 2)
     q = Vector{Real}(undef, nwgd(st))
@@ -57,6 +68,24 @@ end
     μ ~ MvLogNormal(repeat([log(θ[2])], nrates(st)), ones(nrates(st)))
     x ~ WhaleModel(st, λ, μ, float.(q), η)
 end
+turingmodel = iidwhale(ccd)
+chain = sample(turingmodel, HMC(1000, 0.1, 10))
+
+@model iidwhale(x) = begin
+    ν ~ InverseGamma(10.)
+    η ~ Beta(10, 2)
+    q = Vector{Real}(undef, nwgd(st))
+    for i in eachindex(q)
+        q[i] ~ Beta(1, 1)
+    end
+    r ~ Exponential(1.0)
+    θ ~ MvLogNormal([log(r), log(r)], [1. 0.9 ; 0.9 1.])
+    λ ~ MvLogNormal(repeat([log(θ[1])], nrates(st)), ones(nrates(st)))
+    μ ~ MvLogNormal(repeat([log(θ[2])], nrates(st)), ones(nrates(st)))
+    x ~ [WhaleModel(st, λ, μ, float.(q), η) for i=1:length(x)]
+end
+turingmodel = iidwhale(ccd)
+chain = sample(turingmodel, HMC(1000, 0.1, 10))
 
 @model gbmwhale(x) = begin
     ν ~ InverseGamma(10.)
