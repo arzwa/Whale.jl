@@ -27,11 +27,6 @@ if nworkers() <= 1
 end
 @everywhere using Whale
 
-using Whale
-using Turing
-st = Whale.example_tree()
-ccd = read_ale("example/example-ale/", st, d=false)
-
 # worked!
 @model gbmwhale(x) = begin
     ν ~ InverseGamma(10.)
@@ -55,22 +50,58 @@ end
 end
 
 # worked, this is effectively an iid model
+using Whale
+using Turing
+st = Whale.example_tree()
+ccd = read_ale("/home/arzwa/Whale.jl/example/example-ale/", st, d=false)
+
 @model iidwhale(x) = begin
-    ν ~ InverseGamma(10.)
+    ν ~ InverseGamma(100.)
     η ~ Beta(10, 2)
     q = Vector{Real}(undef, nwgd(st))
     for i in eachindex(q)
         q[i] ~ Beta(1, 1)
     end
-    r ~ Exponential(1.0)
-    θ ~ MvLogNormal([log(r), log(r)], [1. 0.9 ; 0.9 1.])
+    r ~ Exponential(0.2)
+    θ ~ MvLogNormal([log(r), log(r)], [.5 0.45 ; 0.45 0.5])
     λ ~ MvLogNormal(repeat([log(θ[1])], nrates(st)), ones(nrates(st)))
     μ ~ MvLogNormal(repeat([log(θ[2])], nrates(st)), ones(nrates(st)))
     x ~ [WhaleModel(st, λ, μ, float.(q), η)]  # vectorized
     # x ~ WhaleModel(st, λ, μ, float.(q), η)  # parallel, issues!
 end
+turingmodel = iidwhale(repeat(ccd, 10))
 turingmodel = iidwhale(ccd)
-chain = sample(turingmodel, HMC(1000, 0.1, 10))
+chain = sample(turingmodel, HMC(1000, 0.0001, 1))
+
+#= 3 threads
+@time chain = sample(turingmodel, HMC(100, 0.1, 1))
+┌ Info: Finished 100 sampling steps in 46.671314065 (s)
+│   typeof(h.metric) = AdvancedHMC.Adaptation.UnitEuclideanMetric
+│   typeof(τ) = AdvancedHMC.StaticTrajectory{AdvancedHMC.Leapfrog{Float64}}
+│   EBFMI(Hs) = 16.499714169371913
+└   mean(αs) = 0.8158860524748017
+ 46.862336 seconds (99.98 M allocations: 106.590 GiB, 18.90% gc time)
+=#
+
+#= 1 thread
+julia> @time chain = sample(turingmodel, HMC(100, 0.1, 1))
+┌ Info: Finished 100 sampling steps in 51.37785391 (s)
+│   typeof(h.metric) = AdvancedHMC.Adaptation.UnitEuclideanMetric
+│   typeof(τ) = AdvancedHMC.StaticTrajectory{AdvancedHMC.Leapfrog{Float64}}
+│   EBFMI(Hs) = 179.2183623077022
+└   mean(αs) = 1.3633824551121218e-7
+ 51.577726 seconds (99.98 M allocations: 106.590 GiB, 20.44% gc time)
+
+ julia> @time chain = sample(turingmodel, HMC(100, 0.01, 1))
+┌ Info: Finished 100 sampling steps in 456.630230858 (s)
+│   typeof(h.metric) = AdvancedHMC.Adaptation.UnitEuclideanMetric
+│   typeof(τ) = AdvancedHMC.StaticTrajectory{AdvancedHMC.Leapfrog{Float64}}
+│   EBFMI(Hs) = 1.7207417000657395
+└   mean(αs) = 0.9950987740345328
+457.968410 seconds (954.16 M allocations: 1.029 TiB, 19.67% gc time)
+
+=#
+
 chain = sample(turingmodel, SGLD(1000, 0.1))
 chain = sample(turingmodel, NUTS(1000, 0.65))
 

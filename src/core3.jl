@@ -36,6 +36,14 @@ struct WhaleModel{T<:Real,CCD} <: DiscreteUnivariateDistribution
     end
 end
 
+function WhaleModel(S::SlicedTree, x::Vector{T}, η=0.9, c="oib") where T<:Real
+    n = nrates(S)
+    WhaleModel(S, x[1:n], x[n+1:2n], x[2n+1:end], promote(η, x[1])[1], c)
+end
+
+asvector1(w::WhaleModel) = [w.λ ; w.μ ; w.q]
+asvector2(w::WhaleModel) = [w.λ ; w.μ ; w.q; [w.η]]
+
 eltype(w::WhaleModel{_,T}) where {_,T} = T
 
 Base.show(io::IO, w::WhaleModel) = show(io, w, (:λ, :μ, :q, :η))
