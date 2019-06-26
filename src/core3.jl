@@ -29,7 +29,7 @@ struct WhaleModel{T<:Real,CCD} <: DiscreteUnivariateDistribution
 
     function WhaleModel(S::SlicedTree, λ::Array{T,1}, μ::Array{T,1},
             q::Array{T,1}=T[], η::T=0.9, cond="oib") where {T<:Real}
-        @check_args(WhaleModel, all([λ; μ] .> 0) && all(1. .>= [[η]; q] .>= 0))
+        @check_args(WhaleModel, all([λ; μ] .>= 0) && all(1. .>= [[η]; q] .>= 0))
         ε = get_ε(S, λ, μ, q, η)
         ϕ = get_ϕ(S, λ, μ, q, η, ε)
         new{T,CCD}(S, λ, μ, q, η, ε, ϕ, cond)
@@ -266,13 +266,22 @@ set_tmpmat!(x::CCD, M::DPMat) = x.tmpmat = M
 logpdf(m::WhaleModel, x::Array{CCD,1}, node::Int64=-1) =
     sum(logpdf.(m, x))
 
-# distributed computing
+# DistributedArrays parallelism
 logpdf(m::WhaleModel, x::CCDArray, node::Int64=-1) =
-    sum(ppeval((x)->logpdf(m, x[1], node), x))
+    mapreduce((x)->logpdf(m, x, node), +, x)
 
 set_recmat!(D::CCDArray) = ppeval(_set_recmat!, D)
 
 function _set_recmat!(x::CCDSub)
     x[1].recmat = x[1].tmpmat
     return 0.
+end
+
+gradient(m::WhaleModel, x::CCDArray) = mapreduce((x)->gradient(m, x), +, x)
+
+function gradient(m::WhaleModel, x::CCD)
+    v = asvector1(m)
+    f = (u) -> logpdf(WhaleModel(m.S, u), x)
+    g = ForwardDiff.gradient(f, v)
+    return g[:, 1]
 end

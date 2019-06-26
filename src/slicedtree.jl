@@ -35,7 +35,7 @@ function SlicedTree(treefile::String, wgdconf=Dict(), Δt=0.05, minn=5, maxn=Inf
     SlicedTree(readtree(treefile))
 end
 
-Base.show(io::IO, s::SlicedTree) = write(io, 
+Base.show(io::IO, s::SlicedTree) = write(io,
     "SlicedTree($(ntaxa(s)), $(nrates(s)), $(nwgd(s)))")
 Base.getindex(s::SlicedTree, e::Int64, i::Int64) = s.slices[e][i]
 Base.getindex(s::SlicedTree, e::Int64) = s.slices[e]

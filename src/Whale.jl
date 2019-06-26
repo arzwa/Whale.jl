@@ -4,6 +4,7 @@ module Whale
     using Distributions
     using DistributedArrays
     using Optim
+    using ForwardDiff
     import ProgressMeter: @showprogress
     import Distributions: @check_args, logpdf
 
@@ -16,5 +17,6 @@ module Whale
     #include("$base/mcmc.jl")
 
     export
-        SlicedTree, WhaleModel, read_ale, logpdf, nwgd, nrates, nslices, ntaxa
+        SlicedTree, WhaleModel, read_ale, logpdf, nwgd, nrates, nslices, ntaxa,
+        CCD, gradient, asvector1
 end

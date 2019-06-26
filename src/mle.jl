@@ -1,24 +1,35 @@
-# MLE using gradient and KissThreading
+# MLE using the Optim library
+"""
+    mle(w::WhaleModel, ccd::CCDArray, optimizer=LBFGS(); kwargs...)
+"""
+function mle(w::WhaleModel, ccd, optimizer=LBFGS(); kwargs...)
+    t = w.S
+    x = asvector1(w)
+    f  = (x) -> -logpdf(WhaleModel(t, x, w.η, w.cond), ccd)
+    g! = (G, x) -> G .= -gradient(WhaleModel(t, x, w.η, w.cond), ccd)
+    lower, upper = bounds(w)
+    opts = Optim.Options(;kwargs...)
+    out = do_opt(optimizer, opts, f, g!, lower, upper, x)
+    m = WhaleModel(t, out.minimizer, w.η, w.cond)
+end
 
-function constraints(w::WhaleModel)
+do_opt(optimizer::Optim.FirstOrderOptimizer, opts, args...) =
+    optimize(args..., Fminbox(optimizer), opts)
+
+do_opt(optimizer::Optim.ZerothOrderOptimizer, opts, args...) =
+    optimize(args[1], args[3:end]..., Fminbox(optimizer), opts)
+
+# get bounds for Whale model
+function bounds(w::WhaleModel)
     lower = [0. for i=1:length(asvector1(w))]
     upper = [[Inf for i=1:2*nrates(w.S)] ; [1. for i=1:nwgd(w.S)]]
     return lower, upper
 end
 
-function lbfgs(w::WhaleModel, ccd::Array{CCD,1}; show_every=10)
-    t = w.S
-    x = asvector1(w)
-
-    function f(x::Vector)
-        w = WhaleModel(t, x)
-        v0 = -logpdf(w, ccd[1])
-        return @views tmapreduce(+, ccd[2:end], init=v0) do c
-            -logpdf(w, c)
-        end
+#=function f(x::Vector)  # using KissThreading
+    w = WhaleModel(t, x)
+    v0 = -logpdf(w, ccd[1])
+    return @views tmapreduce(+, ccd[2:end], init=v0) do c
+        -logpdf(w, c)
     end
-
-    lower, upper = constraints(w)
-    opts = Optim.Options(show_trace=true, show_every=show_every)
-    optimize(f, lower, upper, x, Fminbox(LBFGS()), autodiff=:forward, opts)
-end
+end=#
