@@ -18,5 +18,5 @@ module Whale
 
     export
         SlicedTree, WhaleModel, read_ale, logpdf, nwgd, nrates, nslices, ntaxa,
-        CCD, gradient, asvector1, mle, set_constantrates!
+        CCD, gradient, asvector1, mle, set_constantrates!, describe
 end
