@@ -3,6 +3,7 @@
     mle(w::WhaleModel, ccd::CCDArray, optimizer=LBFGS(); kwargs...)
 """
 function mle(w::WhaleModel, ccd, optimizer=LBFGS(); kwargs...)
+    kwargs = merge(Dict(:show_every=>10, :show_trace=>true), kwargs)
     t = w.S
     x = asvector1(w)
     f  = (x) -> -logpdf(WhaleModel(t, x, w.η, w.cond), ccd)

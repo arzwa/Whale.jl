@@ -41,6 +41,13 @@ function WhaleModel(S::SlicedTree, x::Vector{T}, η=0.9, c="oib") where T<:Real
     WhaleModel(S, x[1:n], x[n+1:2n], x[2n+1:end], promote(η, x[1])[1], c)
 end
 
+# initializer
+function WhaleModel(S::SlicedTree, λ=0.2, μ=0.2, q=0.2, η=0.9, cond="oib")
+    n = nrates(S)
+    m = nwgd(S)
+    WhaleModel(S, repeat([λ], n), repeat([μ], n), repeat([q], m), η, cond)
+end
+
 asvector1(w::WhaleModel) = [w.λ ; w.μ ; w.q]
 asvector2(w::WhaleModel) = [w.λ ; w.μ ; w.q; [w.η]]
 

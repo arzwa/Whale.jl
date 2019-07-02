@@ -69,6 +69,7 @@ Read in a bunch of conditional clade distributions (CCD) from ALEobserve
 function read_ale(fname::String, s::SlicedTree; d=true)
     if isfile(fname) && endswith(fname, ".ale")
         D = [read_ale_observe(fname, s)]
+        @show D
     elseif isfile(fname)
         if filesize(fname) == 0
             @warn "$ale_in is an empty file, will create a dummy CCD"
@@ -84,6 +85,7 @@ function read_ale(fname::String, s::SlicedTree; d=true)
         D = read_ale(fnames, s)
     else
         @error "Could not read ale files"
+        return
     end
     return d ? distribute(D) : D
 end

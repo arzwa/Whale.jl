@@ -2,7 +2,7 @@ using Whale
 using Test
 using Random
 
-const tests = ["slicedtree", "ccd"]
+const tests = ["slicedtree", "ccd", "ale", "mle"]
 
 for t in tests
     @testset "Test $t" begin
