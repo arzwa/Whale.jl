@@ -292,3 +292,34 @@ function gradient(m::WhaleModel, x::CCD)
     g = ForwardDiff.gradient(f, v)
     return g[:, 1]
 end
+
+# utils
+"""
+    describe(w::WhaleModel)
+
+Get a detailed description of a particular `WhaleModel`.
+"""
+function describe(w::WhaleModel)
+    println("Leaves")
+    println("======")
+    for (n, l) in w.S.leaves
+        println("$n \t→ $l")
+    end
+    println("Rates (λ, μ)")
+    println("============")
+    for n in w.S.border
+        i = w.S.rindex[n]
+        l = join(w.S.clades[n], ",")
+        print("$n \t| λ, μ = $(w.λ[i]), $(w.μ[i])")
+        println("\t| ($l)")
+    end
+    println("WGDs (q)")
+    println("========")
+    for (n, v) in w.S.qindex
+        println("$n, q = $(w.q[v])")
+    end
+    println("Other")
+    println("=====")
+    println("   η = $(w.η)")
+    println("cond = $(w.cond)")
+end

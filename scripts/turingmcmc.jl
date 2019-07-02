@@ -133,3 +133,9 @@ c = sample(m, HMC(1000, 0.01, 10))
 
 
 c = sample(turingmodel, MH(1000))
+
+#=
+Problem: AD + Distributed computing
+Solution: Compute gradient using mapreduce
+New problem: how to use this gradient function in Turing?
+=#

@@ -12,6 +12,7 @@ function mle(w::WhaleModel, ccd, optimizer=LBFGS(); kwargs...)
     opts = Optim.Options(;kwargs...)
     out = do_opt(optimizer, opts, f, g!, lower, upper, x)
     m = WhaleModel(t, out.minimizer, w.η, w.cond)
+    return m, out
 end
 
 do_opt(optimizer::Optim.FirstOrderOptimizer, opts, args...) =
