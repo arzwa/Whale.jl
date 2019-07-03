@@ -209,6 +209,7 @@ function log_mcmc(w, io, show_trace, show_every)
     if show_trace && w.gen % show_every == 0
         write(io, join(x, ","), "\n")
     end
+    flush(stdout)
 end
 
 function sample_ν!(x::WhaleChain)
