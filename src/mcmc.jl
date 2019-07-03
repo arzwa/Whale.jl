@@ -199,7 +199,8 @@ end
 function log_mcmc(w, io, show_trace, show_every)
     if w.gen == 1
         s = w.state
-        x = [length(v) > 1 ? ["$k$i" for i in 1:length(v)] : k for (k,v) in s]
+        x = [typeof(v)<:AbstractArray ? ["$k$i" for i in 1:length(v)] :
+                k for (k,v) in s]
         x = vcat("gen", x...)
         w.df = DataFrame(zeros(0,length(x)), [Symbol(k) for k in x])
         show_trace ? write(io, join(x, ","), "\n") : nothing
