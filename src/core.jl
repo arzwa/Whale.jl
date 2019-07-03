@@ -126,7 +126,7 @@ function whale!(x::CCD, s::SlicedTree, λ::Array{T}, μ::Array{T}, q::Array{T},
     M = DPMat{typeof(η)}()
     init_matrix!(M, x, s, branches)
 
-    for e in s.border[1:end-1]  # skip the root branch
+    for e in branches[1:end-1]  # skip the root branch
         qnode = haskey(s.qindex, e)
         sleaf = isleaf(s, e)
         λe = λ[s[e, :λ]]
@@ -261,9 +261,9 @@ end
 function init_matrix!(M::DPMat{T}, x::CCD, s::SlicedTree, bs) where T<:Real
     for b in s.border
         if b in bs
-            M[b] = zeros(T, length(x.clades), length(s.slices[b]))
+            M[b] = zeros(T, length(x.clades), length(s[b]))
         else
-            M[b] = x.tmpmat[b]
+            M[b] = x.recmat[b]
         end
     end
 end
@@ -274,12 +274,12 @@ logpdf(m::WhaleModel, x::Array{CCD,1}, node::Int64=-1) =
     sum(logpdf.(m, x))
 
 # DistributedArrays parallelism
-logpdf(m::WhaleModel, x::CCDArray, node::Int64=-1) =
-    mapreduce((x)->logpdf(m, x, node), +, x)
+logpdf(m::WhaleModel, x::CCDArray, node::Int64=-1; matrix=false) =
+    mapreduce((x)->logpdf(m, x, node, matrix=matrix), +, x)
 
 set_recmat!(D::CCDArray) = ppeval(_set_recmat!, D)
 
-function _set_recmat!(x::CCDSub)
+function _set_recmat!(x)
     x[1].recmat = x[1].tmpmat
     return 0.
 end
@@ -310,7 +310,7 @@ function describe(w::WhaleModel)
     for n in w.S.border
         i = w.S.rindex[n]
         l = join(w.S.clades[n], ",")
-        print("$n \t| λ, μ = $(w.λ[i]), $(w.μ[i])")
+        print("$n \t| λ, μ = $(w.λ[i]),$(w.μ[i])")
         println("\t| ($l)")
     end
     println("WGDs (q)")

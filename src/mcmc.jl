@@ -1,291 +1,323 @@
-# Dedicated MCMC engine for Whale
-# TODO function MCMCChains.Chains(chain::WhaleChain)
-# maybe make it less flexible and simpler, one model, one algorithm, one
-# parameter vector?
+# MCMC as in original Whale implementation (AMWG)
+# there are many targets for optimization here, but perhaps not very important
+# as the likelihood routine is still dominating
 
+# Model (priors)
+# XXX optimize by making Model a proper subtype of Distribution → type stability
 abstract type Model end
 
-const ParamValue = Union{Array{<:Real},Real}
+const Prior = Union{<:Distribution,Array{<:Distribution,1},<:Real}
+const State = Dict{Symbol,Union{Vector{Float64},Float64}}
 
-const Prior = Union{Distribution,Array{<:Distribution,1},Number}
+Base.getindex(x::State, s::Symbol, i::Int64) = x[s][i]
 
-mutable struct Sampler{T}
-    accepted::Int64
-    tuneinterval::Int64
-    kernel::Distribution
-end
+# HACK: for constant parameters
+Distributions.logpdf(d::Float64, x::Float64) = 0.
 
-Sampler(σ::Real, tuning=10) = Sampler{Real}(0, tuning, Normal(0., σ))
-
-Sampler(Σ::Array{<:Real,2}, tuning=10) = Sampler{Array{Real,1}}(
-    0, tuning, MvNormal(Σ))
-
+# GBM model
 struct GBMModel <: Model
     ν::Prior
     η::Prior
-    r::Prior
+    λ::Prior
+    μ::Prior
     q::Prior
-    θ::Function
-    λ::Function
-    μ::Function
 end
 
-GBMModel(d::Dict) = GBMModel(d[:ν], d[:η], d[:r], d[:q], d[:θ], d[:λ], d[:μ])
+GBMModel(st::SlicedTree, ν=InverseGamma(15), η=Beta(10, 1), λ=Exponential(1),
+    μ=Exponential(1), q=[Beta(1,1) for i=1:nwgd(st)]) = GBMModel(ν, η, λ, μ, q)
 
-GBMModel(st::SlicedTree) = GBMModel(fullgbmmodel(st))
-
-fullgbmmodel(st::SlicedTree) = Dict{Symbol,Any}(
-    :ν => InverseGamma(10.),
-    :η => Beta(10, 2),
-    :r => Exponential(0.2),
-    :q => [Beta(1, 1) for i=1:nwgd(st)],
-    :θ => (r) -> MvLogNormal([log(r), log(r)], [1. 0.9 ; 0.9 1.]),
-    :λ => (θ, ν) -> GBM(st, θ[1], ν),
-    :μ => (θ, ν) -> GBM(st, θ[2], ν))
-
-mutable struct WhaleChain
-    S::SlicedTree
-    data::CCDArray
-    model::Model
-    state::Dict{Symbol,ParamValue}
-    samplers::Dict{Symbol,Sampler}
-    df::DataFrame
-    gen::Int64
-end
-
-function WhaleChain(S::SlicedTree, data::CCDArray, model=GBMModel(S))
-    state = rand(model)
-    state[:prior] = -Inf
-    state[:lhood] = -Inf
-    samplers = get_defaultsamplers(model, S)
-    #df = initdf(model)
-    df = initdf(state)
-    w = WhaleChain(S, data, model, state, samplers, df, 0)
-    evaluate_prior!(w)
-    evaluate_lhood!(w)
-    w.df[:lhood][1] = w.state[:lhood]
-    w.df[:prior][1] = w.state[:prior]
-    return w
-end
-
-function get_defaultsamplers(m::GBMModel, s::SlicedTree)
-    simulations = zeros(100, nwgd(s)+2*nrates(s))
-    for i = 1:100
-        p = rand(m)
-        simulations[i,:] = [p[:λ] ; p[:μ] ; p[:q]]
+function Distributions.logpdf(m::GBMModel, x::State, st::SlicedTree, args...)
+    x_ = deepcopy(x)
+    for (k, v) in args; x_[k] = v ; end
+    p = 0.
+    for f in fieldnames(typeof(m))
+        if f == :q
+            p += sum(logpdf.(m.q, x_[:q]))
+        elseif f == :λ || f == :μ
+            p += logpdf(getfield(m, f), x_[f][1])
+            p += logpdf(GBM(st, x_[f][1], x_[:ν]), x_[f])
+        else
+            p += logpdf(getfield(m, f), x_[f])
+        end
     end
-    Σinit = cov(simulations)
-    Σinit = ((Σinit + Σinit')/2 + I)/100000
-    println(Σinit)
-    mvsampler = Sampler(Σinit)
-    return Dict(
-        :ν => Sampler(0.05),
-        :η => Sampler(0.1),
-        :r => Sampler(0.1),
-        :θ => Sampler([0.1 0.05 ; 0.05 0.1]),
-        :q => mvsampler,
-        :λ => mvsampler,
-        :μ => mvsampler)
-end
-
-function rand(model::GBMModel)
-    state = Dict{Symbol,Any}()
-    for v in [:ν, :η, :r]
-        p = getfield(model, v)
-        typeof(p) <: Distribution ? state[v] = rand(p) : state[v] = p
-    end
-    state[:q] = zeros(length(model.q))
-    for i in eachindex(model.q)
-        state[:q][i] = rand(model.q[i])
-    end
-    state[:θ] = rand(model.θ(state[:r]))
-    state[:λ] = rand(model.λ(state[:θ], state[:ν]))
-    state[:μ] = rand(model.λ(state[:θ], state[:ν]))
-    return state
-end
-
-function get_tmp_state(chain::WhaleChain, args...)
-    state = copy(chain.state)
-    for (k, v) in args
-        state[k] = v
-    end
-    return state
-end
-
-function evaluate_prior(chain::WhaleChain, model::GBMModel, args...)
-    p = 0.0
-    state = get_tmp_state(chain, args...)
-    p += evaluate_prior(model.ν, state[:ν])
-    p += evaluate_prior(model.η, state[:η])
-    p += evaluate_prior(model.r, state[:r])
-    for (i, d) in enumerate(model.q)
-        p += evaluate_prior(d, state[:q][i])
-    end
-    p += evaluate_prior(model.θ(state[:r]), state[:θ])
-    p += evaluate_prior(model.λ(state[:θ], state[:ν]), state[:λ])
-    p += evaluate_prior(model.μ(state[:θ], state[:ν]), state[:μ])
     return p
 end
 
-function evaluate_prior!(chain::WhaleChain)
-    p = evaluate_prior(chain, chain.model)
-    setstate!(chain, :prior=>p)
+function Base.rand(m::GBMModel, st)
+    x = State()
+    for f in fieldnames(typeof(m))
+        d = getfield(m, f)
+        x[f] = typeof(d) <: Real ? d : (
+            typeof(d) <: AbstractArray ? rand.(d) : rand(d))
+    end
+    x[:λ] = rand(GBM(st, x[:λ], x[:ν]))
+    x[:μ] = rand(GBM(st, x[:μ], x[:ν]))
+    return x
 end
 
-evaluate_prior(chain::WhaleChain, args...) =
-    evaluate_prior(chain, chain.model, args...)
-
-evaluate_prior(d::Vector, x::Vector) = 0.
-
-evaluate_prior(d::Number, x::Number) = 0.
-
-evaluate_prior(d::Distribution, x) = logpdf(d, x)
-
-evaluate_prior(d::Array{Distribution}, x::Vector) = sum(
-    [logpdf(d[i],x[i]) for i in eachindex(x)])
-
-function evaluate_lhood(chain, node, args...)
-    state = get_tmp_state(chain, args...)
-    return logpdf(WhaleModel(chain.S, state), chain.data, node)
+# IRModel
+struct IRModel <: Model
+    ν::Prior
+    η::Prior
+    λ::Prior
+    μ::Prior
+    q::Prior
 end
 
-evaluate_lhood!(chain, node=-1) = chain.state[:lhood] =
-    logpdf(WhaleModel(chain.S, chain.state), chain.data, node)
+IRModel(st::SlicedTree, ν=InverseGamma(15), η=Beta(10, 1), λ=Exponential(1),
+    μ=Exponential(1), q=[Beta(1,1) for i=1:nwgd(st)]) = IRModel(ν, η, λ, μ, q)
 
-# updates that only involve evluation of the prior
-function sample_prior!(chain, v::Symbol)
-    @assert v in [:ν, :r, :θ]
-    s = getsampler(chain, v)
-    v_ = getstate(chain, v) .+ rand(s.kernel)
-    any(v_ .< 0.) ? (return) : nothing
-    π_ = evaluate_prior(chain, v=>v_)
-    ar = π_ - getstate(chain, :prior)
-    if log(rand()) < ar
-        setstate!(chain, v=>v_)
-        setstate!(chain, :prior=>π_)
-        s.accepted += 1
-    end
-    if chain.gen % s.tuneinterval == 0
-        adapt!(s, chain.gen)
-    end
-end
-
-# update for η
-function sample_η!(chain)
-    s = getsampler(chain, :η)
-    η_ = getstate(chain, :η) + rand(s.kernel)
-    π_ = evaluate_prior(chain, :η=>η_)
-    l_ = evaluate_lhood(chain, chain.S.border[end], :η=>η_)
-    r = l_ + π_ - (getstate(chain, :lhood) + getstate(chain, :prior))
-    if log(rand()) < r
-        setstate!(chain, :η=>η_)
-        setstate!(chain, :prior=>π_)
-        setstate!(chain, :lhood=>l_)
-        s.accepted += 1
-    end
-    if chain.gen % s.tuneinterval == 0
-        adapt!(s, chain.gen)
-    end
-end
-
-# Gibbs sweep over branches (for AMWG approach)
-function branch_gibbs!(chain)
-    state = getstate(chain, :λ, :μ, :q)
-    n = nrates(chain.S); m = 2n
-    for (branch, ps) in chain.branchparams
-
-    end
-end
-
-# Multivariate normal sampler for rates
-function sample_rates!(chain)
-    s = getsampler(chain, :λ)
-    r = getstate(chain, :λ, :μ, :q) + rand(s.kernel)
-    any(r .< 0.) ? (return) : nothing
-    n = nrates(chain.S)
-    π_ = evaluate_prior(chain, :λ=>r[1:n], :μ=>r[n+1:2n], :q=>r[2n+1:end])
-    l_ = evaluate_lhood(chain, -1, :λ=>r[1:n], :μ=>r[n+1:2n], :q=>r[2n+1:end])
-    ar = l_ + π_ - (getstate(chain, :lhood) + getstate(chain, :prior))
-    if log(rand()) < ar
-        setstate!(chain, :λ=>r[1:n], :μ=>r[n+1:2n], :q=>r[2n+1:end])
-        setstate!(chain, :prior=>π_)
-        setstate!(chain, :lhood=>l_)
-        s.accepted += 1
-    end
-    if chain.gen % s.tuneinterval == 0
-        adapt!(s, chain.gen, chain.df)
-    end
-end
-
-function cycle!(chain::WhaleChain)
-    chain.gen += 1
-    sample_prior!(chain, :ν)
-    sample_prior!(chain, :r)
-    sample_prior!(chain, :θ)
-    sample_η!(chain)
-    sample_rates!(chain)
-    d = unvector(chain.state)
-    push!(chain.df, d)
-    chain.gen % 10 == 0 ? log_generation(chain) : nothing
-    println(chain.state[:ν], ", ", chain.state[:q][1], ", ", chain.state[:λ][4])
-end
-
-getsampler(chain, v) = chain.samplers[v]
-
-getstate(chain, v::Symbol) = chain.state[v]
-
-getstate(chain, args...) = vcat([chain.state[v] for v in args]...)
-
-function setstate!(chain, args...)
-    for (k, v) in args
-        chain.state[k] = v
-    end
-end
-
-initdf(state) = DataFrame(sort(unvector(state))...)
-
-function unvector(state)
-    d = Dict{Symbol,Real}()
-    for (k, v) in state
-        if typeof(v) <: AbstractArray
-            for i in eachindex(v)
-                d[Symbol("$k$i")] = v[i]
-            end
+function Distributions.logpdf(m::IRModel, x::State, st::SlicedTree, args...)
+    x_ = deepcopy(x)
+    for (k, v) in args; x_[k] = v ; end
+    p = 0.
+    for f in fieldnames(typeof(m))
+        if f == :q
+            p += sum(logpdf.(m.q, x_[:q]))
+        elseif f == :λ || f == :μ
+            p += logpdf(getfield(m, f), x_[f,1])
+            v = repeat([log(x_[f,1])], nrates(st)-1)
+            p += logpdf(MvLogNormal(v, x_[:ν]), x_[f][2:end])
         else
-            d[k] = v
+            p += logpdf(getfield(m, f), x_[f])
         end
     end
-    return d
+    return p
 end
 
-function adapt!(s::Sampler, gen::Int, df::DataFrame)
-    λ = df[[x for x in sort(names(df)) if startswith(string(x), "λ")]]
-    μ = df[[x for x in sort(names(df)) if startswith(string(x), "μ")]]
-    q = df[[x for x in sort(names(df)) if startswith(string(x), "q")]]
-    Σn = cov(Matrix(hcat(λ, μ, q)))
-    s.kernel = newkernel(s.kernel, length(λ), s.accepted/s.tuneinterval, Σn)
-    s.accepted = 0.0
-end
-
-function adapt!(s::Sampler, gen::Int)
-    ar = s.accepted/s.tuneinterval
-    s.accepted = 0
-end
-
-function newkernel(kernel::MultivariateDistribution, n, ar::Float64, Σn,
-        target=2.38, β=0.2)
-    d = size(Σn)[1]
-    if !isposdef(Σn*target^2/d)
-        return kernel
+function Base.rand(m::IRModel, st)
+    x = State()
+    for f in fieldnames(typeof(m))
+        d = getfield(m, f)
+        x[f] = typeof(d) <: Real ? d : (
+            typeof(d) <: AbstractArray ? rand.(d) : rand(d))
     end
-    # TODO make variance for q larger
-    return MixtureModel([
-        MvNormal(zeros(d),Σn*target^2/d),
-        MvNormal(zeros(d), [zeros(2n) .+ 0.0001; zeros(d-2n) .+ 0.01])],
-        [1.0-β, β])
+    x[:λ] = rand(MvLogNormal(repeat([log(x[:λ])], nrates(st)), x[:ν]))
+    x[:μ] = rand(MvLogNormal(repeat([log(x[:μ])], nrates(st)), x[:ν]))
+    return x
 end
 
-function log_generation(chain)
-    @printf "%.3f," chain.state[:ν]
-    @printf "%.3f," chain.state[:η]
+# Samplers
+mutable struct Sampler
+    accepted::Int64
+    tuneinterval::Int64
+    kernel::Normal{Float64}
+end
+
+Sampler(σ::Float64, tuning=20) = Sampler(0, tuning, Normal(0., σ))
+
+Base.rand(spl::Sampler) = rand(spl.kernel)
+Base.rand(spl::Sampler, n::Int64) = rand(spl.kernel, n)
+
+const Samplers = Dict{Symbol,Union{Vector{Sampler},Sampler}}
+Base.getindex(spl::Samplers, s::Symbol, i::Int64) = spl[s][i]
+
+function get_samplers(x::State, σ=0.05)
+    s = Samplers()
+    for (k, v) in x
+        s[k] = typeof(v) <: AbstractArray ?
+            [Sampler(σ) for i=1:length(v)] : Sampler(σ)
+    end
+    return s
+end
+
+function adapt!(spl::Sampler, gen::Int64, target=0.25, bound=5., δmax=0.25)
+    gen == 0 ? (return) : nothing
+    δn = min(δmax, 1/√(gen/spl.tuneinterval))
+    α = spl.accepted / spl.tuneinterval
+    lσ = α > target ? log(spl.kernel.σ) + δn : log(spl.kernel.σ) - δn
+    lσ = abs(lσ) > bound ? sign(lσ) * bound : lσ
+    spl.kernel = Normal(0., exp(lσ))
+    spl.accepted = 0
+end
+
+# Chain
+mutable struct WhaleChain{T<:Model}
+    S::SlicedTree
+    state::State
+    prior::T
+    samplers::Samplers
+    gen::Int64
+    wgdbranches::Array{Tuple{Int64,Int64}}
+    df::DataFrame
+
+    WhaleChain(s::SlicedTree, π::T, x::State, spl::Samplers) where T<:Model =
+        new{T}(s, x, π, spl, 0, wgdbranches(s), DataFrame())
+end
+
+WhaleChain(st, π, x) = WhaleChain(st, π, x, get_samplers(x))
+WhaleChain(st, π) = WhaleChain(st, π, init_state(π, st))
+WhaleChain(st) = WhaleChain(st, GBMModel(st))
+WhaleModel(w::WhaleChain) = WhaleModel(w.S, w[:λ], w[:μ], w[:q], w[:η])
+
+Base.getindex(w::WhaleChain, s::Symbol) = w.state[s]
+Base.getindex(w::WhaleChain, s::Symbol, i::Int64) = w.state[s][i]
+Base.setindex!(w::WhaleChain, x, s::Symbol) = w.state[s] = x
+Base.setindex!(w::WhaleChain, x, s::Symbol, i::Int64) = w.state[s][i] = x
+
+Distributions.logpdf(w::WhaleChain, args...) =
+    logpdf(w.prior, w.state, w.S, args...)
+
+function MCMCChains.Chains(w::WhaleChain)
+    X = reshape(Matrix(w.df), (size(w.df)...,1))[:, 2:end, :]
+    return Chains(X, [string(x) for x in names(w.df)][2:end])
+end
+
+function init_state(prior, st)
+    x = rand(prior, st)
+    x[:π] = -Inf
+    x[:l] = -Inf
+    return x
+end
+
+function init!(w::WhaleChain, D::CCDArray)
+    w[:π] = logpdf(w)
+    w[:l] = logpdf(WhaleModel(w), D, matrix=true)
+    Whale.set_recmat!(D)
+end
+
+# MCMC algorithm
+function mcmc!(w::WhaleChain, D::CCDArray, n::Int64, args...;
+        show_trace=true, show_every=10)
+    init!(w, D)
+    for i=1:n
+        cycle!(w, D, args...)
+        w.gen += 1
+        log_mcmc(w, stdout, show_trace, show_every)
+    end
+    Chains(w)
+end
+
+function cycle!(w::WhaleChain, D::CCDArray, args...)
+    !(:ν in args) ? sample_ν!(w) : nothing
+    !(:η in args) ? sample_η!(w, D) : nothing
+    gibbs_sweep!(w, D)
+    q_sweep!(w, D)
+    wgd_sweep!(w, D)
+end
+
+function log_mcmc(w, io, show_trace, show_every)
+    if w.gen == 1
+        s = w.state
+        x = [length(v) > 1 ? ["$k$i" for i in 1:length(v)] : k for (k,v) in s]
+        x = vcat("gen", x...)
+        w.df = DataFrame(zeros(0,length(x)), [Symbol(k) for k in x])
+        show_trace ? write(io, join(x, ","), "\n") : nothing
+    end
+    x = vcat(w.gen, [x for x in values(w.state)]...)
+    push!(w.df, x)
+    if show_trace && w.gen % show_every == 0
+        write(io, join(x, ","), "\n")
+    end
+end
+
+function sample_ν!(x::WhaleChain)
+    spl = x.samplers[:ν]
+    ν_ = x[:ν] + rand(spl)
+    ν_ < 0. ? (return) : nothing
+    p = logpdf(x, :ν=>ν_)
+    a = p - x[:π]
+    if log(rand()) < a
+        x[:ν] = ν_
+        x[:π] = p
+        spl.accepted += 1
+    end
+    x.gen % spl.tuneinterval == 0 ? adapt!(spl, x.gen) : nothing
+    return
+end
+
+function sample_η!(x::WhaleChain, D::CCDArray)
+    spl = x.samplers[:η]
+    η_ = reflect(x[:η] + rand(spl))
+    p = logpdf(x, :η=>η_)
+    l = logpdf(WhaleModel(x.S, x[:λ], x[:μ], x[:q], η_), D, 1, matrix=true)
+    a = p + l - x[:π] - x[:l]
+    if log(rand()) < a
+        x[:η] = η_
+        x[:π] = p
+        x[:l] = l
+        spl.accepted += 1
+        set_recmat!(D)
+    end
+    x.gen % spl.tuneinterval == 0 ? adapt!(spl, x.gen) : nothing
+    return
+end
+
+function gibbs_sweep!(x::WhaleChain, D::CCDArray)
+    for i in x.S.border
+        # WGD branches have the same rates before and after WGD
+        haskey(x.S.qindex, i) ? continue : nothing
+        spl = x.samplers[:λ, i]
+        λᵢ = x[:λ, i] + rand(spl)
+        μᵢ = x[:μ, i] + rand(spl)
+        λᵢ < 0. || μᵢ < 0. ? continue : nothing
+        λ_ = deepcopy(x[:λ]); μ_ = deepcopy(x[:μ])
+        λ_[i] = λᵢ; μ_[i] = μᵢ
+        p = logpdf(x, :λ=>λ_, :μ=>μ_)
+        l = logpdf(WhaleModel(x.S, λ_, μ_, x[:q], x[:η]), D, i, matrix=true)
+        a = p + l - x[:π] - x[:l]
+        if log(rand()) < a
+            x[:λ, i] = λᵢ
+            x[:μ, i] = μᵢ
+            x[:π] = p
+            x[:l] = l
+            spl.accepted += 1
+            set_recmat!(D)
+        end
+        x.gen % spl.tuneinterval == 0 ? adapt!(spl, x.gen) : nothing
+    end
+end
+
+function wgd_sweep!(x::WhaleChain, D::CCDArray)
+    for (b, i) in x.wgdbranches
+        idx = x.S.qindex[b]
+        splr = x.samplers[:λ, i]
+        splq = x.samplers[:q, idx]
+        λᵢ = x[:λ, i] + rand(splr)
+        μᵢ = x[:μ, i] + rand(splr)
+        λᵢ < 0. || μᵢ < 0. ? continue : nothing
+        qᵢ = reflect(x[:q, idx] + rand(splq))
+        λ_ = deepcopy(x[:λ]); μ_ = deepcopy(x[:μ]); q_ = deepcopy(x[:q])
+        λ_[i] = λᵢ; μ_[i] = μᵢ; q_[idx] = qᵢ
+        p = p = logpdf(x, :λ=>λ_, :μ=>μ_, :q=>q_)
+        l = logpdf(WhaleModel(x.S, λ_, μ_, q_, x[:η]), D, i, matrix=true)
+        a = p + l - x[:π] - x[:l]
+        # NOTE: no adaptation based on this proposal; because both q and rates
+        if log(rand()) < a
+            x[:λ, i] = λᵢ
+            x[:μ, i] = μᵢ
+            x[:q, idx] = qᵢ
+            x[:π] = p
+            x[:l] = l
+            set_recmat!(D)
+        end
+    end
+end
+
+function q_sweep!(x::WhaleChain, D::CCDArray)
+    for (b, i) in x.S.qindex
+        spl = x.samplers[:q, i]
+        qᵢ = reflect(x[:q, i] + rand(spl))
+        q_ = deepcopy(x[:q])
+        q_[i] = qᵢ
+        p = p = logpdf(x, :q=>q_)
+        l = logpdf(WhaleModel(x.S, x[:λ], x[:μ], q_, x[:η]), D, b, matrix=true)
+        a = p + l - x[:π] - x[:l]
+        if log(rand()) < a
+            x[:q, i] = qᵢ
+            x[:π] = p
+            x[:l] = l
+            spl.accepted += 1
+            set_recmat!(D)
+        end
+        x.gen % spl.tuneinterval == 0 ? adapt!(spl, x.gen) : nothing
+    end
+end
+
+function reflect(x::Float64, a::Float64=0., b::Float64=1.)
+    while !(a <= x <= b)
+        x = x < a ? 2a - x : x
+        x = x > b ? 2b - x : x
+    end
+    return x
 end

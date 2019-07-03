@@ -1,5 +1,5 @@
 """
-    $(TYPEDEF)
+    GeometricBrownianMotion{T<:Real}
 """
 struct GeometricBrownianMotion{T<:Real} <: ContinuousMultivariateDistribution
     t::SlicedTree
@@ -87,6 +87,9 @@ function Distributions._logpdf(d::GBM, x::AbstractVector{T}) where T<:Real
     end
     return logp
 end
+
+#Distributions.logpdf(d::GBM, x::AbstractVector) = Distributions._logpdf(d, x)
+
 
 #=
 abstract type RatePrior end

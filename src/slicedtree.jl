@@ -132,6 +132,14 @@ function non_wgd_parent(s::SlicedTree, n::Int64)
     return x
 end
 
+function wgdbranches(s::SlicedTree)
+    x = Tuple{Int64,Int64}[]
+    for i in keys(s.qindex)
+        push!(x, (i, non_wgd_child(s.tree, i)))
+    end
+    return x
+end
+
 function get_parentbranches(s::SlicedTree, node::Int64)
     branches = Int64[]
     n = node

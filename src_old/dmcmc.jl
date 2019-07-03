@@ -250,10 +250,10 @@ end
 
 """
     branch_update!(D::DArray{CCD}, chain, proposal, prior)
-Update λᵢ, μᵢ, 𝒒ᵢ jointly ∀ branch i with one or more WGDs with retention rates 𝒒ᵢ
-based on their respective individual proposal kernels. There is no adaptation for
-this proposal, since the proposal kernels are adapted based on the target in the
-`θ_update!()` step.
+Update λᵢ, μᵢ, 𝒒ᵢ jointly ∀ branch i with one or more WGDs with retention
+rates 𝒒ᵢ based on their respective individual proposal kernels. There is no
+adaptation for this proposal, since the proposal kernels are adapted based on
+the target in the `θ_update!()` step.
 """
 function branch_update!(D, chain, prop, prior)
     for (branch, wgds) in chain.wgds
@@ -266,7 +266,8 @@ function branch_update!(D, chain, prop, prior)
         λᵢ <= 0 || μᵢ <= 0 ? continue : nothing
         λ_ = [λ[1:branch-1] ; λᵢ ; λ[branch+1:end]]
         μ_ = [μ[1:branch-1] ; μᵢ ; μ[branch+1:end]]
-        q_ = [i in wgds ? reflect(q[i] + rand(prop.q[i].kernel)) : q[i] for i in 1:length(q)]
+        q_ = [i in wgds ? reflect(q[i] + rand(prop.q[i].kernel)) :
+            q[i] for i in 1:length(q)]
         # XXX also a fault here, there was `q[i] in wgds ?` instead of `i in wgd ?`
 
         # get the prior for the rates
