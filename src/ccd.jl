@@ -11,8 +11,7 @@ Base.setindex!(d::DPMat{T}, x::T, e::Int64, γ::Int64, i::Int64) where T<:Real =
 """
     CCD{<:Real,RecTree}
 
-CCD composite type, holds an approximation of the posterior distribution over
-trees. This version is adapted for the parallel MCMC algorithm, using recmat.
+Conditional clade distribution with many helper fields. See [`read_ale`](@ref)
 """
 mutable struct CCD{T<:Real,RecTree}
     Γ::Int64                                        # ubiquitous clade

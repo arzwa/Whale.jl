@@ -1,6 +1,7 @@
 module Whale
     using Distributed
     using PhyloTrees
+    using ConsensusTrees
     using Distributions
     using DistributedArrays
     using Optim
@@ -18,9 +19,11 @@ module Whale
     include("mle.jl")
     include("gbm.jl")
     include("mcmc.jl")
+    include("backtrack.jl")
+    include("consensus.jl")
 
     export
         SlicedTree, WhaleModel, read_ale, logpdf, nwgd, nrates, nslices, ntaxa,
-        CCD, gradient, asvector1, mle, set_constantrates!, describe, WhaleChain,
-        GBMModel, IRModel, mcmc!
+        CCD, gradient, mle, set_constantrates!, describe, WhaleChain,
+        GBMModel, IRModel, mcmc!, backtrack!, consensus
 end

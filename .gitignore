@@ -5,3 +5,6 @@ test/whaleamb-gbm*
 test/whalebay-gbm*
 test/wmi*
 test/coffee*
+src_old/
+docs/build/
+src/_*

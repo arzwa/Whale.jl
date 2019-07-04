@@ -13,9 +13,10 @@ Base.setindex!(d::PDict{T}, x::T, e::Int64, i::Int64) where T<:Real =
 
 """
     WhaleModel{T<:Real,CCD}
+    WhaleModel(S::SlicedTree, λ, μ, q, η=0.9, cond="oib")
 
-The full Whale model, containing both the sliced species tree, parameters and
-fields for extinction and propagation probabilities.
+The Whale probabilistic model, containing both the sliced species tree,
+parameters and fields for extinction and propagation probabilities.
 """
 struct WhaleModel{T<:Real,CCD} <: DiscreteUnivariateDistribution
     S::SlicedTree
@@ -42,7 +43,7 @@ function WhaleModel(S::SlicedTree, x::Vector{T}, η=0.9, c="oib") where T<:Real
 end
 
 # initializer
-function WhaleModel(S::SlicedTree, λ=0.2, μ=0.2, q=0.2, η=0.9, cond="oib")
+function WhaleModel(S::SlicedTree, λ=0.2, μ=0.3, q=0.2, η=0.9, cond="oib")
     n = nrates(S)
     m = nwgd(S)
     WhaleModel(S, repeat([λ], n), repeat([μ], n), repeat([q], m), η, cond)
@@ -269,6 +270,7 @@ function init_matrix!(M::DPMat{T}, x::CCD, s::SlicedTree, bs) where T<:Real
 end
 
 set_tmpmat!(x::CCD, M::DPMat) = x.tmpmat = M
+set_recmat!(x::CCD) = x.recmat = x.tmpmat
 
 logpdf(m::WhaleModel, x::Array{CCD,1}, node::Int64=-1) =
     sum(logpdf.(m, x))

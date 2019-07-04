@@ -3,6 +3,7 @@
 # as the likelihood routine is still dominating
 
 # Model (priors)
+# ==============
 # XXX optimize by making Model a proper subtype of Distribution → type stability
 abstract type Model end
 
@@ -15,6 +16,12 @@ Base.getindex(x::State, s::Symbol, i::Int64) = x[s][i]
 Distributions.logpdf(d::Float64, x::Float64) = 0.
 
 # GBM model
+"""
+    GBMModel(st::SlicedTree, ν::T, η::T, λ::T, μ::T, q::T) where
+        T::Union{<:Distribution,Array{<:Distribution,1},<:Real}
+
+Hierarchical model for Whale using a GBM prior.
+"""
 struct GBMModel <: Model
     ν::Prior
     η::Prior
@@ -56,6 +63,12 @@ function Base.rand(m::GBMModel, st)
 end
 
 # IRModel
+"""
+    IRModel(st::SlicedTree, ν::T, η::T, λ::T, μ::T, q::T) where
+        T::Union{<:Distribution,Array{<:Distribution,1},<:Real}
+
+Hierarchical model for Whale using a independent rates prior.
+"""
 struct IRModel <: Model
     ν::Prior
     η::Prior
@@ -98,6 +111,7 @@ function Base.rand(m::IRModel, st)
 end
 
 # Samplers
+# ========
 mutable struct Sampler
     accepted::Int64
     tuneinterval::Int64
@@ -132,6 +146,12 @@ function adapt!(spl::Sampler, gen::Int64, target=0.25, bound=5., δmax=0.25)
 end
 
 # Chain
+"""
+    WhaleChain(st::SlicedTree, π::Model)
+
+Chain object for performing MCMC under various hierarchical models defined in
+Whale.
+"""
 mutable struct WhaleChain{T<:Model}
     S::SlicedTree
     state::State
@@ -170,6 +190,16 @@ function init_state(prior, st)
     return x
 end
 
+function getstate(st::SlicedTree, row)
+    λ = Vector(row[getnames(row, "λ")])
+    μ = Vector(row[getnames(row, "μ")])
+    q = Vector(row[getnames(row, "q")])
+    η = row[:η]
+    return WhaleModel(st, λ, μ, q, η)
+end
+
+getnames(row, s) = [x for x in names(row) if startswith(string(x), s)]
+
 function init!(w::WhaleChain, D::CCDArray)
     w[:π] = logpdf(w)
     w[:l] = logpdf(WhaleModel(w), D, matrix=true)
@@ -177,13 +207,20 @@ function init!(w::WhaleChain, D::CCDArray)
 end
 
 # MCMC algorithm
+"""
+    mcmc!(w::WhaleChain, D::CCDArray, n::Int64, args...; kwargs...)
+
+Perform `n` generations of MCMC sampling for a `WhaleChain` given a bunch of
+observed CCDs. 
+"""
 function mcmc!(w::WhaleChain, D::CCDArray, n::Int64, args...;
-        show_trace=true, show_every=10)
+        show_trace=true, show_every=10, backtrack::Bool=true)
     init!(w, D)
     for i=1:n
         cycle!(w, D, args...)
         w.gen += 1
         log_mcmc(w, stdout, show_trace, show_every)
+        backtrack!(D, WhaleModel(w))
     end
     Chains(w)
 end

@@ -1,5 +1,17 @@
 """
     GeometricBrownianMotion{T<:Real}
+    GBM(t::SlicedTree, r::T, v::T) where {T<:Real}
+
+Distribution induced by a Geometric Brownian Motion (GBM) over the SlicedTree.
+`r` is the value at the root of the tree, `ν` is the variance (autocorrelation
+strength).
+
+The log density for the GBM distribution is computed with an implementation of
+the GBM prior on rates based on Ziheng Yang's MCMCTree, described in Rannala &
+Yang (2007) (syst. biol.). This uses the approach whereby rates are defined for
+midpoints of branches, and where a correction is performed to ensure that the
+correlation is proper (in contrast with Thorne et al. 1998). See Rannala & Yang
+2007 for detailed information.
 """
 struct GeometricBrownianMotion{T<:Real} <: ContinuousMultivariateDistribution
     t::SlicedTree
@@ -45,16 +57,6 @@ function Distributions._rand!(rng::AbstractRNG, d::GBM, r::AbstractVector)
     return float(r)
 end
 
-"""
-    logpdf(d::GBM, s::SlicedTree, x::Array{Real})
-
-Compute the log density for the GBM prior on rates. Implementation of the
-GBM prior on rates based on Ziheng Yang's MCMCTree. Described in Rannala & Yang
-(2007) (syst. biol.). This uses the approach whereby rates are defined for
-midpoints of branches, and where a correction is performed to ensure that the
-correlation is proper (in contrast with Thorne et al. 1998). See Rannala & Yang
-2007 for detailed information.
-"""
 function Distributions._logpdf(d::GBM, x::AbstractVector{T}) where T<:Real
     if !insupport(d, x)
         return -Inf
@@ -87,34 +89,3 @@ function Distributions._logpdf(d::GBM, x::AbstractVector{T}) where T<:Real
     end
     return logp
 end
-
-#Distributions.logpdf(d::GBM, x::AbstractVector) = Distributions._logpdf(d, x)
-
-
-#=
-abstract type RatePrior end
-
-"""
-    $(TYPEDEF)
-
-Geometric brownian motion prior on rates
-"""
-struct GBMRatePrior{T<:Real} <: RatePrior
-    ν::ContinuousUnivariateDistribution
-    θ::ContinuousMultivariateDistribution
-    q::Beta{T}
-    η::Beta{T}
-end
-
-const HyperParams = Dict{Symbol,Real}
-
-function rand(d::GBMRatePrior, s::SlicedTree, ν::Float64=-1., η::Float64=-1.)
-    ν = ν < 0. ? rand(d.ν) : ν   # we often want to sample under fixed values
-    η = η < 0. ? rand(d.η) : η   # we often want to sample under fixed values
-    λ0, μ0 = rand(d.θ)
-    λ = rand(GBM(ν, λ0), s)
-    μ = rand(GBM(ν, μ0), s)
-    q = rand(d.q, nwgd(s))
-    return HyperParams(:ν=>ν), WhaleParams(λ, μ, q, η)
-end
-=#

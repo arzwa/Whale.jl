@@ -2,9 +2,22 @@
 const Index = Dict{Int64,Int64}
 
 """
-    SlicedTree
+    SlicedTree(tree::Arboreal, wgdconf=Dict(), Δt=0.05, minn=5, maxn=Inf)
 
-Sliced species tree with WGD nodes.
+Sliced species tree with optional WGD nodes. WGDs are specified using a configuration dict such as for example:
+
+```julia
+wgdconf = Dict(
+    "PPAT" => ("PPAT", 0.655),
+    "CPAP" => ("CPAP", 0.275),
+    "BETA" => ("ATHA", 0.55),
+    "ANGI" => ("ATRI,ATHA", 3.08),
+    "SEED" => ("GBIL,ATHA", 3.9),
+    "MONO" => ("OSAT", 0.91),
+    "ALPH" => ("ATHA", 0.501))
+```
+
+where the keys are WGD IDs (names), and values are given as a tuple or array with as first entry a single taxon or pair of taxa (comma-separated) that specifies the last common ancestor node that is preceded by the WGD of interest and the second entry the estimate time (before present) of the WGD event. `Δt` is the desired slice length (time interval), `minn` the minimum number of slices a branch should have, and `maxn` the maximum number of slices a branch should have.
 """
 struct SlicedTree <: Arboreal
     tree::Tree
@@ -16,11 +29,6 @@ struct SlicedTree <: Arboreal
     border::Array{Int64,1}  # postorder of species tree branches
 end
 
-"""
-    SlicedTree(tree::Arboreal, wgdconf=Dict(), Δt=0.05, minn=5, maxn=Inf)
-
-Get a SlicedTree from a given tree and a configuration file (read into a dict).
-"""
 function SlicedTree(tree::Arboreal, wgdconf=Dict(), Δt=0.05, minn=5, maxn=Inf)
     tree = deepcopy(tree)
     qindex, nindex = add_wgds!(tree, wgdconf)
