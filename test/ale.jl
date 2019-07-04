@@ -1,8 +1,3 @@
-using Whale
-using Test
-
-st = Whale.example_tree()
-ccd = read_ale("../example/example-ale/", st)
 
 λ = repeat([0.2], 17)
 μ = [repeat([0.1], 10); repeat([0.2], 7)]

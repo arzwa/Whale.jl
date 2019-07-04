@@ -2,6 +2,12 @@
 
 Below the major components of the Whale library are discussed.
 
+```@meta
+DocTestSetup = quote
+    using Whale
+end
+```
+
 ## Sliced species tree
 
 The ALE approach to probabilistic gene tree - species tree reconciliation uses a discretization of the branches of the species tree into small time intervals. This 'sliced' species tree defines the main structure of the model.
@@ -33,15 +39,18 @@ julia> nslices(st, 3)  # number of slices in branch 3
 ```
 
 To get a tree in Newick format into a `SlicedTree`, one can simply use
-`SlicedTree(tree_file)`. Note that the tree is assumed to be **ultrametric** and
-that you might need to change the default `Δt` value for your purposes. WGDs
-can be specified by using a configuration dictionary (see [`SlicedTree`](@ref)).
+`SlicedTree(tree_file)`.
+
+!!! note
+    Note that the tree is assumed to be **ultrametric** and that you might need
+    to change the default `Δt` value for your purposes. WGDs can be specified
+    by using a configuration dictionary (see [`SlicedTree`](@ref)).
 
 For visualizing tree structures, the [`PalmTree`](https://github.com/arzwa/PalmTree.jl) library can be used. It is often useful for example to plot the tree with internal node labels for specifying models in Whale
 
 ```julia
-using PalmTree
-drawtree(st, nodelabels=true
+>julia using PalmTree
+>julia drawtree(st, nodelabels=true)
 ```
 
 ![](example_tree.svg)
@@ -57,6 +66,8 @@ branches to indices for the duplication and loss rate vectors. The default
 the same index for the part of a branch before and after a WGD (note that branches are identified by the index of there downstream (leafward) node).
 
 ```julia
+julia> st = Whale.example_tree();
+
 julia> st.qindex
 Dict{Int64,Int64} with 7 entries:
   20 => 3
@@ -100,6 +111,8 @@ In this example, branches 20, 24 and 12 (which are all part of the same species 
 The `rindex` can be modified to specify arbitrary rate models (for instance fixing a particular clade to a one shared duplication and loss rate). In order to specify a constant-rates model, one can do
 
 ```julia
+julia> st = Whale.example_tree();
+
 julia> set_constantrates!(st)
 
 julia> st.rindex

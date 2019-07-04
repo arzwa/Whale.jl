@@ -8,3 +8,4 @@ test/coffee*
 src_old/
 docs/build/
 src/_*
+scripts/

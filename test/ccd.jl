@@ -1,9 +1,4 @@
-using Whale
-using PhyloTrees
-using Test
 
-st = Whale.example_tree()
-ccd = read_ale("../example/example-ale/", st)
 @test length(ccd) == 12
 
 x = ccd[1]
