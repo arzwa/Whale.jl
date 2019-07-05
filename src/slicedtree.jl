@@ -40,7 +40,7 @@ function SlicedTree(tree::Arboreal, wgdconf=Dict(), Δt=0.05, minn=5, maxn=Inf)
 end
 
 function SlicedTree(treefile::String, wgdconf=Dict(), Δt=0.05, minn=5, maxn=Inf)
-    SlicedTree(readtree(treefile))
+    SlicedTree(readtree(treefile), wgdconf, Δt, minn, maxn)
 end
 
 Base.show(io::IO, s::SlicedTree) = write(io,

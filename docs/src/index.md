@@ -37,7 +37,7 @@ If you're not familiar with `julia`, and you simply want to run analyses as perf
 I assume that your tree is called `tree_file.nw` and your `.ale` files are in a directory `ccd_dir`. For maximum likelihood estimation with a constant rates model, the following script should work
 
 ```julia
-using Whale
+@everywhere using Whale
 
 # data and config
 st = SlicedTree("tree_file.nw")
@@ -65,7 +65,7 @@ To add WGDs, a `wgd_conf` arguament should be provide to `SLicedTree`, please se
 A similar script for Bayesian inference using MCMC looks like
 
 ```julia
-using Whale
+@everywhere using Whale
 
 # data and config
 st = SlicedTree("tree_file.nw")
