@@ -187,7 +187,7 @@ function oib(M, x::CCD, e::Int64, f::Int64, g::Int64, ε, η)
     ε_left = geometric_extinctionp(ε[f][end], η)
     ε_rght = geometric_extinctionp(ε[g][end], η)
     nf = log(1. - ε_left - ε_rght + ε_root)
-    M[e, x.Γ, 1] > 0. && nf > 0. ? log(M[e, x.Γ, 1]) - nf : -Inf
+    M[e, x.Γ, 1] > 0. && nf > -Inf ? log(M[e, x.Γ, 1]) - nf : -Inf
 end
 
 geometric_extinctionp(ε, η) = η * ε / (1. - (1. - η)*ε)
