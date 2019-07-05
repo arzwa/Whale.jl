@@ -55,6 +55,8 @@ julia> using PalmTree
 julia> drawtree(st, nodelabels=true)
 ```
 
+Here, nodes 18 to 24 are WGD 'nodes', marking hypothetical WGDs along the sliced species tree.
+
 ![](example_tree.svg)
 
 ### Rate indices

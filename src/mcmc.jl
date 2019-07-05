@@ -211,7 +211,7 @@ end
     mcmc!(w::WhaleChain, D::CCDArray, n::Int64, args...; kwargs...)
 
 Perform `n` generations of MCMC sampling for a `WhaleChain` given a bunch of
-observed CCDs. 
+observed CCDs.
 """
 function mcmc!(w::WhaleChain, D::CCDArray, n::Int64, args...;
         show_trace=true, show_every=10, backtrack::Bool=true)
@@ -220,7 +220,7 @@ function mcmc!(w::WhaleChain, D::CCDArray, n::Int64, args...;
         cycle!(w, D, args...)
         w.gen += 1
         log_mcmc(w, stdout, show_trace, show_every)
-        backtrack!(D, WhaleModel(w))
+        backtrack ? backtrack!(D, WhaleModel(w)) : nothing
     end
     Chains(w)
 end

@@ -62,13 +62,17 @@ To add WGDs, a `wgd_conf` arguament should be provide to `SLicedTree`, please se
 
 ### Bayesian inference with MCMC
 
-A similar script for Bayesian inference using MCMC looks like
+A similar script for Bayesian inference using MCMC looks like (here with a hypothetical WGD configuration)
 
 ```julia
 @everywhere using Whale
 
 # data and config
-st = SlicedTree("tree_file.nw")
+wgd_conf = Dict(
+    "wgd1" => ("taxon1,taxon2", 1.2),  # (LCA, time BP)
+    "wgd2" => ("taxon1,taxon5", 3.2)
+)
+st = SlicedTree("tree_file.nw", wgd_conf)
 ccd = read_ale("ccd_dir", st)
 model = IRModel(st)      # independent log-normal rates
 # model = GBMModel(st)   # autocorrelated rates
