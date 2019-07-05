@@ -186,11 +186,11 @@ function oib(M, x::CCD, e::Int64, f::Int64, g::Int64, ε, η)
     ε_root = geometric_extinctionp(ε[e, 1], η)
     ε_left = geometric_extinctionp(ε[f][end], η)
     ε_rght = geometric_extinctionp(ε[g][end], η)
-    nf = 1 - ε_left - ε_rght + ε_root
-    M[e, x.Γ, 1] > 0. && nf > 0. ? log(M[e, x.Γ, 1]/nf) : -Inf
+    nf = log(1. - ε_left - ε_rght + ε_root)
+    M[e, x.Γ, 1] > 0. && nf > 0. ? log(M[e, x.Γ, 1]) - nf : -Inf
 end
 
-geometric_extinctionp(ε, η) = η * ε / (1 - (1 - η)*ε)
+geometric_extinctionp(ε, η) = η * ε / (1. - (1. - η)*ε)
 
 function whale_root!(M, x::CCD, s::SlicedTree, ε, η)
     root = s.border[end]
