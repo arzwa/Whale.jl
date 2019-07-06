@@ -4,6 +4,15 @@
 
 Get consensus trees from the backtracked `RecTree`s in the `rectrs` field of the
 conditional clade distribution object(s) (CCD).
+
+!!! warning
+    Branch lengths are not yet correct (they are meaningfully related to the
+    true branch length estimates nevertheless).
+
+!!! warning
+    A consensus reconciled tree does not include loss events. This is because
+    different reconciled trees for the same family can have different numbers of
+    loss events.
 """
 function consensus(ccd::CCD, S::SlicedTree, thresh=0.0)
     rt = PhyloTrees.prune_loss_nodes(ccd.rectrs)
@@ -63,6 +72,11 @@ leafset(node::Int64, tree::Arboreal) = [tree.leaves[n] for n in
 
 hashnode(node::Int64, tree::Arboreal) = hash(Set(leafset(node, tree)))
 
+"""
+    contreetable([io::IO,] contree::ConRecTree, S::SlicedTree)
+
+Write a table representation of a consensus reconciled tree.
+"""
 function contreetable(io::IO, contree::ConRecTree, S::SlicedTree)
     write(io,"gnode,hash,leaves,mvrec,mvlabel,mvperc,mvspeciesset\n")
     for (n, node) in contree.tree.nodes
@@ -76,6 +90,8 @@ function contreetable(io::IO, contree::ConRecTree, S::SlicedTree)
         write(io, "$n,$h,$ls,$s,$l,$p,$ss\n")
     end
 end
+
+contreetable(c::ConRecTree, S::SlicedTree) = contreetable(stdout, c, S)
 
 function write_speciestable(io::IO, S::SlicedTree)
     write(io, "node,label,clades\n")

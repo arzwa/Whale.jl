@@ -57,7 +57,7 @@ julia> drawtree(st, nodelabels=true)
 
 Here, nodes 18 to 24 are WGD 'nodes', marking hypothetical WGDs along the sliced species tree.
 
-![](example_tree.svg)
+![](assets/example_tree.svg)
 
 ### Rate indices
 
@@ -149,18 +149,18 @@ julia> st = Whale.example_tree();
 julia> ccd = read_ale("../example/example-ale/", st)
 [ Info:  .. read 12 ALE files
 12-element DistributedArrays.DArray{CCD,1,Array{CCD,1}}:
- CCD of 13 (83) taxa (clades) based on 5001 samples
- CCD of 13 (55) taxa (clades) based on 5001 samples
- CCD of 13 (89) taxa (clades) based on 5001 samples
- CCD of 13 (131) taxa (clades) based on 5001 samples
- CCD of 13 (107) taxa (clades) based on 5001 samples
- CCD of 13 (59) taxa (clades) based on 5001 samples
- CCD of 13 (53) taxa (clades) based on 5001 samples
- CCD of 13 (83) taxa (clades) based on 5001 samples
- CCD of 13 (59) taxa (clades) based on 5001 samples
- CCD of 13 (95) taxa (clades) based on 5001 samples
- CCD of 13 (67) taxa (clades) based on 5001 samples
- CCD of 13 (65) taxa (clades) based on 5001 samples
+ CCD{Float64,PhyloTrees.RecTree}(13 taxa, 83 clades, 5001 samples)
+ CCD{Float64,PhyloTrees.RecTree}(13 taxa, 55 clades, 5001 samples)
+ CCD{Float64,PhyloTrees.RecTree}(13 taxa, 89 clades, 5001 samples)
+ CCD{Float64,PhyloTrees.RecTree}(13 taxa, 131 clades, 5001 samples)
+ CCD{Float64,PhyloTrees.RecTree}(13 taxa, 107 clades, 5001 samples)
+ CCD{Float64,PhyloTrees.RecTree}(13 taxa, 59 clades, 5001 samples)
+ CCD{Float64,PhyloTrees.RecTree}(13 taxa, 53 clades, 5001 samples)
+ CCD{Float64,PhyloTrees.RecTree}(13 taxa, 83 clades, 5001 samples)
+ CCD{Float64,PhyloTrees.RecTree}(13 taxa, 59 clades, 5001 samples)
+ CCD{Float64,PhyloTrees.RecTree}(13 taxa, 95 clades, 5001 samples)
+ CCD{Float64,PhyloTrees.RecTree}(13 taxa, 67 clades, 5001 samples)
+ CCD{Float64,PhyloTrees.RecTree}(13 taxa, 65 clades, 5001 samples)
 ```
 
 By default, `read_ale` will distribute the resulting CCD array over all available processors.
@@ -204,10 +204,61 @@ julia> logpdf(w, ccd)
 An informative description of the model can be printed using `describe`
 
 ```jldoctest
+julia> st = Whale.example_tree();
+
+julia> w = WhaleModel(st);
+
 julia> describe(w)
-ERROR: UndefVarError: w not defined
-Stacktrace:
- [1] top-level scope at none:0
+Leaves
+======
+4 	→ PPAT
+13 	→ CPAP
+10 	→ OSAT
+14 	→ ATRI
+3 	→ MPOL
+16 	→ GBIL
+17 	→ PABI
+6 	→ SMOE
+12 	→ ATHA
+Rates (λ, μ)
+============
+3 	| λ, μ = 0.2,0.3	| (3)
+4 	| λ, μ = 0.2,0.3	| (4)
+18 	| λ, μ = 0.2,0.3	| (4)
+2 	| λ, μ = 0.2,0.3	| (4,3)
+6 	| λ, μ = 0.2,0.3	| (6)
+16 	| λ, μ = 0.2,0.3	| (16)
+17 	| λ, μ = 0.2,0.3	| (17)
+15 	| λ, μ = 0.2,0.3	| (16,17)
+13 	| λ, μ = 0.2,0.3	| (13)
+19 	| λ, μ = 0.2,0.3	| (13)
+12 	| λ, μ = 0.2,0.3	| (12)
+24 	| λ, μ = 0.2,0.3	| (12)
+20 	| λ, μ = 0.2,0.3	| (12)
+11 	| λ, μ = 0.2,0.3	| (13,12)
+10 	| λ, μ = 0.2,0.3	| (10)
+23 	| λ, μ = 0.2,0.3	| (10)
+9 	| λ, μ = 0.2,0.3	| (13,10,12)
+14 	| λ, μ = 0.2,0.3	| (14)
+8 	| λ, μ = 0.2,0.3	| (13,10,14,12)
+21 	| λ, μ = 0.2,0.3	| (13,10,14,12)
+7 	| λ, μ = 0.2,0.3	| (13,10,14,16,17,12)
+22 	| λ, μ = 0.2,0.3	| (13,10,14,16,17,12)
+5 	| λ, μ = 0.2,0.3	| (13,10,14,16,17,6,12)
+1 	| λ, μ = 0.2,0.3	| (4,13,10,14,3,16,17,6,12)
+WGDs (q)
+========
+20, q = 0.2
+23, q = 0.2
+24, q = 0.2
+19, q = 0.2
+21, q = 0.2
+22, q = 0.2
+18, q = 0.2
+Other
+=====
+   η = 0.9
+cond = oib
 ```
 
 !!! note
@@ -265,17 +316,54 @@ Iter     Function value   Gradient norm
 
 ## Bayesian inference
 
-Currently, a model-specific MCMC algorithm (adaptive metropolis-within-Gibbs) is used. Specifying arbitrary complex models in `Turing.jl` is possible, but currently does not support distributed likelihood evaluation and is therefore not yet possible for the kinds of problems tackled with Whale. This is a major goal for future developments.
+Currently, a model-specific MCMC algorithm (following an adaptive metropolis-within-Gibbs scheme) is used. Specifying arbitrary complex models in `Turing.jl` is possible, but currently does not support distributed likelihood evaluation and is therefore not yet possible for the kinds of problems tackled with Whale. This is a major goal for future developments.
 
 ### Independent rates model
 
-```julia-repl
+The default structure of the independent rates model is as follows.
+
+```math
+\begin{eqnarray}
+\nu &\sim& \mathrm{InverseGamma} \\
+\eta &\sim& \mathrm{Beta} \\
+\lambda_0 &\sim& \mathrm{Exponential} \\
+\mu_0 &\sim& \mathrm{Exponential} \\
+\lambda_i &\sim& \mathrm{LogNormal}(\lambda_0, \nu) \\
+\mu_i &\sim& \mathrm{LogNormal}(\mu_0, \nu) \\
+q_i &\sim& \mathrm{Beta}(1, 1)
+\end{eqnarray}
+```
+
+But other distributions from the `Distributions.jl` library can be used. It is
+also possible to set parameters to fixed values. This is often desirable for
+either `η` or `ν` to ensure proper mixing of the chain.
+
+```jldoctest
 julia> st = Whale.example_tree()
+SlicedTree(9, 17, 7)
+
 julia> w = WhaleChain(st, IRModel(st))
+WhaleChain{IRModel}(SlicedTree(9, 17, 7))
+```
+
+To run the MCMC simulation, use the `mcmc!` function
+
+```julia-repl
 julia> chain = mcmc!(w, D, 100, show_every=10)
 ```
 
+The resulting `Chains` object is fairly intuitive, see the docs for [`MCMCChains.jl`](https://github.com/TuringLang/MCMCChains.jl).
+
 ### Autocorrelated rates model (Geometric Brownian motion)
+
+The default structure is as above but with
+
+```math
+\begin{eqnarray}
+\lambda_i &\sim& \mathrm{GeometricBrownianMotion}(\lambda_0, \nu) \\
+\mu_i &\sim& \mathrm{GeometricBrownianMotion}(\mu_0, \nu)
+\end{eqnarray}
+```
 
 ```julia-repl
 julia> st = Whale.example_tree()
@@ -299,7 +387,7 @@ To backtrack reconciled trees for a particular CCD from a parameterized `WhaleMo
 
 ```julia-repl
 julia> x  # a single CCD
-CCD of 13 (83) taxa (clades) based on 5001 samples
+CCD{Float64,PhyloTrees.RecTree}(13 taxa, 83 clades, 5001 samples)
 
 julia> w = WhaleModel(st, 0.2, 0.3)
 WhaleModel{Float64,CCD}(
@@ -310,44 +398,31 @@ q: [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]
 )
 
 julia> backtrack!(x, w, 100)
-CCD of 13 (83) taxa (clades) based on 5001 samples
+CCD{Float64,PhyloTrees.RecTree}(13 taxa, 83 clades, 5001 samples)
 
 julia> drawtree(x.rectrs[1)
 ```
 
-![](example_rectree.svg)
+![](assets/example_rectree.svg)
 
 !!! note
-    Currently the branch lengths in backtracked trees are not yet meaningful, although they are related to the bracnh lengths in the CCD
+    Currently the branch lengths in backtracked trees are not yet meaningful, although they are related to the branch lengths in the CCD.
 
 Majority vote consensus trees can than be obtained
 
-```julia
+```julia-repl
 julia> contree = consensus(x, st)
 Phylogenetic tree with 25 nodes and 24 branches, [...]
 
 julia> drawtree(contree)
 ```
-![](example_conrectree.svg)
+![](assets/example_conrectree.svg)
 
 Reconciled trees are stored in the `rectrs` field of the CCD object. By default, during MCMC, every iteration a tree is sampled from the posterior predictive distribution.
 
-```julia
-julia> D = read_ale("example/example-ale/", st)
+```julia-repl
+julia> D = read_ale("example/example-ale/", st);
 [ Info:  .. read 12 ALE files
-12-element DistributedArrays.DArray{CCD,1,Array{CCD,1}}:
- CCD of 13 (83) taxa (clades) based on 5001 samples
- CCD of 13 (55) taxa (clades) based on 5001 samples
- CCD of 13 (89) taxa (clades) based on 5001 samples
- CCD of 13 (131) taxa (clades) based on 5001 samples
- CCD of 13 (107) taxa (clades) based on 5001 samples
- CCD of 13 (59) taxa (clades) based on 5001 samples
- CCD of 13 (53) taxa (clades) based on 5001 samples
- CCD of 13 (83) taxa (clades) based on 5001 samples
- CCD of 13 (59) taxa (clades) based on 5001 samples
- CCD of 13 (95) taxa (clades) based on 5001 samples
- CCD of 13 (67) taxa (clades) based on 5001 samples
- CCD of 13 (65) taxa (clades) based on 5001 samples
 
 julia> w = WhaleChain(st, IRModel(st, 0.1, 0.9));
 

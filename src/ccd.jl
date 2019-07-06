@@ -12,6 +12,26 @@ Base.setindex!(d::DPMat{T}, x::T, e::Int64, γ::Int64, i::Int64) where T<:Real =
     CCD{<:Real,RecTree}
 
 Conditional clade distribution with many helper fields. See [`read_ale`](@ref)
+for details on IO.
+
+```julia-repl
+julia> x
+CCD{Float64,PhyloTrees.RecTree}(13 taxa, 83 clades, 5001 samples)
+
+julia> x.ccp
+Dict{Tuple,Float64} with 203 entries:
+  (83, 65, 66) => 0.014797
+  (46, 6, 60)  => 0.0185963
+  (25, 16, 23) => 1.0
+  (43, 7, 38)  => 0.995601
+  ⋮            => ⋮
+
+julia> Whale.get_triples(x, 68)
+3-element Array{Tuple{Int64,Int64,Int64},1}:
+ (24, 75, 1)
+ (2, 74, 22)
+ (6, 36, 103)
+```
 """
 mutable struct CCD{T<:Real,RecTree}
     Γ::Int64                                        # ubiquitous clade
@@ -31,12 +51,8 @@ mutable struct CCD{T<:Real,RecTree}
 
     function CCD{T}(N, m1, m2, m3, l, blens,
             clades, species, Γ, ccp, fname) where T<:Real
-        #m  = DPMat{Real}()
-        #m_ = DPMat{Real}()
         m  = DPMat{T}()
         m_ = DPMat{T}()
-        #m  = DPMat()
-        #m_ = DPMat()
         r  = RecTree[]
         new{T,RecTree}(Γ, N, m1, m2, m3, ccp, l, blens, clades,
             species, m, m_, r, fname)
@@ -45,13 +61,13 @@ end
 
 # display method
 function Base.display(io::IO, ccd::CCD)
-    print("CCD of $(length(ccd.leaves)) $(length(ccd.clades)) taxa ")
-    print("(clades) based on $(ccd.total)")
+    print("$(typeof(ccd))($(length(ccd.leaves)) taxa, $(length(ccd.clades))")
+    print(" clades, $(ccd.total) samples)")
 end
 
 function Base.show(io::IO, ccd::CCD)
-    write(io, "CCD of $(length(ccd.leaves)) ($(length(ccd.clades))) taxa ")
-    write(io, "(clades) based on $(ccd.total) samples")
+    write(io,"$(typeof(ccd))($(length(ccd.leaves)) taxa, $(length(ccd.clades))")
+    write(io, " clades, $(ccd.total) samples)")
 end
 
 """
@@ -64,6 +80,27 @@ Read in a bunch of conditional clade distributions (CCD) from ALEobserve
 - a directory with `.ale` files
 - a single `.ale` file
 - an empty file, for running MCMC under the prior alone
+
+```julia-repl
+julia> st = Whale.example_tree()
+SlicedTree(9, 17, 7)
+
+julia> ccd = read_ale("example/example-ale/", st)
+[ Info:  .. read 12 ALE files
+12-element DistributedArrays.DArray{CCD,1,Array{CCD,1}}:
+ CCD{Float64,PhyloTrees.RecTree}(13 taxa, 83 clades, 5001 samples)
+ CCD{Float64,PhyloTrees.RecTree}(13 taxa, 55 clades, 5001 samples)
+ CCD{Float64,PhyloTrees.RecTree}(13 taxa, 89 clades, 5001 samples)
+ CCD{Float64,PhyloTrees.RecTree}(13 taxa, 131 clades, 5001 samples)
+ CCD{Float64,PhyloTrees.RecTree}(13 taxa, 107 clades, 5001 samples)
+ CCD{Float64,PhyloTrees.RecTree}(13 taxa, 59 clades, 5001 samples)
+ CCD{Float64,PhyloTrees.RecTree}(13 taxa, 53 clades, 5001 samples)
+ CCD{Float64,PhyloTrees.RecTree}(13 taxa, 83 clades, 5001 samples)
+ CCD{Float64,PhyloTrees.RecTree}(13 taxa, 59 clades, 5001 samples)
+ CCD{Float64,PhyloTrees.RecTree}(13 taxa, 95 clades, 5001 samples)
+ CCD{Float64,PhyloTrees.RecTree}(13 taxa, 67 clades, 5001 samples)
+ CCD{Float64,PhyloTrees.RecTree}(13 taxa, 65 clades, 5001 samples)
+```
 """
 function read_ale(fname::String, s::SlicedTree; d=true)
     if isfile(fname) && endswith(fname, ".ale")
@@ -104,12 +141,8 @@ function read_ale(fnames::Array{String,1}, s::Arboreal)
     return ccds
 end
 
-"""
-    read_ale_observe(fname::String, S::Arboreal)
-
-Read the output from ALEobserve from a file. Note that the branch lengths field
-is the total sum of branchlengths for that clade in the sample!
-"""
+# Note that the branch lengths field is the total sum of branchlengths for that
+# clade in the sample!
 function read_ale_observe(fname::String, S::Arboreal)
     s = open(fname) do file
         join(readlines(file), "\n", )

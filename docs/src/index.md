@@ -1,7 +1,12 @@
 
 # Introduction
 
-Whale provides tools for genome-wide amalgamated likelihood estimation (ALE) under a DL+WGD model, which is an approach to infer reconciled gene trees and parameters of a model of gene family evolution given a known species tree. The  ALE approach takes into account uncertainty in the gene tree topology by marginalizing over all tree topologies that can be amalgamated from the so-called *conditional clade distribution* (CCD). This CCD can be constructed from a sample of the posterior distribution of tree topologies (which can be obtained using any standard software for Bayesian phylogenetics).
+!!! warning
+    The latest Whale version is a thorough rewrite of the Whale library, and is still work in progress. For the version as used in Zwaenepoel & Van de Peer (2019), refer to [this release (v0.2)](https://github.com/arzwa/Whale.jl/releases/tag/v0.2). Nevertheless, the current version should be safe to use and is more efficient and convenient (if you know a bit of julia).
+
+Whale provides tools for genome-wide **amalgamated likelihood estimation (ALE) under a DL+WGD model**, which is an approach to infer reconciled gene trees and parameters of a model of gene family evolution given a known species tree.
+
+The ALE approach takes into account uncertainty in the gene tree topology by marginalizing over all tree topologies that can be amalgamated from the so-called *conditional clade distribution* (CCD). This CCD can be constructed from a sample of the posterior distribution of tree topologies (which can be obtained using any standard software for Bayesian phylogenetics).
 
 More specifically, this library can be used to
 
@@ -50,9 +55,9 @@ w = WhaleModel(st)
 out = mle(w, ccd)
 ```
 
-Save this script to a file (say `whale-mle.jl`). To run the inference using 16 processors for instance, run `julia -p 16 whale-mle.jl`.
+Save this script to a file (say `whale-mle.jl`). To run the inference using 16 processors for instance, run `julia -p 16 whale-mle.jl`. Do not forget the `@everywhere` before the `using` statement, as this will load the Whale library on all available processors.
 
-To add WGDs, a `wgd_conf` arguament should be provide to `SLicedTree`, please see the docs for [`SlicedTree`](@ref). See the manual section on [Rate indices](@ref) on how to specify local-clock models.
+To add WGDs, a `wgd_conf` argument should be provide to `SLicedTree`, please see the docs for [`SlicedTree`](@ref). See the manual section on [Rate indices](@ref) on how to specify local-clock models.
 
 !!! warning
     Depending on the time scale and data set at hand, you may need to tweak the initial values of the `WhaleModel` to prevent Numerical issues!
@@ -84,5 +89,22 @@ chain = mcmc!(w, ccd, n, show_every=10)
 
 again, saving this as `whale-bay.jl` and running this with `julia -p <nCPU> whale-bay.jl` will start the MCMC with the likelihood evaluation performed on `nCPU` cores.
 
+!!! note
+    You might want to save the MCMC simulation to a file. In the above example one can either save the `chain` variable to a file using [`JLD`](https://github.com/JuliaIO/JLD.jl), save the data frame in the field `chain.df` using `CSV.write` or alternatively one can just set the `show_every` argument to the desired thinning level and  redirect `stdout` to a file while running the MCMC.
+
 !!! warning
-    Please take you time to understand the hierarchical model used in Whale and to modify the prior distributions to your data set! See the [Bayesian inference](@ref) section of the manual.
+    Please take you time to understand the hierarchical model used in Whale and to modify the prior distributions to suit your data set! See the [Bayesian inference](@ref) section of the manual.
+
+## References
+
+`Whale.jl` was developed by Arthur Zwaenepoel at the VIB-UGent center for plant
+systems biology (bioinformatics & evolutionary genomics group). If you use
+Whale, please cite:
+
+>Zwaenepoel, A. and Van de Peer, Y., 2019. Inference of Ancient Whole-Genome Duplications and the Evolution of Gene Duplication and Loss Rates. *Molecular biology and evolution*, 36(7), pp.1384-1404.
+
+The methods in Whale are heavily inspired by previous work done by other researchers. If you use Whale, consider citing the following two particularly important studies:
+
+>[ALE] Szöllősi, G.J., Rosikiewicz, W., Boussau, B., Tannier, E. and Daubin, V., 2013. Efficient exploration of the space of reconciled gene trees. *Systematic biology*, 62(6), pp.901-912.
+
+>[DL+WGD model] Rabier, C.E., Ta, T. and Ané, C., 2013. Detecting and locating whole genome duplications on a phylogeny: a probabilistic approach. *Molecular biology and evolution*, 31(3), pp.750-762.

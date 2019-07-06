@@ -11,3 +11,7 @@ makedocs(
         "API" => "api.md"
     ],
 )
+
+deploydocs(
+    repo = "github.com/arzwa/Whale.jl.git",
+)

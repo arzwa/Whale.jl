@@ -21,6 +21,27 @@ Distributions.logpdf(d::Float64, x::Float64) = 0.
         T::Union{<:Distribution,Array{<:Distribution,1},<:Real}
 
 Hierarchical model for Whale using a GBM prior.
+
+- `ν`: autocorrelation strength (variance of geometric Brownian motion)
+- `η`: parameter of geometric prior on the number of genes at the root of the species tree S
+- `λ`: duplication rate at the root of S
+- `μ`: loss rate at the root of S
+- `q`: retention rates
+
+Example: InverseGamma prior on `ν`, Beta prior on `η`, Exponential priors on `λ`
+and `μ` at the root and Beta(1,1) priors on the retention rates `q`.
+
+```julia-repl
+julia> m = GBMModel(st, InverseGamma(15), Beta(10, 1), Exponential(1), Exponential(1), [Beta(1,1) for i=1:nwgd(st)]);
+
+julia> rand(m, st)  # sample a state from the prior
+Dict{Symbol,Union{Float64, Array{Float64,1}}} with 5 entries:
+  :ν => 0.0771695
+  :μ => [0.498764, 0.500195, 0.459161, 0.615959, 0.482646, 0.502002, 0.402976, 0.354524, 0.378785, …
+  :λ => [0.760383, 0.733029, 0.696493, 0.592979, 0.718899, 1.01307, 0.642244, 0.639109, 0.600577, 0…
+  :η => 0.915222
+  :q => [0.761553, 0.729741, 0.116805, 0.278579, 0.200221, 0.293774, 0.869646]
+```
 """
 struct GBMModel <: Model
     ν::Prior
@@ -67,7 +88,31 @@ end
     IRModel(st::SlicedTree, ν::T, η::T, λ::T, μ::T, q::T) where
         T::Union{<:Distribution,Array{<:Distribution,1},<:Real}
 
-Hierarchical model for Whale using a independent rates prior.
+Hierarchical model for Whale using a independent rates prior. As
+[`GBMModel`](@ref) but `ν` is the variance of the log-Normal prior on the
+branch-wise rates.
+
+Example:
+```julia-repl
+julia> m = IRModel(st, InverseGamma(10), Beta(6,3));
+
+julia> m.ν
+InverseGamma{Float64}(
+invd: Gamma{Float64}(α=10.0, θ=1.0)
+θ: 1.0
+)
+
+julia> m.λ
+Exponential{Float64}(θ=1.0)
+
+julia> rand(m, st)
+Dict{Symbol,Union{Float64, Array{Float64,1}}} with 5 entries:
+  :ν => 0.0955299
+  :μ => [0.456988, 0.43639, 0.626645, 0.464031, 0.540543, 0.629841, 0.574996, 0.498506, 0.428841, 0…
+  :λ => [0.498921, 0.69414, 0.54769, 0.533595, 0.521085, 0.515748, 0.534503, 0.594045, 0.583829, 0.…
+  :η => 0.486934
+  :q => [0.970779, 0.965934, 0.788127, 0.405944, 0.827755, 0.253859, 0.395734]
+```
 """
 struct IRModel <: Model
     ν::Prior
@@ -151,6 +196,40 @@ end
 
 Chain object for performing MCMC under various hierarchical models defined in
 Whale.
+
+```julia-repl
+julia> w = WhaleChain(st, IRModel(st))
+WhaleChain{IRModel}(SlicedTree(9, 17, 7))
+
+julia> w[:q]  # current state's q values
+7-element Array{Float64,1}:
+ 0.4068351791361286
+ 0.5893350551453437
+ 0.21472854312451684
+ 0.8068526003250731
+ 0.05239284527812649
+ 0.8432325466244709
+ 0.9006557436550706
+
+julia> w[:μ, 3]  # current state of μ for branch 3
+0.6578486200316909
+
+julia> logpdf(w)  # prior logpdf
+59.40417835345352
+
+julia> logpdf(w, :ν=>0.1)  # prior logpdf, but with ν = 0.1
+58.49660562613573
+
+julia> logpdf(w, :η=>0.2)  # prior logpdf, but with η = 0.2
+45.22412219063766
+
+julia> WhaleModel(w)  # WhaleModel corresponding to current state of the chain
+WhaleModel{Float64,CCD}(
+λ: [0.440648, 0.486472, 0.412741, 0.432659, 0.392268, 0.485483, 0.485181, 0.422687, 0.431686, 0.477667, 0.405392, 0.414238, 0.442341, 0.390893, 0.429505, 0.41379, 0.435038]
+μ: [0.635544, 0.575146, 0.657849, 0.657189, 0.626361, 0.668117, 0.619245, 0.600366, 0.682475, 0.570257, 0.58954, 0.576526, 0.6966, 0.729826, 0.561087, 0.614903, 0.668041]
+q: [0.406835, 0.589335, 0.214729, 0.806853, 0.0523928, 0.843233, 0.900656]
+η: 0.966691254252368
+```
 """
 mutable struct WhaleChain{T<:Model}
     S::SlicedTree
@@ -174,6 +253,8 @@ Base.getindex(w::WhaleChain, s::Symbol) = w.state[s]
 Base.getindex(w::WhaleChain, s::Symbol, i::Int64) = w.state[s][i]
 Base.setindex!(w::WhaleChain, x, s::Symbol) = w.state[s] = x
 Base.setindex!(w::WhaleChain, x, s::Symbol, i::Int64) = w.state[s][i] = x
+Base.display(io::IO, w::WhaleChain) = print("$(typeof(w))($(w.S))")
+Base.show(io::IO, w::WhaleChain) = write(io, "$(typeof(w))($(w.S))")
 
 Distributions.logpdf(w::WhaleChain, args...) =
     logpdf(w.prior, w.state, w.S, args...)

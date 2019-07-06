@@ -1,4 +1,4 @@
-# Arthur Zwaenepoel - 2019
+1# Arthur Zwaenepoel - 2019
 # some helper types
 # Distributed CCD array
 const CCDArray = DArray{CCD,1,Array{CCD,1}}
@@ -12,11 +12,41 @@ Base.setindex!(d::PDict{T}, x::T, e::Int64, i::Int64) where T<:Real =
     d[e][i] = x
 
 """
-    WhaleModel{T<:Real,CCD}
-    WhaleModel(S::SlicedTree, λ, μ, q, η=0.9, cond="oib")
+    WhaleModel{T<:Real,CCD}(S::SlicedTree, λ, μ, q, η=0.9, cond="oib")
 
 The Whale probabilistic model, containing both the sliced species tree,
 parameters and fields for extinction and propagation probabilities.
+
+```julia-repl
+julia> st = Whale.example_tree();
+
+julia> ccd = read_ale("example/example-ale/", st);
+[ Info:  .. read 12 ALE files
+
+julia> w = WhaleModel(st, 0.2, 0.3, 0.1, 0.9)
+WhaleModel{Float64,CCD}(
+λ: [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]
+μ: [0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3]
+q: [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+η: 0.9
+)
+
+julia> logpdf(w, ccd)
+-296.67809475568924
+
+julia> ccd[1].tmpmat  # this did not store the dynamic programming (DP) matrix
+Dict{Int64,Array{Float64,2}} with 0 entries
+
+julia> logpdf(w, ccd, matrix=true)  # this will store the DP matrix
+-296.67809475568924
+
+julia> ccd[1].tmpmat  # this is the DP matrix, required for backtracking
+Dict{Int64,Array{Float64,2}} with 24 entries:
+  1  => [0.000160506; 0.00276326; … ; 6.63525e-24; 4.18032e-15]
+  2  => [0.0 0.0 … 0.0 0.0; 0.0 0.0 … 0.0 0.0; … ; 0.0 0.0 … 0.0 0.0; 0.0 0.0 … 0.0 0.0]
+  16 => [0.0 0.0 … 0.0 0.0; 0.0 0.0 … 0.0 0.0; … ; 0.0 0.0 … 0.0 0.0; 0.0 0.0 … 0.0 0.0]
+  ...
+```
 """
 struct WhaleModel{T<:Real,CCD} <: DiscreteUnivariateDistribution
     S::SlicedTree

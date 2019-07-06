@@ -7,11 +7,11 @@ Distribution induced by a Geometric Brownian Motion (GBM) over the SlicedTree.
 strength).
 
 The log density for the GBM distribution is computed with an implementation of
-the GBM prior on rates based on Ziheng Yang's MCMCTree, described in Rannala &
-Yang (2007) (syst. biol.). This uses the approach whereby rates are defined for
-midpoints of branches, and where a correction is performed to ensure that the
-correlation is proper (in contrast with Thorne et al. 1998). See Rannala & Yang
-2007 for detailed information.
+the GBM prior on rates based on Ziheng Yang's MCMCTree, described in [Rannala &
+Yang (2007)](https://academic.oup.com/sysbio/article/56/3/453/1657118). This
+uses the approach whereby rates are defined for midpoints of branches, and where
+a correction is performed to ensure that the correlation is proper (in contrast
+with Thorne et al. 1998). 
 """
 struct GeometricBrownianMotion{T<:Real} <: ContinuousMultivariateDistribution
     t::SlicedTree

@@ -1,7 +1,9 @@
 # Recursive stochastic backtracking of reconciled trees
 """
-    backtrack!(w::WhaleModel, ccd::CCD, n::Int64=1)
-    backtrack!(w::WhaleModel, D::CCDArray, n::Int64=1)
+    backtrack!(ccd::CCD, w::WhaleModel, n=1)
+    backtrack!(D::CCDArray, w::WhaleModel, n=1)
+    backtrack!(D::CCDArray, w::WhaleChain, n=1000)
+    backtrack!(D::CCDArray, df::DataFrame, st::SlicedTree, n=1000)
 
 Sample reconciled trees (`RecTree`) from the Whale model conditional on the
 conditional clade distribution (CCD) by stochastic backtracking along the
@@ -9,6 +11,11 @@ dynamic programming matrix as in Szollosi 2013. If the `recmat` field of the
 `ccd` argument is non-empty, this matrix will be used, otherwise the
 reconciliation matrix is computed from scratch. Reconciled trees are stored in
 the CCD object for convenience.
+
+!!! note
+    If the second argument is a `WhaleChain` object (or data frame), than *post
+    hoc* backtracking is performed, that is, reconciled trees are simulated
+    from the posterior predictive distribution after running an MCMC chain.
 """
 function backtrack!(ccd::CCD, w::WhaleModel, n=1)
     if length(ccd.recmat) == 0
@@ -26,12 +33,8 @@ end
 backtrack!(D::CCDArray, w::WhaleModel, n=1) =
     map!((x)->backtrack!(x, w, n), D, D)
 
-"""
-    backtrack!(D::CCDArray, df::DataFrame, st::SlicedTree, n=1000)
+backtrack!(D::CCDArray, w::WhaleChain, n=1000) = backtrack!(D, w.df, w.S, n)
 
-*Post hoc* backtracking, i.e. simulating RecTrees from the posterior predictive
-distribution after running an MCMC chain.
-"""
 function backtrack!(D::CCDArray, df::DataFrame, st::SlicedTree, n=1000)
     for i=1:n
         w = getstate(st, df[rand(1:size(df, 2)),:])
