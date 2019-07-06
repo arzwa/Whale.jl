@@ -1,7 +1,9 @@
-using Documenter, Whale
+using Documenter, Whale #, DocumenterMarkdown, DocumenterLaTeX
 
 makedocs(
     modules = [Whale],
+    #format = LaTeX(),
+    #format = Markdown(),
     format = Documenter.HTML(),
     sitename = "Whale.jl",
     doctest = :fix,
