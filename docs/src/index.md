@@ -23,6 +23,8 @@ More specifically, this library can be used to
 You will need julia-1.x. Fire up a julia REPL by typing `julia` at the command line enter the package manager interface by typing `]`, and run the command
 
 ```julia-repl
+(v1.1) pkg> add https://github.com/arzwa/PhyloTrees.jl
+(v1.1) pkg> add https://github.com/arzwa/ConsensusTrees.jl
 (v1.1) pkg> add https://github.com/arzwa/Whale.jl
 ```
 
