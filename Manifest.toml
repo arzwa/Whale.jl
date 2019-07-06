@@ -81,14 +81,6 @@ git-tree-sha1 = "9a11d428dcdc425072af4aea19ab1e8c3e01c032"
 uuid = "8f4d0f93-b110-5947-807f-2305c1781a2d"
 version = "1.3.0"
 
-[[ConsensusTrees]]
-deps = ["PhyloTrees"]
-git-tree-sha1 = "8a2c475a42cfd07617ab99074ece75909f2da67b"
-repo-rev = "master"
-repo-url = "https://github.com/arzwa/ConsensusTrees.jl"
-uuid = "d3d4590a-60df-11e9-122f-f56e3d820c59"
-version = "0.1.0"
-
 [[Contour]]
 deps = ["LinearAlgebra", "StaticArrays", "Test"]
 git-tree-sha1 = "b974e164358fea753ef853ce7bad97afec15bb80"
