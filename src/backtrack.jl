@@ -36,9 +36,9 @@ backtrack!(D::CCDArray, w::WhaleModel, n=1) =
 backtrack!(D::CCDArray, w::WhaleChain, n=1000) = backtrack!(D, w.df, w.S, n)
 
 function backtrack!(D::CCDArray, df::DataFrame, st::SlicedTree, n=1000)
-    for i=1:n
+    @showprogress 1 "Sampling from from posterior predictive" for i=1:n
         w = getstate(st, df[rand(1:size(df, 2)),:])
-        logpdf(w, D, matrix=true)
+        l = logpdf(w, D, matrix=true)
         set_recmat!(D)
         backtrack!(D, w)
     end
