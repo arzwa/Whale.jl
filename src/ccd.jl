@@ -1,5 +1,3 @@
-# ambiguity was implemented here https://github.com/arzwa/Whale.jl/tree/f8d0973b6f9bfdbcef0a30e8ea9f607640294bd7
-
 # CCD etc.
 const DPMat{T} = Dict{Int64,Array{T,2}} where T<:Real
 const TripleDict = Dict{Int64,Array{Tuple{Int64,Int64,Int64}}}

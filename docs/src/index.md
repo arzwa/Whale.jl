@@ -35,6 +35,12 @@ To perform analyses with Whale, you will need
 1. An **ultrametric species tree**, with ideally branch lengths in geological time (since this allows straightforward interpretation of parameter estimates.)
 2. A bunch of ALE files, which summarize the **conditional clade distributions** (CCDs) for the same bunch of gene families. These can be obtained from a sample of the posterior distribution of gene trees using the [`ALEobserve`](https://github.com/ssolo/ALE) tool. A pipeline to obtain these from a set of gene family protein fasta files is available at [github](https://github.com/arzwa/whaleprep).
 
+!!! note
+    Analyzing CCDs (ALE files) with a very large number of clades or for very large families can be prohibitive computationally. It is therefore generally advisable that large orthogroups are filtered out based on some criterion (for example using the script `orthofilter.py` in the scripts directory of the Whale repository). To filter out families with very large numbers of clades in the CCD (which reflects that there is a lot of uncertainty in the gene tree), the scripts `ccddata.py` and `ccdfilter.py` can be used. This is a rather *ad hoc* filtering procedure, but can be useful to filter out families that trouble the analysis.
+
+!!! warning
+    Most analyses in Whale assume that for each family, **there is at least one gene in both clades stemming from the root of the species tree**. The likelihood in Whale is the conditional likelihood under this assumption. This is to rule out the possibility of *de novo* gain of a gene family along a branch of the species tree. The orthogroup data should therefore always be filtered to be in accordance with this criterion. This can also be done using the `orthofilter.py` script.
+
 ## Quick start
 
 If you're not familiar with `julia`, and you simply want to run analyses as performed for instance in [Zwaenepoel & Van de Peer (2019)](https://academic.oup.com/mbe/advance-article/doi/10.1093/molbev/msz088/5475503) the following scripts will be helpful. If you want to get a more detailed view of the library, please consult the [Manual](@ref).
