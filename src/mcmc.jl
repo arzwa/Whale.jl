@@ -51,7 +51,7 @@ struct GBMModel <: Model
     q::Prior
 end
 
-GBMModel(st::SlicedTree, ν=InverseGamma(15), η=Beta(10, 1), λ=Exponential(1),
+GBMModel(st::SlicedTree, ν=Exponential(0.5), η=Beta(10, 1), λ=Exponential(1),
     μ=Exponential(1), q=[Beta(1,1) for i=1:nwgd(st)]) = GBMModel(ν, η, λ, μ, q)
 
 function Distributions.logpdf(m::GBMModel, x::State, st::SlicedTree, args...)

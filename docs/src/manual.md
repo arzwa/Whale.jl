@@ -360,8 +360,12 @@ The default structure is as above but with
 
 ```math
 \begin{eqnarray}
-\lambda_i &\sim& \mathrm{GeometricBrownianMotion}(\lambda_0, \nu) \\
-\mu_i &\sim& \mathrm{GeometricBrownianMotion}(\mu_0, \nu)
+\nu &\sim& \mathrm{Exponential} \\
+\eta &\sim& \mathrm{Beta} \\
+\lambda_0 &\sim& \mathrm{Exponential} \\
+\mu_0 &\sim& \mathrm{Exponential} \\\lambda_i &\sim& \mathrm{GeometricBrownianMotion}(\lambda_0, \nu) \\
+\mu_i &\sim& \mathrm{GeometricBrownianMotion}(\mu_0, \nu) \\
+q_i &\sim& \mathrm{Beta}(1, 1)
 \end{eqnarray}
 ```
 
@@ -392,7 +396,7 @@ It is generally advisable to run a chain without data, to investigate the prior 
 ```julia-repl
 julia> st = Whale.example_tree()
 julia> w = WhaleChain(st, IRModel(st, InverseGamma(10), 0.9, Exponential(1.), Exponential(1.)))
-julia> chain = mcmc!(w, 10000, :η)
+julia> chain = mcmc!(w, 10000, :η)   # e.g. with fixed η
 ```
 
 ## Backtracking and consensus reconciled trees
