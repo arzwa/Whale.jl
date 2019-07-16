@@ -163,7 +163,7 @@ mutable struct Sampler
     kernel::Normal{Float64}
 end
 
-Sampler(σ::Float64, tuning=20) = Sampler(0, tuning, Normal(0., σ))
+Sampler(σ::Float64, tuning=50) = Sampler(0, tuning, Normal(0., σ))
 
 Base.rand(spl::Sampler) = rand(spl.kernel)
 Base.rand(spl::Sampler, n::Int64) = rand(spl.kernel, n)
@@ -177,12 +177,13 @@ function get_samplers(x::State, σ=0.05)
         s[k] = typeof(v) <: AbstractArray ?
             [Sampler(σ) for i=1:length(v)] : Sampler(σ)
     end
+    s[:ψ] = Sampler(σ)
     return s
 end
 
 function adapt!(spl::Sampler, gen::Int64, target=0.25, bound=5., δmax=0.25)
     gen == 0 ? (return) : nothing
-    δn = min(δmax, 1/√(gen/spl.tuneinterval))
+    δn = min(δmax, 1. /√(gen/spl.tuneinterval))
     α = spl.accepted / spl.tuneinterval
     lσ = α > target ? log(spl.kernel.σ) + δn : log(spl.kernel.σ) - δn
     lσ = abs(lσ) > bound ? sign(lσ) * bound : lσ
@@ -306,12 +307,19 @@ function mcmc!(w::WhaleChain, D::CCDArray, n::Int64, args...;
     Chains(w)
 end
 
+function mcmc!(w::WhaleChain, n::Int64, args...; show_trace=true, show_every=10)
+    @warn "No data provided, sampling from the prior"
+    mcmc!(w, distribute(CCD[get_dummy_ccd()]), n, args...,
+        show_trace=show_trace, show_every=show_every, backtrack=false)
+end
+
 function cycle!(w::WhaleChain, D::CCDArray, args...)
     !(:ν in args) ? sample_ν!(w) : nothing
     !(:η in args) ? sample_η!(w, D) : nothing
     gibbs_sweep!(w, D)
     q_sweep!(w, D)
     wgd_sweep!(w, D)
+    allrates!(w, D)
 end
 
 function log_mcmc(w, io, show_trace, show_every)
@@ -399,7 +407,7 @@ function wgd_sweep!(x::WhaleChain, D::CCDArray)
         qᵢ = reflect(x[:q, idx] + rand(splq))
         λ_ = deepcopy(x[:λ]); μ_ = deepcopy(x[:μ]); q_ = deepcopy(x[:q])
         λ_[i] = λᵢ; μ_[i] = μᵢ; q_[idx] = qᵢ
-        p = p = logpdf(x, :λ=>λ_, :μ=>μ_, :q=>q_)
+        p = logpdf(x, :λ=>λ_, :μ=>μ_, :q=>q_)
         l = logpdf(WhaleModel(x.S, λ_, μ_, q_, x[:η]), D, i, matrix=true)
         a = p + l - x[:π] - x[:l]
         # NOTE: no adaptation based on this proposal; because both q and rates
@@ -420,7 +428,7 @@ function q_sweep!(x::WhaleChain, D::CCDArray)
         qᵢ = reflect(x[:q, i] + rand(spl))
         q_ = deepcopy(x[:q])
         q_[i] = qᵢ
-        p = p = logpdf(x, :q=>q_)
+        p = logpdf(x, :q=>q_)
         l = logpdf(WhaleModel(x.S, x[:λ], x[:μ], q_, x[:η]), D, b, matrix=true)
         a = p + l - x[:π] - x[:l]
         if log(rand()) < a
@@ -432,6 +440,27 @@ function q_sweep!(x::WhaleChain, D::CCDArray)
         end
         x.gen % spl.tuneinterval == 0 ? adapt!(spl, x.gen) : nothing
     end
+end
+
+function allrates!(x::WhaleChain, D::CCDArray)
+    spl = x.samplers[:ψ]
+    λ_ = x[:λ] .+ rand(spl)
+    μ_ = x[:μ] .+ rand(spl)
+    if any(x -> (x <= 0.), λ_) || any(x -> (x <= 0.), μ_)
+        return
+    end
+    p = logpdf(x, :λ=>λ_, :μ=>μ_)
+    l = logpdf(WhaleModel(x.S, λ_, μ_, x[:q], x[:η]), D, matrix=true)
+    a = p + l - x[:π] - x[:l]
+    if log(rand()) < a
+        x[:λ] = λ_
+        x[:μ] = μ_
+        x[:π] = p
+        x[:l] = l
+        spl.accepted += 1
+        set_recmat!(D)
+    end
+    x.gen % spl.tuneinterval == 0 ? adapt!(spl, x.gen) : nothing
 end
 
 function reflect(x::Float64, a::Float64=0., b::Float64=1.)

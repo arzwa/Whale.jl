@@ -108,7 +108,7 @@ function read_ale(fname::String, s::SlicedTree; d=true)
         @show D
     elseif isfile(fname)
         if filesize(fname) == 0
-            @warn "$ale_in is an empty file, will create a dummy CCD"
+            @warn "$fname is an empty file, will create a dummy CCD"
             D = [get_dummy_ccd()]
         else
             lines = open(fname, "r") do f
@@ -253,7 +253,8 @@ function get_dummy_ccd()
     leaves = Dict{Int64,String}()
     clades = Array{Int64,1}()
     species = Dict{Int64,Set{Int64}}()
-    return CCD(-1, m1, m2, m3, leaves, blens, clades, species, -1, ccp, "dummy")
+    return CCD{Float64}(-1, m1, m2, m3, leaves, blens, clades,
+        species, -1, ccp, "dummy")
 end
 
 # get the ubiquitous clade, private to read_ale

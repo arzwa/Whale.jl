@@ -101,11 +101,11 @@ again, saving this as `whale-bay.jl` and running this with `julia -p <nCPU> whal
     You might want to save the MCMC simulation to a file. In the above example one can either save the `chain` variable to a file using [`JLD`](https://github.com/JuliaIO/JLD.jl), save the data frame in the field `chain.df` using `CSV.write` or alternatively one can just set the `show_every` argument to the desired thinning level and  redirect `stdout` to a file while running the MCMC.
 
 !!! warning
-    Please take you time to understand the hierarchical model used in Whale and to modify the prior distributions to suit your data set! See the [Bayesian inference](@ref) section of the manual.
+    Please take you time to understand the hierarchical model used in Whale and to modify the prior distributions to suit your data set! In particular, note that mixing can be very poor when the `η` and/or `ν` parameters are considere random variables and assigned hyperpriors. Fixing `η` and/or `ν` is therefore often necessary. Please consult the [Bayesian inference](@ref) section of the manual. 
 
 ## References
 
-`Whale.jl` was developed by Arthur Zwaenepoel at the VIB-UGent center for plant
+`Whale.jl` is developed by Arthur Zwaenepoel at the VIB-UGent center for plant
 systems biology (bioinformatics & evolutionary genomics group). If you use
 Whale, please cite:
 

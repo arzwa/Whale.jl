@@ -373,12 +373,26 @@ julia> chain = mcmc!(w, D, 100, show_every=10)
 
 ### Fixing `η` and/or `ν`
 
+To prevent mixing poor mixing in the MCMC, it is often necessary to fix the `η` and/or `ν` parameters. For `η` this is usually not very problematic, since it embodies already a distributional assumption that allows for uncertainty in prior beliefs (since it is the parameter of the geometric prior distribution  on the number of lineages at the root). Choosing for instance `η = 0.8`, The probability of one lineage at the root is 0.8, two lineages 0.16, three lineages  0.032 etc.
+
+Fixing `ν` (which controls the variation in duplication and loss rates across lineages) can be more troublesome since it is hard to specify a cogent prior. In the context of WGD inference however, the 'true' values of the duplication and loss rates might not matter too much, and we are mostly interested whether allowing more rate variation across the tree alters are posterior beliefs with regard to WGDs. When the goal is WGD inference, it is therefore advisable to run chains for different `ν` values and see whether this alters the posterior distributions for the retention rates. Often when the rates are constrained to be very similar across the tree (small `ν` values), some duplication/loss rate variation is captured by the retention rate, and in this case, for larger `ν` values, a previously significant non-zero retention rate might shift towards zero.
+
 Below the chain is fixed for the parameter values η=0.9 and ν=0.1.
 
 ```julia-repl
 julia> st = Whale.example_tree()
 julia> w = WhaleChain(st, IRModel(st, 0.1, 0.9))
 julia> chain = mcmc!(w, D, 100, :ν, :η, show_every=10)
+```
+
+### Sampling from the prior
+
+It is generally advisable to run a chain without data, to investigate the prior distributions one has assigned, and validate the correctness of the MCMC algorithm. This can be done as follows:
+
+```julia-repl
+julia> st = Whale.example_tree()
+julia> w = WhaleChain(st, IRModel(st, InverseGamma(10), 0.9, Exponential(1.), Exponential(1.)))
+julia> chain = mcmc!(w, 10000, :η)
 ```
 
 ## Backtracking and consensus reconciled trees
