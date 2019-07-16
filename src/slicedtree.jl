@@ -158,9 +158,31 @@ function get_parentbranches(s::SlicedTree, node::Int64)
     return [branches; [1]]
 end
 
+function branches_to_recompute(s::SlicedTree, node::Int64)
+    branches = Int64[]
+    for (k, v) in s.rindex
+        v == s.rindex[node] ? branches = [branches ; get_parentbranches(s, k)] :
+            nothing
+    end
+    unique!(branches)
+end
+
+
 function set_constantrates!(s::SlicedTree)
     for (k, v) in s.rindex
         s.rindex[k] = 1
+    end
+end
+
+function set_equalrootrates!(s::SlicedTree)
+    root = findroot(s)
+    a, b = childnodes(s, root)
+    c = s.rindex[b]
+    s.rindex[b] = s.rindex[a]
+    for (k, v) in s.rindex
+        if v > c && v != s.rindex[a]
+            s.rindex[k] -= 1
+        end
     end
 end
 

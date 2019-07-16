@@ -375,18 +375,19 @@ function gibbs_sweep!(x::WhaleChain, D::CCDArray)
     for i in x.S.border
         # WGD branches have the same rates before and after WGD
         haskey(x.S.qindex, i) ? continue : nothing
-        spl = x.samplers[:λ, i]
-        λᵢ = x[:λ, i] + rand(spl)
-        μᵢ = x[:μ, i] + rand(spl)
+        idx = x.S.rindex[i]
+        spl = x.samplers[:λ, idx]
+        λᵢ = x[:λ, idx] + rand(spl)
+        μᵢ = x[:μ, idx] + rand(spl)
         λᵢ < 0. || μᵢ < 0. ? continue : nothing
         λ_ = deepcopy(x[:λ]); μ_ = deepcopy(x[:μ])
-        λ_[i] = λᵢ; μ_[i] = μᵢ
+        λ_[idx] = λᵢ; μ_[idx] = μᵢ
         p = logpdf(x, :λ=>λ_, :μ=>μ_)
         l = logpdf(WhaleModel(x.S, λ_, μ_, x[:q], x[:η]), D, i, matrix=true)
         a = p + l - x[:π] - x[:l]
         if log(rand()) < a
-            x[:λ, i] = λᵢ
-            x[:μ, i] = μᵢ
+            x[:λ, idx] = λᵢ
+            x[:μ, idx] = μᵢ
             x[:π] = p
             x[:l] = l
             spl.accepted += 1
@@ -398,23 +399,24 @@ end
 
 function wgd_sweep!(x::WhaleChain, D::CCDArray)
     for (b, i) in x.wgdbranches
-        idx = x.S.qindex[b]
-        splr = x.samplers[:λ, i]
-        splq = x.samplers[:q, idx]
-        λᵢ = x[:λ, i] + rand(splr)
-        μᵢ = x[:μ, i] + rand(splr)
+        idx = x.S.rindex[i]
+        qidx = x.S.qindex[b]
+        splr = x.samplers[:λ, idx]
+        splq = x.samplers[:q, qidx]
+        λᵢ = x[:λ, idx] + rand(splr)
+        μᵢ = x[:μ, idx] + rand(splr)
         λᵢ < 0. || μᵢ < 0. ? continue : nothing
-        qᵢ = reflect(x[:q, idx] + rand(splq))
+        qᵢ = reflect(x[:q, qidx] + rand(splq))
         λ_ = deepcopy(x[:λ]); μ_ = deepcopy(x[:μ]); q_ = deepcopy(x[:q])
-        λ_[i] = λᵢ; μ_[i] = μᵢ; q_[idx] = qᵢ
+        λ_[idx] = λᵢ; μ_[idx] = μᵢ; q_[qidx] = qᵢ
         p = logpdf(x, :λ=>λ_, :μ=>μ_, :q=>q_)
         l = logpdf(WhaleModel(x.S, λ_, μ_, q_, x[:η]), D, i, matrix=true)
         a = p + l - x[:π] - x[:l]
         # NOTE: no adaptation based on this proposal; because both q and rates
         if log(rand()) < a
-            x[:λ, i] = λᵢ
-            x[:μ, i] = μᵢ
-            x[:q, idx] = qᵢ
+            x[:λ, idx] = λᵢ
+            x[:μ, idx] = μᵢ
+            x[:q, qidx] = qᵢ
             x[:π] = p
             x[:l] = l
             set_recmat!(D)

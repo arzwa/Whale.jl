@@ -153,7 +153,7 @@ end
 # main whale algorithm
 function whale!(x::CCD, s::SlicedTree, λ::Array{T}, μ::Array{T}, q::Array{T},
         η::T, ε::PDict{T}, ϕ::PDict{T}, cond::String, node=-1) where T<:Real
-    branches = (node == -1) ? s.border : get_parentbranches(s, node)
+    branches = (node == -1) ? s.border : branches_to_recompute(s, node)
     M = DPMat{typeof(η)}()
     init_matrix!(M, x, s, branches)
 
