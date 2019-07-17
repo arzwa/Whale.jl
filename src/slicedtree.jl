@@ -90,9 +90,11 @@ function add_wgds!(T::Arboreal, conf::Dict)
     return qindex, nindex
 end
 
-function wgds(S::SlicedTree)
+wgds(S::SlicedTree) = wgds(stdout, S)
+
+function wgds(io::IO, S::SlicedTree)
     for (k, v) in S.windex
-        println("$k → node $v → q$(S.qindex[v])")
+        write(io, "$k → node $v → q$(S.qindex[v])\n")
     end
 end
 
