@@ -33,6 +33,15 @@ Dict{Int64,String} with 9 entries:
   6  => "SMOE"
   12 => "ATHA"
 
+julia> wgds(st)  # WGD ID → WGD node → q index
+PPAT → node 18 → q1
+CPAP → node 19 → q2
+BETA → node 20 → q3
+ANGI → node 21 → q4
+SEED → node 22 → q5
+MONO → node 23 → q6
+ALPH → node 24 → q7
+
 julia> st[3, 4]  # length of 4th slice in branch 3
 0.049499999999999995
 
@@ -375,9 +384,13 @@ julia> w = WhaleChain(st, GBMModel(st))
 julia> chain = mcmc!(w, D, 100, show_every=10)
 ```
 
-### Fixing `η` and/or `ν`
+### MCMC mixing issues
 
-To prevent mixing poor mixing in the MCMC, it is often necessary to fix the `η` and/or `ν` parameters. For `η` this is usually not very problematic, since it embodies already a distributional assumption that allows for uncertainty in prior beliefs (since it is the parameter of the geometric prior distribution  on the number of lineages at the root). Choosing for instance `η = 0.8`, The probability of one lineage at the root is 0.8, two lineages 0.16, three lineages  0.032 etc.
+When WGD hypotheses and independent rates across the tree are combined, MCMC in the Whale model relies on informative priors. For some data sets and prior settings the MCMC may have a hard time converging, or some parameter may wander of in an unrealistic area of parameter space. Since there is usually a lot of data, the influence of the prior is often very limited and the likelihood dominates the posterior (which is of course desirable), and it may be necessary to constrain some elements of the model to attain convergence.
+
+#### Fixing `η` and/or `ν`
+
+To prevent poor mixing in the MCMC, it is often necessary to fix the `η` and/or `ν` parameters. For `η` this is usually not very problematic, since it embodies already a distributional assumption that allows for uncertainty in prior beliefs (since it is the parameter of the geometric prior distribution  on the number of lineages at the root). Choosing for instance `η = 0.8`, The probability of one lineage at the root is 0.8, two lineages 0.16, three lineages  0.032 etc.
 
 Fixing `ν` (which controls the variation in duplication and loss rates across lineages) can be more troublesome since it is hard to specify a cogent prior. In the context of WGD inference however, the 'true' values of the duplication and loss rates might not matter too much, and we are mostly interested whether allowing more rate variation across the tree alters are posterior beliefs with regard to WGDs. When the goal is WGD inference, it is therefore advisable to run chains for different `ν` values and see whether this alters the posterior distributions for the retention rates. Often when the rates are constrained to be very similar across the tree (small `ν` values), some duplication/loss rate variation is captured by the retention rate, and in this case, for larger `ν` values, a previously significant non-zero retention rate might shift towards zero.
 
@@ -387,6 +400,39 @@ Below the chain is fixed for the parameter values η=0.9 and ν=0.1.
 julia> st = Whale.example_tree()
 julia> w = WhaleChain(st, IRModel(st, 0.1, 0.9))
 julia> chain = mcmc!(w, D, 100, :ν, :η, show_every=10)
+```
+#### Constraining rates on branches stemming from the root
+
+Sometimes, in particular when there is a long outgroup branch (possibly with WGDs), it can help to constrain the branches stemming left and right from the root of the species tree to have the same duplication and loss rates. This can be done as follows:
+
+```jldoctest
+julia> st = Whale.example_tree();
+
+julia> set_equalrootrates!(st);
+
+julia> st.rindex
+Dict{Int64,Int64} with 24 entries:
+  18 => 4
+  2  => 2
+  16 => 15
+  11 => 10
+  21 => 7
+  7  => 6
+  9  => 8
+  10 => 9
+  19 => 12
+  17 => 16
+  8  => 7
+  22 => 6
+  6  => 5
+  24 => 11
+  4  => 4
+  3  => 3
+  5  => 2
+  20 => 11
+  23 => 9
+  ⋮  => ⋮
+
 ```
 
 ### Sampling from the prior

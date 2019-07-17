@@ -149,6 +149,17 @@ function non_wgd_parent(s::SlicedTree, n::Int64)
     return x
 end
 
+function wgd_branchchildren(s::SlicedTree, n::Int64)
+    if !haskey(s.qindex, n) ; return Int64[] ; end
+    nodes = Int64[n]
+    r = s.rindex[n]
+    while length(childnodes(s, n)) == 1
+        n = childnodes(s, n)[1]
+        push!(nodes, n)
+    end
+    return nodes        
+end
+
 function wgdbranches(s::SlicedTree)
     x = Tuple{Int64,Int64}[]
     for i in keys(s.qindex)
@@ -160,22 +171,27 @@ end
 function get_parentbranches(s::SlicedTree, node::Int64)
     branches = Int64[]
     n = node
-    while n != 1
+    root = findroot(s)
+    while n != root
         push!(branches, n)
         n = parentnode(s.tree, n)
     end
-    return [branches; [1]]
+    return [branches; [root]]
 end
 
 function branches_to_recompute(s::SlicedTree, node::Int64)
-    branches = Int64[]
+    # order matters!
+    branches = get_parentbranches(s, node)
+    exclude = wgd_branchchildren(s, node)
     for (k, v) in s.rindex
-        v == s.rindex[node] ? branches = [branches ; get_parentbranches(s, k)] :
-            nothing
+        if k in branches || k in exclude
+            continue
+        elseif v == s.rindex[node]
+            branches = [branches ; get_parentbranches(s, k)]
+        end
     end
-    unique!(branches)
+    branches
 end
-
 
 function set_constantrates!(s::SlicedTree)
     for (k, v) in s.rindex

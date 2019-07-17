@@ -319,7 +319,7 @@ function cycle!(w::WhaleChain, D::CCDArray, args...)
     gibbs_sweep!(w, D)
     q_sweep!(w, D)
     wgd_sweep!(w, D)
-    allrates!(w, D)
+    length(D) == 1 ? allrates!(w, D) : nothing  # better mixing when spling π
 end
 
 function log_mcmc(w, io, show_trace, show_every)
