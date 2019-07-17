@@ -299,7 +299,8 @@ function mcmc!(w::WhaleChain, D::CCDArray, n::Int64, args...;
         show_trace=true, show_every=10, backtrack::Bool=true)
     init!(w, D)
     for i=1:n
-        length(w.state[:λ]) == 1 ? allrates!(w, D) : cycle!(w, D, args...)
+        length(w.state[:λ]) == 1 ?
+            cycle_constantrates!(w, D, args...) : cycle!(w, D, args...)
         w.gen += 1
         log_mcmc(w, stdout, show_trace, show_every)
         backtrack ? backtrack!(D, WhaleModel(w)) : nothing
@@ -320,6 +321,13 @@ function cycle!(w::WhaleChain, D::CCDArray, args...)
     q_sweep!(w, D)
     wgd_sweep!(w, D)
     length(D) == 1 ? allrates!(w, D) : nothing  # better mixing when spling π
+end
+
+function cycle_constantrates!(w::WhaleChain, D::CCDArray, args...)
+    !(:ν in args) ? sample_ν!(w) : nothing
+    !(:η in args) ? sample_η!(w, D) : nothing
+    allrates!(w, D)
+    q_sweep!(w, D)
 end
 
 function log_mcmc(w, io, show_trace, show_every)
