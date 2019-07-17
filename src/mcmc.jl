@@ -366,7 +366,7 @@ function sample_η!(x::WhaleChain, D::CCDArray)
     spl = x.samplers[:η]
     η_ = reflect(x[:η] + rand(spl))
     p = logpdf(x, :η=>η_)
-    l = logpdf(WhaleModel(x.S, x[:λ], x[:μ], x[:q], η_), D, 1, matrix=true)
+    l = logpdf(WhaleModel(x.S, x[:λ], x[:μ], x[:q], η_), D, matrix=true)
     a = p + l - x[:π] - x[:l]
     if log(rand()) < a
         x[:η] = η_
