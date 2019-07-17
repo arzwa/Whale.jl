@@ -299,7 +299,7 @@ function mcmc!(w::WhaleChain, D::CCDArray, n::Int64, args...;
         show_trace=true, show_every=10, backtrack::Bool=true)
     init!(w, D)
     for i=1:n
-        cycle!(w, D, args...)
+        length(w.state[:λ]) == 1 ? allrates!(w, D) : cycle!(w, D, args...)
         w.gen += 1
         log_mcmc(w, stdout, show_trace, show_every)
         backtrack ? backtrack!(D, WhaleModel(w)) : nothing

@@ -386,7 +386,7 @@ julia> chain = mcmc!(w, D, 100, show_every=10)
 
 ### MCMC mixing issues
 
-When WGD hypotheses and independent rates across the tree are combined, MCMC in the Whale model relies on informative priors. For some data sets and prior settings the MCMC may have a hard time converging, or some parameter may wander of in an unrealistic area of parameter space. Since there is usually a lot of data, the influence of the prior is often very limited and the likelihood dominates the posterior (which is of course desirable), and it may be necessary to constrain some elements of the model to attain convergence.
+When WGD hypotheses and branch-wise rates across the tree are combined, MCMC in the Whale model can be quite sensitive to the (informative) priors used. For some data sets and prior settings the MCMC algorithm may have a hard time converging, or some parameter may wander of in an unrealistic area of parameter space. Since there is usually a lot of data, the influence of the prior is often very limited and the likelihood dominates the posterior (which is of course desirable), and it may be necessary to constrain some elements of the model to attain convergence.
 
 #### Fixing `η` and/or `ν`
 
