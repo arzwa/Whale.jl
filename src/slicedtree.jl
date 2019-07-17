@@ -27,16 +27,17 @@ struct SlicedTree <: Arboreal
     clades::Dict{Int64,Set{Int64}}
     slices::Dict{Int64,Array{Float64,1}}
     border::Array{Int64,1}  # postorder of species tree branches
+    windex::Dict{String,Int64}
 end
 
 function SlicedTree(tree::Arboreal, wgdconf=Dict(), Δt=0.05, minn=5, maxn=Inf)
     tree = deepcopy(tree)
-    qindex, nindex = add_wgds!(tree, wgdconf)
-    rindex = getrindex(tree.tree, qindex)
-    border = postorder(tree.tree)
-    clades = getclades(tree.tree)
-    slices = getslices(tree.tree, Δt, minn, maxn)
-    SlicedTree(tree.tree, qindex, rindex, tree.leaves, clades, slices, border)
+    qidx, widx = add_wgds!(tree, wgdconf)
+    ridx = getrindex(tree.tree, qidx)
+    ordr = postorder(tree.tree)
+    clds = getclades(tree.tree)
+    slcs = getslices(tree.tree, Δt, minn, maxn)
+    SlicedTree(tree.tree, qidx, ridx, tree.leaves, clds, slcs, ordr, widx)
 end
 
 function SlicedTree(treefile::String, wgdconf=Dict(), Δt=0.05, minn=5, maxn=Inf)
@@ -80,13 +81,19 @@ getslices(T, d::Dict) = getslices(T, d["length"], d["min"], d["max"])
 
 function add_wgds!(T::Arboreal, conf::Dict)
     qindex = Index()
-    nindex = Dict{Int64,String}()
+    nindex = Dict{String,Int64}()
     for (i, (wgd, tup)) in enumerate(conf)
         n = insert_wgd!(T, [string(x) for x in split(tup[1], ",")], tup[2])
         qindex[n] = i
-        nindex[n] = wgd
+        nindex[wgd] = n
     end
     return qindex, nindex
+end
+
+function wgds(S::SlicedTree)
+    for (k, v) in S.windex
+        println("$k → node $v → q$(S.qindex[v])")
+    end
 end
 
 function insert_wgd!(T::Arboreal, lca::Array{String}, t::Number)
