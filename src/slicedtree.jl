@@ -178,9 +178,10 @@ function set_equalrootrates!(s::SlicedTree)
     root = findroot(s)
     a, b = childnodes(s, root)
     c = s.rindex[b]
-    s.rindex[b] = s.rindex[a]
     for (k, v) in s.rindex
-        if v > c && v != s.rindex[a]
+        if v == c
+            s.rindex[k] = s.rindex[a]
+        elseif v > c && v != s.rindex[a]
             s.rindex[k] -= 1
         end
     end
