@@ -25,5 +25,6 @@ module Whale
     export
         SlicedTree, WhaleModel, read_ale, logpdf, nwgd, nrates, nslices, ntaxa,
         CCD, gradient, mle, set_constantrates!, set_equalrootrates!, describe,
-        WhaleChain, GBMModel, IRModel, mcmc!, backtrack!, consensus, wgds
+        WhaleChain, GBMModel, IRModel, mcmc!, backtrack!, consensus, wgds,
+        contreetable, write_consensusrectrees
 end

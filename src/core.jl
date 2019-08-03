@@ -1,4 +1,4 @@
-1# Arthur Zwaenepoel - 2019
+# Arthur Zwaenepoel - 2019
 # some helper types
 # Distributed CCD array
 const CCDArray = DArray{CCD,1,Array{CCD,1}}

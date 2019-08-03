@@ -104,3 +104,17 @@ end
 
 getspecies(S::SlicedTree, n::Int64; sep=",") = join([S.leaves[x] for x in
     S.clades[n]], sep)
+
+function write_consensusrectrees(outdir::String, D::CCDArray, st::SlicedTree)
+    isdir(outdir) ? nothing : mkdir(outdir)
+    crts = consensus(D, st)
+    @showprogress 1 "Writing tree files" for (i, crt) in enumerate(crts)
+        prefix = basename(D[i].fname)
+        open("$outdir/$prefix.nw", "w") do f
+            write(f, crt)
+        end
+        open("$outdir/$prefix.csv", "w") do f
+            contreetable(f, crt, st)
+        end
+    end
+end
