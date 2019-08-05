@@ -114,6 +114,7 @@ function read_ale(fname::String, s::SlicedTree; d=true)
             lines = open(fname, "r") do f
                 readlines(f)
             end
+            lines = [x for x in lines if !startswith(x, "#")]
             D = read_ale(lines, s)
         end
     elseif isdir(fname)
