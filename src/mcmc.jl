@@ -260,8 +260,8 @@ Base.show(io::IO, w::WhaleChain) = write(io, "$(typeof(w))($(w.S))")
 Distributions.logpdf(w::WhaleChain, args...) =
     logpdf(w.prior, w.state, w.S, args...)
 
-function MCMCChains.Chains(w::WhaleChain)
-    X = reshape(Matrix(w.df), (size(w.df)...,1))[:, 2:end, :]
+function MCMCChains.Chains(w::WhaleChain, burnin=1000)
+    X = reshape(Matrix(w.df), (size(w.df)...,1))[burnin+1:end, 2:end, :]
     return Chains(X, [string(x) for x in names(w.df)][2:end])
 end
 

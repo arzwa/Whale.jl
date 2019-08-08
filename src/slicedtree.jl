@@ -157,7 +157,7 @@ function wgd_branchchildren(s::SlicedTree, n::Int64)
         n = childnodes(s, n)[1]
         push!(nodes, n)
     end
-    return nodes        
+    return nodes
 end
 
 function wgdbranches(s::SlicedTree)
