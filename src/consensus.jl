@@ -15,7 +15,11 @@ conditional clade distribution object(s) (CCD).
     loss events.
 """
 function consensus(ccd::CCD, S::SlicedTree, thresh=0.0)
-    rt = PhyloTrees.prune_loss_nodes(ccd.rectrs)
+    rt = try
+        PhyloTrees.prune_loss_nodes(ccd.rectrs)
+    catch
+        throw("Prune loss nodes failed at CCD $(ccd.fname)")
+    end
     ct = majority_consensus(rt, thresh=thresh)
     return consensus(ct, rt)
 end
