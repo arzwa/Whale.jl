@@ -15,7 +15,11 @@ conditional clade distribution object(s) (CCD).
     loss events.
 """
 function consensus(ccd::CCD, S::SlicedTree, thresh=0.0)
-    rt = PhyloTrees.prune_loss_nodes(ccd.rectrs)
+    rt = try
+        PhyloTrees.prune_loss_nodes(ccd.rectrs)
+    catch
+        @warn "Prune loss nodes failed at CCD $(ccd.fname)"
+    end
     ct = majority_consensus(rt, thresh=thresh)
     return consensus(ct, rt)
 end
@@ -105,7 +109,7 @@ end
 getspecies(S::SlicedTree, n::Int64; sep=",") = join([S.leaves[x] for x in
     S.clades[n]], sep)
 
-function write_consensusrectrees(outdir::String, D::CCDArray, st::SlicedTree)
+#=function write_consensusrectrees(outdir::String, D::CCDArray, st::SlicedTree)
     isdir(outdir) ? nothing : mkdir(outdir)
     crts = consensus(D, st)
     @showprogress 1 "Writing tree files " for (i, crt) in enumerate(crts)
@@ -117,4 +121,20 @@ function write_consensusrectrees(outdir::String, D::CCDArray, st::SlicedTree)
             contreetable(f, crt, st)
         end
     end
+end=#
+
+function write_consensusrectrees(outdir::String, D::CCDArray, st::SlicedTree)
+    isdir(outdir) ? nothing : mkdir(outdir)
+    @info "Writing consensus tree files"
+    function writefiles(x)
+        crt = consensus(x, st)
+        prefix = basename(x.fname)
+        open("$outdir/$prefix.nw", "w") do f
+            write(f, crt)
+        end
+        open("$outdir/$prefix.csv", "w") do f
+            contreetable(f, crt, st)
+        end
+    end
+    map(x->writefiles(x), D)  # parallelism
 end
