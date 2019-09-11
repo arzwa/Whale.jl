@@ -1,8 +1,10 @@
 using Whale
 using Test
 using Random
+using Distributions
+using Logging
 
-const tests = ["slicedtree", "ccd", "ale", "mle"]
+const tests = ["slicedtree", "ccd", "ale", "mle", "mcmc-prior"]
 st = Whale.example_tree()
 ccd = read_ale("../example/example-ale/", st)
 

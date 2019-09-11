@@ -16,4 +16,5 @@ makedocs(
 
 deploydocs(
     repo = "github.com/arzwa/Whale.jl.git",
+    target = "build",
 )

@@ -133,7 +133,7 @@ function Distributions.logpdf(m::IRModel, x::State, st::SlicedTree, args...)
         if f == :q
             p += sum(logpdf.(m.q, x_[:q]))
         elseif f == :λ || f == :μ
-            p += logpdf(getfield(m, f), x_[f,1])
+            p += logpdf(getfield(m, f), x_[f,1])  # root rate
             v = repeat([log(x_[f,1])], nrates(st)-1)
             p += logpdf(MvLogNormal(v, x_[:ν]), x_[f][2:end])
         else
@@ -336,7 +336,7 @@ end
 
 function sample_ν!(x::WhaleChain)
     prop = x.proposals[:ν]
-    ν_, hr = scale(prop, x[:ν])
+    ν_, hr = AdaptiveMCMC.scale(prop, x[:ν])
     p = logpdf(x, :ν=>ν_)
     a = p - x[:π] + hr
     if log(rand()) < a
@@ -344,12 +344,12 @@ function sample_ν!(x::WhaleChain)
         x[:π] = p
         prop.accepted += 1
     end
-    consider_adaptation!(prop, x.gen)
+    AdaptiveMCMC.consider_adaptation!(prop, x.gen)
 end
 
 function sample_η!(x::WhaleChain, D::CCDArray)
     prop = x.proposals[:η]
-    η_ = reflect(rw(prop, x[:η])[1])
+    η_ = AdaptiveMCMC.reflect(rw(prop, x[:η])[1])
     p = logpdf(x, :η=>η_)
     l = logpdf(WhaleModel(x.S, x[:λ], x[:μ], x[:q], η_), D, matrix=true)
     a = p + l - x[:π] - x[:l]
@@ -360,7 +360,7 @@ function sample_η!(x::WhaleChain, D::CCDArray)
         prop.accepted += 1
         set_recmat!(D)
     end
-    consider_adaptation!(prop, x.gen)
+    AdaptiveMCMC.consider_adaptation!(prop, x.gen)
 end
 
 function gibbs_sweep!(x::WhaleChain, D::CCDArray)
@@ -369,8 +369,8 @@ function gibbs_sweep!(x::WhaleChain, D::CCDArray)
         haskey(x.S.qindex, i) ? continue : nothing
         idx = x.S.rindex[i]
         prop = x.proposals[:λ, idx]
-        λᵢ, hr1 = scale(prop, x[:λ, idx])
-        μᵢ, hr2 = scale(prop, x[:μ, idx])
+        λᵢ, hr1 = AdaptiveMCMC.scale(prop, x[:λ, idx])
+        μᵢ, hr2 = AdaptiveMCMC.scale(prop, x[:μ, idx])
         λ_ = deepcopy(x[:λ]) ; λ_[idx] = λᵢ
         μ_ = deepcopy(x[:μ]) ; μ_[idx] = μᵢ
         p = logpdf(x, :λ=>λ_, :μ=>μ_)
@@ -384,7 +384,7 @@ function gibbs_sweep!(x::WhaleChain, D::CCDArray)
             prop.accepted += 1
             set_recmat!(D)
         end
-        consider_adaptation!(prop, x.gen)
+        AdaptiveMCMC.consider_adaptation!(prop, x.gen)
     end
 end
 
@@ -394,9 +394,9 @@ function wgd_sweep!(x::WhaleChain, D::CCDArray)
         qidx = x.S.qindex[b]
         propr = x.proposals[:λ, idx]
         propq = x.proposals[:q, qidx]
-        λᵢ, hr1 = scale(propr, x[:λ, idx])
-        μᵢ, hr2 = scale(propr, x[:μ, idx])
-        qᵢ = reflect(rw(propq, x[:q, qidx])[1])
+        λᵢ, hr1 = AdaptiveMCMC.scale(propr, x[:λ, idx])
+        μᵢ, hr2 = AdaptiveMCMC.scale(propr, x[:μ, idx])
+        qᵢ = AdaptiveMCMC.reflect(rw(propq, x[:q, qidx])[1])
         λ_ = deepcopy(x[:λ]) ; λ_[idx]  = λᵢ
         μ_ = deepcopy(x[:μ]) ; μ_[idx]  = μᵢ
         q_ = deepcopy(x[:q]) ; q_[qidx] = qᵢ
@@ -418,7 +418,7 @@ end
 function q_sweep!(x::WhaleChain, D::CCDArray)
     for (b, i) in x.S.qindex
         prop = x.proposals[:q, i]
-        qᵢ = reflect(rw(prop, x[:q, i])[1])
+        qᵢ = AdaptiveMCMC.reflect(rw(prop, x[:q, i])[1])
         q_ = deepcopy(x[:q]) ; q_[i] = qᵢ
         p = logpdf(x, :q=>q_)
         l = logpdf(WhaleModel(x.S, x[:λ], x[:μ], q_, x[:η]), D, b, matrix=true)
@@ -430,14 +430,14 @@ function q_sweep!(x::WhaleChain, D::CCDArray)
             prop.accepted += 1
             set_recmat!(D)
         end
-        consider_adaptation!(prop, x.gen)
+        AdaptiveMCMC.consider_adaptation!(prop, x.gen)
     end
 end
 
 function allrates!(x::WhaleChain, D::CCDArray)
-    prop = x.samplers[:ψ]
-    λ_, hr1 = scale(prop, x[:λ])
-    μ_, hr2 = scale(prop, x[:μ])
+    prop = x.proposals[:ψ]
+    λ_, hr1 = AdaptiveMCMC.scale(prop, x[:λ])
+    μ_, hr2 = AdaptiveMCMC.scale(prop, x[:μ])
     p = logpdf(x, :λ=>λ_, :μ=>μ_)
     l = logpdf(WhaleModel(x.S, λ_, μ_, x[:q], x[:η]), D, matrix=true)
     a = p + l - x[:π] - x[:l] + hr1 + hr2
@@ -449,5 +449,5 @@ function allrates!(x::WhaleChain, D::CCDArray)
         prop.accepted += 1
         set_recmat!(D)
     end
-    consider_adaptation!(prop, x.gen)
+    AdaptiveMCMC.consider_adaptation!(prop, x.gen)
 end
