@@ -13,14 +13,15 @@ uses the approach whereby rates are defined for midpoints of branches, and where
 a correction is performed to ensure that the correlation is proper (in contrast
 with Thorne et al. 1998).
 """
-struct GeometricBrownianMotion{T<:Real} <: ContinuousMultivariateDistribution
-    t::SlicedTree
+struct GeometricBrownianMotion{T<:Real,Ψ<:Arboreal} <:
+        ContinuousMultivariateDistribution
+    t::Ψ
     r::T  # rate at root
     ν::T  # autocorrelation strength
 end
 
 const GBM = GeometricBrownianMotion
-GBM(t::SlicedTree, r::Real, v::Real) = GBM(t, promote(r, v)...)
+GBM(t::Ψ, r::Real, v::Real) where Ψ<:Arboreal = GBM(t, promote(r, v)...)
 
 # Base extensions
 Base.length(d::GBM) = nrates(d.t)
