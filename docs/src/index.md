@@ -36,6 +36,9 @@ To perform analyses with Whale, you will need
 2. A bunch of ALE files, which summarize the **conditional clade distributions** (CCDs) for the same bunch of gene families. These can be obtained from a sample of the posterior distribution of gene trees using the [`ALEobserve`](https://github.com/ssolo/ALE) tool. A pipeline to obtain these from a set of gene family protein fasta files is available at [github](https://github.com/arzwa/whaleprep).
 
 !!! note
+    Gene IDs should be prefixed by the name of the species to which the gene belongs as used in the species tree. For example if *Arabidopsis thaliana* is represented by `ATHA` in the species tree newick file, then the genes should be prefixed with `ATHA_`, e.g. `ATHA_AT1G05000`.
+
+!!! note
     Analyzing CCDs (ALE files) with a very large number of clades or for very large families can be prohibitive computationally. It is therefore generally advisable that large orthogroups are filtered out based on some criterion (for example using the script `orthofilter.py` in the scripts directory of the Whale repository). To filter out families with very large numbers of clades in the CCD (which reflects that there is a lot of uncertainty in the gene tree), the scripts `ccddata.py` and `ccdfilter.py` can be used. This is a rather *ad hoc* filtering procedure, but can be useful to filter out families that trouble the analysis.
 
 !!! warning
