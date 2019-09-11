@@ -4,6 +4,7 @@ authors = ["Arthur ZWAENEPOEL <arzwa@psb.ugent.be>"]
 version = "0.3.0"
 
 [deps]
+AdaptiveMCMC = "7599756a-d2e4-11e9-0d0e-31645f1f853c"
 ConsensusTrees = "d3d4590a-60df-11e9-122f-f56e3d820c59"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"

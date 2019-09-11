@@ -9,6 +9,7 @@ module Whale
     using Random
     using MCMCChains
     using DataFrames
+    using AdaptiveMCMC
     import ProgressMeter: @showprogress
     import Distributions: @check_args, logpdf
 

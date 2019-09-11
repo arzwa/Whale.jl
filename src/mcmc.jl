@@ -155,40 +155,28 @@ function Base.rand(m::IRModel, st)
     return x
 end
 
-# Samplers
-# ========
-mutable struct Sampler
-    accepted::Int64
-    tuneinterval::Int64
-    kernel::Normal{Float64}
-end
 
-Sampler(σ::Float64, tuning=50) = Sampler(0, tuning, Normal(0., σ))
+"""
+    get_defaultproposals(x::State)
 
-Base.rand(spl::Sampler) = rand(spl.kernel)
-Base.rand(spl::Sampler, n::Int64) = rand(spl.kernel, n)
-
-const Samplers = Dict{Symbol,Union{Vector{Sampler},Sampler}}
-Base.getindex(spl::Samplers, s::Symbol, i::Int64) = spl[s][i]
-
-function get_samplers(x::State, σ=0.05)
-    s = Samplers()
+Get the default adaptive proposal distributions. Proposal kernels for λ, μ and
+ν are on the positive real line, so a uniform proposal with scale update
+is taken. For q and η a uniform proposal with random walk update is taken be
+default.
+"""
+function get_defaultproposals(x::State)
+    proposals = Proposals()
     for (k, v) in x
-        s[k] = typeof(v) <: AbstractArray ?
-            [Sampler(σ) for i=1:length(v)] : Sampler(σ)
+        if k ∈ [:π, :l]
+            continue
+        elseif typeof(v) <: AbstractArray
+            proposals[k] = [AdaptiveUnProposal() for i=1:length(v)]
+        else
+            proposals[k] = AdaptiveUnProposal()
+        end
     end
-    s[:ψ] = Sampler(σ)
-    return s
-end
-
-function adapt!(spl::Sampler, gen::Int64, target=0.25, bound=5., δmax=0.25)
-    gen == 0 ? (return) : nothing
-    δn = min(δmax, 1. /√(gen/spl.tuneinterval))
-    α = spl.accepted / spl.tuneinterval
-    lσ = α > target ? log(spl.kernel.σ) + δn : log(spl.kernel.σ) - δn
-    lσ = abs(lσ) > bound ? sign(lσ) * bound : lσ
-    spl.kernel = Normal(0., exp(lσ))
-    spl.accepted = 0
+    proposals[:ψ] = AdaptiveUnProposal()  # all-rates proposal
+    return proposals
 end
 
 # Chain
@@ -236,16 +224,16 @@ mutable struct WhaleChain{T<:Model}
     S::SlicedTree
     state::State
     prior::T
-    samplers::Samplers
+    proposals::Proposals
     gen::Int64
     wgdbranches::Array{Tuple{Int64,Int64}}
     df::DataFrame
 
-    WhaleChain(s::SlicedTree, π::T, x::State, spl::Samplers) where T<:Model =
-        new{T}(s, x, π, spl, 0, wgdbranches(s), DataFrame())
+    WhaleChain(s::SlicedTree, π::T, x::State, prop::Proposals) where T<:Model =
+        new{T}(s, x, π, prop, 0, wgdbranches(s), DataFrame())
 end
 
-WhaleChain(st, π, x) = WhaleChain(st, π, x, get_samplers(x))
+WhaleChain(st, π, x) = WhaleChain(st, π, x, get_defaultproposals(x))
 WhaleChain(st, π) = WhaleChain(st, π, init_state(π, st))
 WhaleChain(st) = WhaleChain(st, GBMModel(st))
 WhaleModel(w::WhaleChain) = WhaleModel(w.S, w[:λ], w[:μ], w[:q], w[:η])
@@ -333,9 +321,8 @@ end
 function log_mcmc(w, io, show_trace, show_every)
     if w.gen == 1
         s = w.state
-        x = [typeof(v)<:AbstractArray ? ["$k$i" for i in 1:length(v)] :
-                k for (k,v) in s]
-        x = vcat("gen", x...)
+        x = vcat("gen", [typeof(v)<:AbstractArray ?
+                ["$k$i" for i in 1:length(v)] : k for (k,v) in s]...)
         w.df = DataFrame(zeros(0,length(x)), [Symbol(k) for k in x])
         show_trace ? write(io, join(x, ","), "\n") : nothing
     end
@@ -348,23 +335,21 @@ function log_mcmc(w, io, show_trace, show_every)
 end
 
 function sample_ν!(x::WhaleChain)
-    spl = x.samplers[:ν]
-    ν_ = x[:ν] + rand(spl)
-    ν_ < 0. ? (return) : nothing
+    prop = x.proposals[:ν]
+    ν_, hr = scale(prop, x[:ν])
     p = logpdf(x, :ν=>ν_)
-    a = p - x[:π]
+    a = p - x[:π] + hr
     if log(rand()) < a
         x[:ν] = ν_
         x[:π] = p
-        spl.accepted += 1
+        prop.accepted += 1
     end
-    x.gen % spl.tuneinterval == 0 ? adapt!(spl, x.gen) : nothing
-    return
+    consider_adaptation!(prop, x.gen)
 end
 
 function sample_η!(x::WhaleChain, D::CCDArray)
-    spl = x.samplers[:η]
-    η_ = reflect(x[:η] + rand(spl))
+    prop = x.proposals[:η]
+    η_ = reflect(rw(prop, x[:η])[1])
     p = logpdf(x, :η=>η_)
     l = logpdf(WhaleModel(x.S, x[:λ], x[:μ], x[:q], η_), D, matrix=true)
     a = p + l - x[:π] - x[:l]
@@ -372,11 +357,10 @@ function sample_η!(x::WhaleChain, D::CCDArray)
         x[:η] = η_
         x[:π] = p
         x[:l] = l
-        spl.accepted += 1
+        prop.accepted += 1
         set_recmat!(D)
     end
-    x.gen % spl.tuneinterval == 0 ? adapt!(spl, x.gen) : nothing
-    return
+    consider_adaptation!(prop, x.gen)
 end
 
 function gibbs_sweep!(x::WhaleChain, D::CCDArray)
@@ -384,24 +368,23 @@ function gibbs_sweep!(x::WhaleChain, D::CCDArray)
         # WGD branches have the same rates before and after WGD
         haskey(x.S.qindex, i) ? continue : nothing
         idx = x.S.rindex[i]
-        spl = x.samplers[:λ, idx]
-        λᵢ = x[:λ, idx] + rand(spl)
-        μᵢ = x[:μ, idx] + rand(spl)
-        λᵢ < 0. || μᵢ < 0. ? continue : nothing
-        λ_ = deepcopy(x[:λ]); μ_ = deepcopy(x[:μ])
-        λ_[idx] = λᵢ; μ_[idx] = μᵢ
+        prop = x.proposals[:λ, idx]
+        λᵢ, hr1 = scale(prop, x[:λ, idx])
+        μᵢ, hr2 = scale(prop, x[:μ, idx])
+        λ_ = deepcopy(x[:λ]) ; λ_[idx] = λᵢ
+        μ_ = deepcopy(x[:μ]) ; μ_[idx] = μᵢ
         p = logpdf(x, :λ=>λ_, :μ=>μ_)
         l = logpdf(WhaleModel(x.S, λ_, μ_, x[:q], x[:η]), D, i, matrix=true)
-        a = p + l - x[:π] - x[:l]
+        a = p + l - x[:π] - x[:l] + hr1 + hr2
         if log(rand()) < a
             x[:λ, idx] = λᵢ
             x[:μ, idx] = μᵢ
             x[:π] = p
             x[:l] = l
-            spl.accepted += 1
+            prop.accepted += 1
             set_recmat!(D)
         end
-        x.gen % spl.tuneinterval == 0 ? adapt!(spl, x.gen) : nothing
+        consider_adaptation!(prop, x.gen)
     end
 end
 
@@ -409,17 +392,17 @@ function wgd_sweep!(x::WhaleChain, D::CCDArray)
     for (b, i) in x.wgdbranches
         idx = x.S.rindex[i]
         qidx = x.S.qindex[b]
-        splr = x.samplers[:λ, idx]
-        splq = x.samplers[:q, qidx]
-        λᵢ = x[:λ, idx] + rand(splr)
-        μᵢ = x[:μ, idx] + rand(splr)
-        λᵢ < 0. || μᵢ < 0. ? continue : nothing
-        qᵢ = reflect(x[:q, qidx] + rand(splq))
-        λ_ = deepcopy(x[:λ]); μ_ = deepcopy(x[:μ]); q_ = deepcopy(x[:q])
-        λ_[idx] = λᵢ; μ_[idx] = μᵢ; q_[qidx] = qᵢ
+        propr = x.proposals[:λ, idx]
+        propq = x.proposals[:q, qidx]
+        λᵢ, hr1 = scale(propr, x[:λ, idx])
+        μᵢ, hr2 = scale(propr, x[:μ, idx])
+        qᵢ = reflect(rw(propq, x[:q, qidx])[1])
+        λ_ = deepcopy(x[:λ]) ; λ_[idx]  = λᵢ
+        μ_ = deepcopy(x[:μ]) ; μ_[idx]  = μᵢ
+        q_ = deepcopy(x[:q]) ; q_[qidx] = qᵢ
         p = logpdf(x, :λ=>λ_, :μ=>μ_, :q=>q_)
         l = logpdf(WhaleModel(x.S, λ_, μ_, q_, x[:η]), D, i, matrix=true)
-        a = p + l - x[:π] - x[:l]
+        a = p + l - x[:π] - x[:l] + hr1 + hr2
         # NOTE: no adaptation based on this proposal; because both q and rates
         if log(rand()) < a
             x[:λ, idx] = λᵢ
@@ -434,10 +417,9 @@ end
 
 function q_sweep!(x::WhaleChain, D::CCDArray)
     for (b, i) in x.S.qindex
-        spl = x.samplers[:q, i]
-        qᵢ = reflect(x[:q, i] + rand(spl))
-        q_ = deepcopy(x[:q])
-        q_[i] = qᵢ
+        prop = x.proposals[:q, i]
+        qᵢ = reflect(rw(prop, x[:q, i])[1])
+        q_ = deepcopy(x[:q]) ; q_[i] = qᵢ
         p = logpdf(x, :q=>q_)
         l = logpdf(WhaleModel(x.S, x[:λ], x[:μ], q_, x[:η]), D, b, matrix=true)
         a = p + l - x[:π] - x[:l]
@@ -445,38 +427,27 @@ function q_sweep!(x::WhaleChain, D::CCDArray)
             x[:q, i] = qᵢ
             x[:π] = p
             x[:l] = l
-            spl.accepted += 1
+            prop.accepted += 1
             set_recmat!(D)
         end
-        x.gen % spl.tuneinterval == 0 ? adapt!(spl, x.gen) : nothing
+        consider_adaptation!(prop, x.gen)
     end
 end
 
 function allrates!(x::WhaleChain, D::CCDArray)
-    spl = x.samplers[:ψ]
-    λ_ = x[:λ] .+ rand(spl)
-    μ_ = x[:μ] .+ rand(spl)
-    if any(x -> (x <= 0.), λ_) || any(x -> (x <= 0.), μ_)
-        return
-    end
+    prop = x.samplers[:ψ]
+    λ_, hr1 = scale(prop, x[:λ])
+    μ_, hr2 = scale(prop, x[:μ])
     p = logpdf(x, :λ=>λ_, :μ=>μ_)
     l = logpdf(WhaleModel(x.S, λ_, μ_, x[:q], x[:η]), D, matrix=true)
-    a = p + l - x[:π] - x[:l]
+    a = p + l - x[:π] - x[:l] + hr1 + hr2
     if log(rand()) < a
         x[:λ] = λ_
         x[:μ] = μ_
         x[:π] = p
         x[:l] = l
-        spl.accepted += 1
+        prop.accepted += 1
         set_recmat!(D)
     end
-    x.gen % spl.tuneinterval == 0 ? adapt!(spl, x.gen) : nothing
-end
-
-function reflect(x::Float64, a::Float64=0., b::Float64=1.)
-    while !(a <= x <= b)
-        x = x < a ? 2a - x : x
-        x = x > b ? 2b - x : x
-    end
-    return x
+    consider_adaptation!(prop, x.gen)
 end
