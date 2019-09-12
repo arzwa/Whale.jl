@@ -296,7 +296,7 @@ Perform `n` generations of MCMC sampling for a `WhaleChain` given a bunch of
 observed CCDs.
 """
 function mcmc!(w::WhaleChain, D::CCDArray, n::Int64, args...;
-        show_trace=true, show_every=10, backtrack::Bool=true)
+        show_trace=true, show_every=10, backtrack::Bool=false)
     init!(w, D)
     for i=1:n
         length(w.state[:λ]) == 1 ?

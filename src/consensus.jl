@@ -121,7 +121,7 @@ getspecies(S::SlicedTree, n::Int64; sep=",") = join([S.leaves[x] for x in
             contreetable(f, crt, st)
         end
     end
-end =#
+end=#
 
 function write_consensusrectrees(outdir::String, D::CCDArray, st::SlicedTree)
     isdir(outdir) ? nothing : mkdir(outdir)
