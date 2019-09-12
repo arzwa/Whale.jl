@@ -4,9 +4,9 @@ makedocs(
     modules = [Whale],
     #format = LaTeX(),
     #format = Markdown(),
-    format = Documenter.HTML(),
+    format = :html,
     sitename = "Whale.jl",
-    author = "Arthur Zwaenepoel",
+    authors = "Arthur Zwaenepoel",
     doctest = :fix,
     pages = [
         "Introduction" => "index.md",
