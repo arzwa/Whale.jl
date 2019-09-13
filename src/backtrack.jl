@@ -159,6 +159,8 @@ function bt_wgd!(R::RecTree, node::Int64, γ::Int64, e::Int64, ccd::CCD,
     q = w.q[w.S[e, :q]]
 
     # add wgd node
+    # NOTE: adding a WGD node in the case of non-retention messes up consensus
+    # reconciliation trees.
     # wgd_node = add_wgd_node!(R, e, node, γ, ccd.blens[γ])
 
     # non-retention/loss, currently no loss node added

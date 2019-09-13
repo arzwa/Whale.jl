@@ -447,6 +447,9 @@ julia> chain = mcmc!(w, 10000, :η)   # e.g. with fixed η
 
 ## Backtracking and consensus reconciled trees
 
+!!! warning
+    Backtracking functionalities are still quite experimental and prone to change.
+
 To backtrack reconciled trees for a particular CCD from a parameterized `WhaleModel` and compute majority-vote consensus trees one can use the following methods
 
 ```julia-repl
