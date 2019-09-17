@@ -78,23 +78,31 @@ function wgd_summary(rectrees::Array{RecTree}, st::SlicedTree)
             if v == "wgd"
                 wgd = rt.σ[k]
                 wgd_id = [k for (k,v) in st.windex if v == wgd][1]
-                genes = Set(leafset(k, rt))
-                h = hash((wgd, genes))
-                !haskey(d, h) ? d[h] = Dict("wgd"=>wgd, "wgd_id"=>wgd_id,
-                    "genes"=>genes, "x"=>1) : d[h]["x"] += 1
+                genes = Set(leafset(rt, k))
+                children = childnodes(rt, k)
+                genes1 = Set(leafset(rt, children[1]))
+                genes2 = Set(leafset(rt, children[2]))
+                @show Set([genes1, genes2])
+                h = hash((wgd, Set([genes1, genes2])))
+                !haskey(d, h) ?
+                    d[h] = Dict(
+                        "wgd"=>wgd, "wgd_id"=>wgd_id,
+                        "genes1"=>genes1, "genes2"=>genes2,
+                        "x"=>1) :
+                    d[h]["x"] += 1
             end
         end
     end
-    df = DataFrame(
-        :wgd=>Int64[], :wgd_id=>String[], :x=>Float64[], :genes=>String[])
+    df = DataFrame(:wgd=>Int64[], :wgd_id=>String[], :x=>Float64[],
+        :genes1=>String[], :genes2=>String[])
     for (k,v) in d
-        push!(df, [v["wgd"], v["wgd_id"],
-            v["x"]/length(rectrees), join(v["genes"], ";")])
+        push!(df, [v["wgd"], v["wgd_id"], v["x"]/length(rectrees),
+             join(v["genes1"], ";"), join(v["genes2"], ";")])
     end
     df
 end
 
-leafset(node::Int64, tree::Arboreal) = [tree.leaves[n] for n in
+leafset(tree::Arboreal, node::Int64) = [tree.leaves[n] for n in
     [node ; descendantnodes(tree.tree, node)] if haskey(tree.leaves, n)]
 
 hashnode(node::Int64, tree::Arboreal) = hash(Set(leafset(node, tree)))

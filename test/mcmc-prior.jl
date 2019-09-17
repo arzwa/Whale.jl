@@ -18,8 +18,8 @@ end
 end
 
 @testset "Independent rate model - ν" begin
-    @test isapprox(mean(w.df[:ν]), mean(w.prior.ν), atol=0.02)
-    @test isapprox(std(w.df[:ν]), std(w.prior.ν), atol=0.02)
+    @test isapprox(mean(w.df[:ν]), mean(w.prior.ν), atol=0.05)
+    @test isapprox(std(w.df[:ν]), std(w.prior.ν), atol=0.05)
 end
 
 @testset "Independent rate model - λ, μ (1)" begin

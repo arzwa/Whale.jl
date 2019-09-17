@@ -122,7 +122,7 @@ struct IRModel <: Model
     q::Prior
 end
 
-IRModel(st::SlicedTree, ν=InverseGamma(15), η=Beta(10, 1), λ=Exponential(1),
+IRModel(st::SlicedTree, ν=InverseGamma(5,1), η=Beta(10, 1), λ=Exponential(1),
     μ=Exponential(1), q=[Beta(1,1) for i=1:nwgd(st)]) = IRModel(ν, η, λ, μ, q)
 
 function Distributions.logpdf(m::IRModel, x::State, st::SlicedTree, args...)
@@ -169,13 +169,17 @@ function get_defaultproposals(x::State)
     for (k, v) in x
         if k ∈ [:π, :l]
             continue
+        elseif k == :q
+            proposals[k] = [AdaptiveUnitProposal(0.2) for i=1:length(v)]
         elseif typeof(v) <: AbstractArray
-            proposals[k] = [AdaptiveUnProposal() for i=1:length(v)]
-        else
-            proposals[k] = AdaptiveUnProposal()
+            proposals[k] = [AdaptiveScaleProposal(0.1) for i=1:length(v)]
+        elseif k == :ν
+            proposals[k] = AdaptiveScaleProposal(0.5)
+        elseif k == :η
+            proposals[k] = AdaptiveUnitProposal(0.2)
         end
     end
-    proposals[:ψ] = AdaptiveUnProposal()  # all-rates proposal
+    proposals[:ψ] = AdaptiveScaleProposal(0.5) # all-rates proposal
     return proposals
 end
 
@@ -336,7 +340,7 @@ end
 
 function sample_ν!(x::WhaleChain)
     prop = x.proposals[:ν]
-    ν_, hr = AdaptiveMCMC.scale(prop, x[:ν])
+    ν_, hr = prop(x[:ν])
     p = logpdf(x, :ν=>ν_)
     a = p - x[:π] + hr
     if log(rand()) < a
@@ -349,7 +353,7 @@ end
 
 function sample_η!(x::WhaleChain, D::CCDArray)
     prop = x.proposals[:η]
-    η_ = AdaptiveMCMC.reflect(rw(prop, x[:η])[1])
+    η_, hr = prop(x[:η])
     p = logpdf(x, :η=>η_)
     l = logpdf(WhaleModel(x.S, x[:λ], x[:μ], x[:q], η_), D, matrix=true)
     a = p + l - x[:π] - x[:l]
@@ -369,8 +373,8 @@ function gibbs_sweep!(x::WhaleChain, D::CCDArray)
         haskey(x.S.qindex, i) ? continue : nothing
         idx = x.S.rindex[i]
         prop = x.proposals[:λ, idx]
-        λᵢ, hr1 = AdaptiveMCMC.scale(prop, x[:λ, idx])
-        μᵢ, hr2 = AdaptiveMCMC.scale(prop, x[:μ, idx])
+        λᵢ, hr1 = prop(x[:λ, idx])
+        μᵢ, hr2 = prop(x[:μ, idx])
         λ_ = deepcopy(x[:λ]) ; λ_[idx] = λᵢ
         μ_ = deepcopy(x[:μ]) ; μ_[idx] = μᵢ
         p = logpdf(x, :λ=>λ_, :μ=>μ_)
@@ -394,9 +398,9 @@ function wgd_sweep!(x::WhaleChain, D::CCDArray)
         qidx = x.S.qindex[b]
         propr = x.proposals[:λ, idx]
         propq = x.proposals[:q, qidx]
-        λᵢ, hr1 = AdaptiveMCMC.scale(propr, x[:λ, idx])
-        μᵢ, hr2 = AdaptiveMCMC.scale(propr, x[:μ, idx])
-        qᵢ = AdaptiveMCMC.reflect(rw(propq, x[:q, qidx])[1])
+        λᵢ, hr1 = propr(x[:λ, idx])
+        μᵢ, hr2 = propr(x[:μ, idx])
+        qᵢ, hr3 = propq(x[:q, qidx])
         λ_ = deepcopy(x[:λ]) ; λ_[idx]  = λᵢ
         μ_ = deepcopy(x[:μ]) ; μ_[idx]  = μᵢ
         q_ = deepcopy(x[:q]) ; q_[qidx] = qᵢ
@@ -418,7 +422,7 @@ end
 function q_sweep!(x::WhaleChain, D::CCDArray)
     for (b, i) in x.S.qindex
         prop = x.proposals[:q, i]
-        qᵢ = AdaptiveMCMC.reflect(rw(prop, x[:q, i])[1])
+        qᵢ, hr = prop(x[:q, i])
         q_ = deepcopy(x[:q]) ; q_[i] = qᵢ
         p = logpdf(x, :q=>q_)
         l = logpdf(WhaleModel(x.S, x[:λ], x[:μ], q_, x[:η]), D, b, matrix=true)
@@ -436,8 +440,8 @@ end
 
 function allrates!(x::WhaleChain, D::CCDArray)
     prop = x.proposals[:ψ]
-    λ_, hr1 = AdaptiveMCMC.scale(prop, x[:λ])
-    μ_, hr2 = AdaptiveMCMC.scale(prop, x[:μ])
+    λ_, hr1 = prop(x[:λ])
+    μ_, hr2 = prop(x[:μ])
     p = logpdf(x, :λ=>λ_, :μ=>μ_)
     l = logpdf(WhaleModel(x.S, λ_, μ_, x[:q], x[:η]), D, matrix=true)
     a = p + l - x[:π] - x[:l] + hr1 + hr2
