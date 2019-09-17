@@ -71,6 +71,29 @@ function addrectodist!(dist, tree::RecTree)
     walk(findroots(tree.tree)[1])
 end
 
+function wgd_summary(rectrees::Array{RecTree}, st::SlicedTree)
+    d = Dict()
+    for rt in rectrees
+        for (k,v) in rt.labels
+            if v == "wgd"
+                wgd = rt.σ[k]
+                wgd_id = [k for (k,v) in st.windex if v == wgd][1]
+                genes = Set(leafset(k, rt))
+                h = hash((wgd, genes))
+                !haskey(d, h) ? d[h] = Dict("wgd"=>wgd, "wgd_id"=>wgd_id,
+                    "genes"=>genes, "x"=>1) : d[h]["x"] += 1
+            end
+        end
+    end
+    df = DataFrame(
+        :wgd=>Int64[], :wgd_id=>String[], :x=>Float64[], :genes=>String[])
+    for (k,v) in d
+        push!(df, [v["wgd"], v["wgd_id"],
+            v["x"]/length(rectrees), join(v["genes"], ";")])
+    end
+    df
+end
+
 leafset(node::Int64, tree::Arboreal) = [tree.leaves[n] for n in
     [node ; descendantnodes(tree.tree, node)] if haskey(tree.leaves, n)]
 
@@ -109,10 +132,10 @@ end
 getspecies(S::SlicedTree, n::Int64; sep=",") = join([S.leaves[x] for x in
     S.clades[n]], sep)
 
-#=function write_consensusrectrees(outdir::String, D::CCDArray, st::SlicedTree)
+#= serial version function  write_consensusrectrees(outdir::String, D::CCDArray, st::SlicedTree)
     isdir(outdir) ? nothing : mkdir(outdir)
-    crts = consensus(D, st)
-    @showprogress 1 "Writing tree files " for (i, crt) in enumerate(crts)
+    @showprogress 1 "Writing tree files " for (i, ccd) in enumerate(D)
+        crt = consensus(ccd, st)
         prefix = basename(D[i].fname)
         open("$outdir/$prefix.nw", "w") do f
             write(f, crt)
@@ -134,6 +157,9 @@ function write_consensusrectrees(outdir::String, D::CCDArray, st::SlicedTree)
         end
         open("$outdir/$prefix.csv", "w") do f
             contreetable(f, crt, st)
+        end
+        open("$outdir/$prefix.wgd.csv", "w") do f
+            CSV.write(f, wgd_summary(x.rectrs, st))
         end
     end
     map(x->writefiles(x), D)  # parallelism

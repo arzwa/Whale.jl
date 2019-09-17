@@ -159,19 +159,23 @@ function bt_wgd!(R::RecTree, node::Int64, γ::Int64, e::Int64, ccd::CCD,
     q = w.q[w.S[e, :q]]
 
     # add wgd node
-    wgd_node = add_wgd_node!(R, e, node, γ, ccd.blens[γ])
+    # NOTE: adding a WGD node in the case of non-retention messes up consensus
+    # reconciliation trees.
+    # wgd_node = add_wgd_node!(R, e, node, γ, ccd.blens[γ])
 
     # non-retention/loss, currently no loss node added
     r, γ = wgd_non_bifurcation(r, ccd, γ, w.ε[f][end], f, q)
     #r -= wgd_nonretention(γ, q, f, ccd) + wgd_loss(γ, q, w.ε[f][end], f, ccd)
     if r < 0.
         #add_loss_node!(R, f, wgd_node)
-        return backtrack!(R, wgd_node, γ, f, nslices(w.S, f), ccd, w)
+        # return backtrack!(R, wgd_node, γ, f, nslices(w.S, f), ccd, w)
+        return backtrack!(R, node, γ, f, nslices(w.S, f), ccd, w)
     end
 
     # retention
     r, γ1, γ2 = wgd_retention(r, ccd, γ, f, q)
     if r < 0.
+        wgd_node = add_wgd_node!(R, e, node, γ, ccd.blens[γ])
         backtrack!(R, wgd_node, γ1, f, nslices(w.S, f), ccd, w)
         backtrack!(R, wgd_node, γ2, f, nslices(w.S, f), ccd, w)
         return
@@ -193,7 +197,7 @@ end
 
 # wgd non-retention/loss
 function wgd_non_bifurcation(r, ccd, γ, ε, f, q)
-    r -= (1-q+2q*ε) * ccd.recmat[f][γ, end]
+    r -= (1. - q + 2q*ε) * ccd.recmat[f][γ, end]
     return r, γ
 end
 
