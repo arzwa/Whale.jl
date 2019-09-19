@@ -2,8 +2,15 @@
 # coding: utf-8
 # author: Arthur Zwaenepoel
 import sys
+import textwrap
+DESCRIPTION = """Use this script to filter an OrthoFinder output data frame based on several criteria. The different criteria that can be used are: (0) at least one gene in both clades: for this you have to specify one clade as a comma-separated string of taxa, and the data frame will be filtered such that there is at least one gene both in the specified clade and its complement. (1) Outlier families: this filters out large families based on a Poisson outlier criterion, i.e. exclude families where the square root of the family size exceeds 2 x median(square root of family size). (2) Outlier lineages: This filters out families where at least one of the lineages has a number of genes that exceeds the Poisson outlier criterion. To specify for instance filter 0 and 1 (recommended filters), use '0,1' as last argument
+"""
 if not 4 <= len(sys.argv) <= 5:
     print("Usage: {} <orthogroups.tsv> <clade1> <out> [filter]".format(sys.argv[0]))
+    wrapper = textwrap.TextWrapper(width=80)
+    desc = wrapper.wrap(text=DESCRIPTION)
+    for l in desc:
+        print("  | {}".format(l))
     exit()
 import pandas as pd
 import numpy as np

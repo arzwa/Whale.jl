@@ -179,6 +179,7 @@ function get_parentbranches(s::SlicedTree, node::Int64)
     return [branches; [root]]
 end
 
+# TODO should take the approach implemented in Beluga (more efficient)
 function branches_to_recompute(s::SlicedTree, node::Int64)
     # order matters!
     branches = get_parentbranches(s, node)
@@ -190,7 +191,7 @@ function branches_to_recompute(s::SlicedTree, node::Int64)
             branches = [branches ; get_parentbranches(s, k)]
         end
     end
-    branches
+    branches  # may contain redundancy!
 end
 
 function set_constantrates!(s::SlicedTree)

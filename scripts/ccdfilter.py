@@ -2,8 +2,15 @@
 # coding: utf-8
 # author: Arthur Zwaenepoel
 import sys
+import textwrap
+DESCRIPTION = """Use this script to filter a bunch of CCD files base on a Poisson outlier criterion. A gene family is deemed an outlier when the square root of the number of clades in its CCD exceeds `n x median[square root(number of clades for gene families with the same number of taxa)]`. Default `n = 2`. See e.g. https://stats.stackexchange.com/questions/56402/detecting-outliers-in-count-data
+"""
 if not 2 <= len(sys.argv) <= 3:
     print("Usage: {0} <ccd_data.csv> [n]".format(sys.argv[0]))
+    wrapper = textwrap.TextWrapper(width=80)
+    desc = wrapper.wrap(text=DESCRIPTION)
+    for l in desc:
+        print("  | {}".format(l))
     exit()
 import pandas as pd
 import numpy as np

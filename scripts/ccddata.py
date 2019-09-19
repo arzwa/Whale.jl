@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 # coding: utf-8
 # author: Arthur Zwaenepoel
-
 import os
 import sys
+
+DESCRIPTION = "  | Use this script to obtain a file summarizing some \n" + \
+              "  | informative properties of the CCDs obtained for a \n" + \
+              "  | bunch of gene trees.  Will print output to STDOUT."
+
 if len(sys.argv) != 2:
     print("Usage: {0} <ale_dir>".format(sys.argv[0]))
+    print(DESCRIPTION)
     exit()
 
 aledir = sys.argv[1]
