@@ -105,7 +105,7 @@ end
 leafset(tree::Arboreal, node::Int64) = [tree.leaves[n] for n in
     [node ; descendantnodes(tree.tree, node)] if haskey(tree.leaves, n)]
 
-hashnode(node::Int64, tree::Arboreal) = hash(Set(leafset(node, tree)))
+hashnode(node::Int64, tree::Arboreal) = hash(Set(leafset(tree, node)))
 
 """
     contreetable([io::IO,] contree::ConRecTree, S::SlicedTree)
