@@ -179,6 +179,8 @@ function get_parentbranches(s::SlicedTree, node::Int64)
     return [branches; [root]]
 end
 
+iswgd(tree::SlicedTree, e::Int64) = haskey(tree.qindex, e) 
+
 function branches_to_recompute(s::SlicedTree, node::Int64)
     # order matters!
     branches = get_parentbranches(s, node)

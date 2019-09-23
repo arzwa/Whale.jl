@@ -10,6 +10,7 @@ module Whale
     using MCMCChains
     using DataFrames
     using AdaptiveMCMC
+    using Parameters
     import ProgressMeter: @showprogress
     import Distributions: @check_args, logpdf
 
@@ -22,10 +23,11 @@ module Whale
     include("mcmc.jl")
     include("backtrack.jl")
     include("consensus.jl")
+    include("sim.jl")
 
     export
         SlicedTree, WhaleModel, read_ale, logpdf, nwgd, nrates, nslices, ntaxa,
         CCD, gradient, mle, set_constantrates!, set_equalrootrates!, describe,
         WhaleChain, GBMModel, IRModel, mcmc!, backtrack!, consensus, wgds,
-        contreetable, write_consensusrectrees
+        contreetable, write_consensusrectrees, simulate, summarize
 end
