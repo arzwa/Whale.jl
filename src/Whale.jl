@@ -7,7 +7,7 @@ module Whale
     using Optim
     using ForwardDiff
     using Random
-    using MCMCChains
+    # using MCMCChains
     using DataFrames
     using CSV
     import ProgressMeter: @showprogress

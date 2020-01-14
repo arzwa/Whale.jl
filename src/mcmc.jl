@@ -260,10 +260,11 @@ Base.show(io::IO, w::WhaleChain) = write(io, "$(typeof(w))($(w.S))")
 Distributions.logpdf(w::WhaleChain, args...) =
     logpdf(w.prior, w.state, w.S, args...)
 
-function MCMCChains.Chains(w::WhaleChain, burnin=1000)
-    X = reshape(Matrix(w.df), (size(w.df)...,1))[burnin+1:end, 2:end, :]
-    return Chains(X, [string(x) for x in names(w.df)][2:end])
-end
+# eliminated MCMCChains dependency (considerable lighter package)
+# function MCMCChains.Chains(w::WhaleChain, burnin=1000)
+#     X = reshape(Matrix(w.df), (size(w.df)...,1))[burnin+1:end, 2:end, :]
+#     return Chains(X, [string(x) for x in names(w.df)][2:end])
+# end
 
 function init_state(prior, st)
     x = rand(prior, st)
@@ -305,7 +306,8 @@ function mcmc!(w::WhaleChain, D::CCDArray, n::Int64, args...;
         log_mcmc(w, stdout, show_trace, show_every)
         backtrack ? backtrack!(D, WhaleModel(w)) : nothing
     end
-    Chains(w)
+    # Chains(w)
+    w
 end
 
 function mcmc!(w::WhaleChain, n::Int64, args...; show_trace=true, show_every=10)
