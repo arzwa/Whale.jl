@@ -114,31 +114,29 @@ Dict{Symbol,Union{Float64, Array{Float64,1}}} with 5 entries:
   :q => [0.970779, 0.965934, 0.788127, 0.405944, 0.827755, 0.253859, 0.395734]
 ```
 """
-struct IRModel <: Model
-    ν::Prior
-    η::Prior
-    λ::Prior
-    μ::Prior
-    q::Prior
+@with_kw struct IRModel{T,U,V,W,X} <: Model
+    ν::T = InverseGamma(15)
+    η::U = Beta(3,1)
+    λ::V = Exponential()
+    μ::W = Exponential()
+    q::X = Beta()
 end
 
-IRModel(st::SlicedTree, ν=InverseGamma(15), η=Beta(10, 1), λ=Exponential(1),
-    μ=Exponential(1), q=[Beta(1,1) for i=1:nwgd(st)]) = IRModel(ν, η, λ, μ, q)
+function mergeargs(d::Dict, args...)
+    # this is faster than mergeargs(d::Dict, args...) = Dict(d..., args...)
+    x = deepcopy(d)
+    for (k, v) in args; x[k] = v ; end
+    return x
+end
 
 function Distributions.logpdf(m::IRModel, x::State, st::SlicedTree, args...)
-    x_ = deepcopy(x)
-    for (k, v) in args; x_[k] = v ; end
-    p = 0.
-    for f in fieldnames(typeof(m))
-        if f == :q
-            p += sum(logpdf.(m.q, x_[:q]))
-        elseif f == :λ || f == :μ
-            p += logpdf(getfield(m, f), x_[f,1])
-            v = repeat([log(x_[f,1])], nrates(st)-1)
-            p += logpdf(MvLogNormal(v, x_[:ν]), x_[f][2:end])
-        else
-            p += logpdf(getfield(m, f), x_[f])
-        end
+    x_ = mergeargs(x, args...)
+    p  = sum(logpdf.(m.q, x_[:q]))
+    p += logpdf(m.η, x_[:η]) + logpdf(m.ν, x_[:ν])
+    for s in [:λ, :μ]
+        p += logpdf(getfield(m, s), x_[s,1])
+        v  = repeat([log(x_[s,1])], nrates(st)-1)
+        p += logpdf(MvLogNormal(v, x_[:ν]), x_[s][2:end])
     end
     return p
 end
@@ -240,9 +238,10 @@ mutable struct WhaleChain{T<:Model}
     gen::Int64
     wgdbranches::Array{Tuple{Int64,Int64}}
     df::DataFrame
+    da::Bool
 
     WhaleChain(s::SlicedTree, π::T, x::State, spl::Samplers) where T<:Model =
-        new{T}(s, x, π, spl, 0, wgdbranches(s), DataFrame())
+        new{T}(s, x, π, spl, 0, wgdbranches(s), DataFrame(), true)
 end
 
 WhaleChain(st, π, x) = WhaleChain(st, π, x, get_samplers(x))
@@ -349,6 +348,27 @@ function log_mcmc(w, io, show_trace, show_every)
     flush(stdout)
 end
 
+acceptreject(chain, f, g, q) = chain.da ?
+    acceptreject_da(chain, f, g, q) : acceptreject_default(chain, f, g, q)
+
+function acceptreject_da(chain, f, g, q)
+    π  = g()
+    α1 = min(π - chain[:π] + q, 0.)
+    accept = log(rand()) < α1
+    ℓ  = accept ? f() : -Inf
+    α2 = min(ℓ - state[:l], 0.)
+    accept = log(rand()) < α2
+    return accept, ℓ, π
+end
+
+function acceptreject_default(chain, f, g, q)
+    π  = g()
+    ℓ  = f()
+    α  = π + ℓ - chain[:π] - chain[:l] + q
+    accept = log(rand()) < α
+    return accept, ℓ, π
+end
+
 function sample_ν!(x::WhaleChain)
     spl = x.samplers[:ν]
     ν_ = x[:ν] + rand(spl)
@@ -367,13 +387,13 @@ end
 function sample_η!(x::WhaleChain, D::CCDArray)
     spl = x.samplers[:η]
     η_ = reflect(x[:η] + rand(spl))
-    p = logpdf(x, :η=>η_)
-    l = logpdf(WhaleModel(x.S, x[:λ], x[:μ], x[:q], η_), D, matrix=true)
-    a = p + l - x[:π] - x[:l]
-    if log(rand()) < a
+    p = ()->logpdf(x, :η=>η_)
+    l = ()->logpdf(WhaleModel(x.S, x[:λ], x[:μ], x[:q], η_), D, matrix=true)
+    accept, ℓ, π = acceptreject(x, l, p, 0.)
+    if accept
         x[:η] = η_
-        x[:π] = p
-        x[:l] = l
+        x[:π] = π
+        x[:l] = ℓ
         spl.accepted += 1
         set_recmat!(D)
     end
@@ -392,14 +412,14 @@ function gibbs_sweep!(x::WhaleChain, D::CCDArray)
         λᵢ < 0. || μᵢ < 0. ? continue : nothing
         λ_ = deepcopy(x[:λ]); μ_ = deepcopy(x[:μ])
         λ_[idx] = λᵢ; μ_[idx] = μᵢ
-        p = logpdf(x, :λ=>λ_, :μ=>μ_)
-        l = logpdf(WhaleModel(x.S, λ_, μ_, x[:q], x[:η]), D, i, matrix=true)
-        a = p + l - x[:π] - x[:l]
-        if log(rand()) < a
+        p = ()->logpdf(x, :λ=>λ_, :μ=>μ_)
+        l = ()->logpdf(WhaleModel(x.S, λ_, μ_, x[:q], x[:η]), D, i, matrix=true)
+        accept, ℓ, π = acceptreject(x, l, p, 0.)
+        if accept
             x[:λ, idx] = λᵢ
             x[:μ, idx] = μᵢ
-            x[:π] = p
-            x[:l] = l
+            x[:π] = π
+            x[:l] = ℓ
             spl.accepted += 1
             set_recmat!(D)
         end
@@ -419,16 +439,16 @@ function wgd_sweep!(x::WhaleChain, D::CCDArray)
         qᵢ = reflect(x[:q, qidx] + rand(splq))
         λ_ = deepcopy(x[:λ]); μ_ = deepcopy(x[:μ]); q_ = deepcopy(x[:q])
         λ_[idx] = λᵢ; μ_[idx] = μᵢ; q_[qidx] = qᵢ
-        p = logpdf(x, :λ=>λ_, :μ=>μ_, :q=>q_)
-        l = logpdf(WhaleModel(x.S, λ_, μ_, q_, x[:η]), D, i, matrix=true)
-        a = p + l - x[:π] - x[:l]
+        p = ()->logpdf(x, :λ=>λ_, :μ=>μ_, :q=>q_)
+        l = ()->logpdf(WhaleModel(x.S, λ_, μ_, q_, x[:η]), D, i, matrix=true)
+        accept, ℓ, π = acceptreject(x, l, p, 0.)
         # NOTE: no adaptation based on this proposal; because both q and rates
-        if log(rand()) < a
+        if accept
             x[:λ, idx] = λᵢ
             x[:μ, idx] = μᵢ
             x[:q, qidx] = qᵢ
-            x[:π] = p
-            x[:l] = l
+            x[:π] = π
+            x[:l] = ℓ
             set_recmat!(D)
         end
     end
@@ -440,13 +460,13 @@ function q_sweep!(x::WhaleChain, D::CCDArray)
         qᵢ = reflect(x[:q, i] + rand(spl))
         q_ = deepcopy(x[:q])
         q_[i] = qᵢ
-        p = logpdf(x, :q=>q_)
-        l = logpdf(WhaleModel(x.S, x[:λ], x[:μ], q_, x[:η]), D, b, matrix=true)
-        a = p + l - x[:π] - x[:l]
-        if log(rand()) < a
+        p = ()->logpdf(x, :q=>q_)
+        l = ()->logpdf(WhaleModel(x.S, x[:λ], x[:μ], q_, x[:η]), D, b, matrix=true)
+        accept, ℓ, π = acceptreject(x, l, p, 0.)
+        if accept
             x[:q, i] = qᵢ
-            x[:π] = p
-            x[:l] = l
+            x[:π] = π
+            x[:l] = ℓ
             spl.accepted += 1
             set_recmat!(D)
         end
@@ -461,14 +481,14 @@ function allrates!(x::WhaleChain, D::CCDArray)
     if any(x -> (x <= 0.), λ_) || any(x -> (x <= 0.), μ_)
         return
     end
-    p = logpdf(x, :λ=>λ_, :μ=>μ_)
-    l = logpdf(WhaleModel(x.S, λ_, μ_, x[:q], x[:η]), D, matrix=true)
-    a = p + l - x[:π] - x[:l]
-    if log(rand()) < a
+    p = ()->logpdf(x, :λ=>λ_, :μ=>μ_)
+    l = ()->logpdf(WhaleModel(x.S, λ_, μ_, x[:q], x[:η]), D, matrix=true)
+    accept, ℓ, π = acceptreject(x, l, p, 0.)
+    if accept
         x[:λ] = λ_
         x[:μ] = μ_
-        x[:π] = p
-        x[:l] = l
+        x[:π] = π
+        x[:l] = ℓ
         spl.accepted += 1
         set_recmat!(D)
     end
