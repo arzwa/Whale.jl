@@ -15,6 +15,20 @@ Base.getindex(x::State, s::Symbol, i::Int64) = x[s][i]
 # HACK: for constant parameters
 Distributions.logpdf(d::Float64, x::Float64) = 0.
 
+"""
+    ConstantDistribution(x)
+
+A 'constant' distribution (Dirac mass), sometimes useful.
+"""
+struct ConstantDistribution{T}
+    x::T
+end
+
+Base.rand(x::ConstantDistribution) = x.x
+pdf(x::ConstantDistribution, y) = y ≈ x.x ? 1. : 0.
+logpdf(x::ConstantDistribution, y) = log(pdf(x, y))
+
+
 # GBM model
 """
     GBMModel(st::SlicedTree, ν::T, η::T, λ::T, μ::T, q::T) where
