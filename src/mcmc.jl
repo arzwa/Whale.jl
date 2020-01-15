@@ -143,13 +143,13 @@ end
 
 function Base.rand(m::IRModel, st)
     x = State()
-    for f in fieldnames(typeof(m))
-        d = getfield(m, f)
-        x[f] = typeof(d) <: Real ? d : (
-            typeof(d) <: AbstractArray ? rand.(d) : rand(d))
-    end
-    x[:λ] = rand(MvLogNormal(repeat([log(x[:λ])], nrates(st)), x[:ν]))
-    x[:μ] = rand(MvLogNormal(repeat([log(x[:μ])], nrates(st)), x[:ν]))
+    x[:η] = rand(m.η)
+    x[:ν] = rand(m.ν)
+    x[:q] = rand(m.q, nwgd(st))
+    l = rand(m.λ)
+    m = rand(m.μ)
+    x[:λ] = rand(MvLogNormal(repeat([log(l)], nrates(st)), x[:ν]))
+    x[:μ] = rand(MvLogNormal(repeat([log(m)], nrates(st)), x[:ν]))
     return x
 end
 
@@ -305,11 +305,10 @@ function mcmc!(w::WhaleChain, D::CCDArray, n::Int64, args...;
         log_mcmc(w, stdout, show_trace, show_every)
         backtrack ? backtrack!(D, WhaleModel(w)) : nothing
     end
-    # Chains(w)
-    w
 end
 
-function mcmc!(w::WhaleChain, n::Int64, args...; show_trace=true, show_every=10)
+function mcmc!(w::WhaleChain, n::Int64, args...;
+        show_trace=true, show_every=10, kwargs...)
     @warn "No data provided, sampling from the prior"
     mcmc!(w, distribute(CCD[get_dummy_ccd()]), n, args...,
         show_trace=show_trace, show_every=show_every, backtrack=false)
@@ -356,7 +355,7 @@ function acceptreject_da(chain, f, g, q)
     α1 = min(π - chain[:π] + q, 0.)
     accept = log(rand()) < α1
     ℓ  = accept ? f() : -Inf
-    α2 = min(ℓ - state[:l], 0.)
+    α2 = min(ℓ - chain[:l], 0.)
     accept = log(rand()) < α2
     return accept, ℓ, π
 end

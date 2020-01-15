@@ -7,6 +7,7 @@ module Whale
     using Optim
     using ForwardDiff
     using Random
+    using Parameters
     # using MCMCChains
     using DataFrames
     using CSV
