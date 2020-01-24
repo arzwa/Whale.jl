@@ -199,6 +199,8 @@ function adapt!(spl::Sampler, gen::Int64, target=0.25, bound=5., δmax=0.25)
     spl.accepted = 0
 end
 
+
+
 # Chain
 """
     WhaleChain(st::SlicedTree, π::Model)
@@ -328,7 +330,7 @@ function cycle!(w::WhaleChain, D::CCDArray, args...)
     !(:ν in args) ? sample_ν!(w) : nothing
     !(:η in args) ? sample_η!(w, D) : nothing
     gibbs_sweep!(w, D)
-    q_sweep!(w, D)
+    # q_sweep!(w, D)
     wgd_sweep!(w, D)
     length(D) == 1 ? allrates!(w, D) : nothing  # better mixing when spling π
 end
@@ -470,7 +472,10 @@ function q_sweep!(x::WhaleChain, D::CCDArray)
         q_ = deepcopy(x[:q])
         q_[i] = qᵢ
         p = ()->logpdf(x, :q=>q_)
-        l = ()->logpdf(WhaleModel(x.S, x[:λ], x[:μ], q_, x[:η]), D, b, matrix=true)
+        # FIXME, no idea why this is necessary, BUG somewhere
+        l = length(x.state[:λ]) == 1 ?
+            ()->logpdf(WhaleModel(x.S, x[:λ], x[:μ], q_, x[:η]), D, matrix=true) :
+            ()->logpdf(WhaleModel(x.S, x[:λ], x[:μ], q_, x[:η]), D, b, matrix=true)
         accept, ℓ, π = acceptreject(x, l, p, 0.)
         if accept
             x[:q, i] = qᵢ
