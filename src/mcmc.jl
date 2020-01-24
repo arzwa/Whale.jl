@@ -12,9 +12,6 @@ const State = Dict{Symbol,Union{Vector{Float64},Float64}}
 
 Base.getindex(x::State, s::Symbol, i::Int64) = x[s][i]
 
-# HACK: for constant parameters
-Distributions.logpdf(d::Float64, x::Float64) = 0.
-
 """
     ConstantDistribution(x)
 
@@ -27,7 +24,6 @@ end
 Base.rand(x::ConstantDistribution) = x.x
 pdf(x::ConstantDistribution, y) = y ≈ x.x ? 1. : 0.
 logpdf(x::ConstantDistribution, y) = log(pdf(x, y))
-
 
 # GBM model
 """

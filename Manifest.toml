@@ -78,9 +78,9 @@ version = "0.20.0"
 
 [[DataStructures]]
 deps = ["InteractiveUtils", "OrderedCollections"]
-git-tree-sha1 = "f784254f428fb8fd7ac15982e5862a38a44523d3"
+git-tree-sha1 = "ef162bfe3d872c326c0ecddeb45e3c13c1b74eda"
 uuid = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
-version = "0.17.7"
+version = "0.17.8"
 
 [[DataValueInterfaces]]
 git-tree-sha1 = "bfc1187b79289637fa0ef6d4436ebdfe6905cbd6"
@@ -220,6 +220,12 @@ version = "7.5.0"
 git-tree-sha1 = "928b8ca9b2791081dc71a51c55347c27c618760f"
 uuid = "77ba4419-2d1f-58cd-9bb1-8ffee604a2e3"
 version = "0.3.3"
+
+[[NewickTree]]
+deps = ["DataStructures"]
+path = "../NewickTree"
+uuid = "b0a14db8-6308-4ebc-8917-f72cd81f5094"
+version = "0.1.0"
 
 [[OpenBLAS_jll]]
 deps = ["Libdl", "Pkg"]

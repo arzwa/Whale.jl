@@ -9,7 +9,7 @@ Base.setindex!(d::DPMat{T}, x::T, e::Int64, γ::Int64, i::Int64) where T<:Real =
     d[e][γ, i] = x
 
 """
-    CCD{<:Real,RecTree}
+    CCD{T<:Real,RecTree}
 
 Conditional clade distribution with many helper fields. See [`read_ale`](@ref)
 for details on IO.
