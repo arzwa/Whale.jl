@@ -7,7 +7,7 @@ test/wmi*
 test/coffee*
 src_old/
 docs/build/
-src/_*
+#src/_*
 
 
 # Created by https://www.gitignore.io/api/julia

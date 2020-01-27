@@ -8,7 +8,6 @@ module Whale
     using ForwardDiff
     using Random
     using Parameters
-    # using MCMCChains
     using DataFrames
     using CSV
     import ProgressMeter: @showprogress
