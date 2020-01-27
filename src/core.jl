@@ -273,7 +273,7 @@ function Π_wgd_retention!(M, x::CCD, e::Int64, γ::Int64, q, f::Int64)
 end
 
 function Π_wgd_non_retention!(M, x::CCD, e::Int64, γ::Int64, q, f::Int64)
-    M[e, γ, 1] += (1-q) * M[f][γ, end]
+    M[e, γ, 1] += (1.0-q) * M[f][γ, end]
 end
 
 function Π_wgd_loss!(M, x::CCD, e::Int64, γ::Int64, q, ε, f::Int64)

@@ -1,5 +1,5 @@
 # How to get type stability in the WhaleModel?
-# maybe hve a look at Distributions.jl?
+# maybe have a look at Distributions.jl? I think they have similar situations
 
 const extree = "((MPOL:4.752,PPAT:4.752):0.292,(SMOE:4.457,(((OSAT:1.555,(ATHA:0.5548,CPAP:0.5548):1.0002):0.738,ATRI:2.293):1.225,(GBIL:3.178,PABI:3.178):0.34):0.939):0.587);"
 
@@ -15,17 +15,17 @@ end
 mutable struct Speciation{T<:Real} <: Event{T}
     λ::T
     μ::T
-    t::T
+    t::Float64
 end
 
 mutable struct WGD{T<:Real} <: Event{T}
     q::T
-    t::T
+    t::Float64
 end
 
 # problem: slice lengths could be different type from ϵ and ϕ (e.g. ForwardDiff)
 # solution could be a Slices struct, having a vector and a matrix as fields
-struct WhaleNode{T<:Real,E<:Event{T},I<:Integer}
+mutable struct WhaleNode{T<:Real,E<:Event{T},I<:Integer}
     id      ::I
     parent  ::I            # parent node ID
     children::Set{I}       # child node IDs
@@ -53,9 +53,9 @@ children(n::WhaleNode) = n.children
 parentnode(n::WhaleNode) = n.parent
 iswgd(n::WhaleNode) = typeof(n.event)<:WGD
 
-function nonwgdchild(n::WhaleNode)
-    while iswgd(first(n.children))
-        n = first(n.children)
+function nonwgdchild(n::WhaleNode, wm::WhaleModel)
+    while iswgd(n)
+        n = wm[first(n.children)]
     end
     n
 end
@@ -126,10 +126,10 @@ function setnode!(n::WhaleNode, e::Union{Speciation,Root}, wm::WhaleModel)
 end
 
 function setnode!(n::WhaleNode, e::WGD, wm::WhaleModel)
-    ϵ = first(n.children).slices[end,2]
-    nextsp = wm[nonwgdchild(n)]
+    ϵ = wm[first(n.children)].slices[end,2]
+    nextsp = nonwgdchild(n, wm)
     n.slices[1,2] = e.q * ϵ^2 + (1. - e.q) * ϵ
-    setslices!(n.slices, nextsp.λ, nextsp.μ)
+    setslices!(n.slices, nextsp.event.λ, nextsp.event.μ)
 end
 
 function setslices!(A::Matrix, λ, μ)
@@ -159,31 +159,92 @@ function ϕ_slice(λ, μ, t, ε)
     end
 end
 
-# model acrobatics
-abstract type RatesModel end
-struct ConstantRates <: RatesModel end
+# WGDs
+function addwgd!(wm::WhaleModel{T,I}, i, t::T, q::T) where {T,I}
+    node = wm[i]
+    @assert !isroot(node) "Cannot add WGD above root node"
+    ti = node.event.t
+    @assert ti - t > 0. "Invalid WGD time $ti - $t < 0."
+    parent = wm[node.parent]
+    islices = cumsum(node.slices, dims=1)[:,1]
+    k = findfirst(x->abs(x - t) < islices[2]/2, islices)
+    twgd = islices[k]
+    j = I(length(wm)+1)
+    wgdslices = vcat(node.slices[1,:]', node.slices[k:end,:])
+    node.slices = node.slices[1:k-1,:]
+    wgd = WhaleNode(j, parent.id, Set{I}(i), wgdslices, WGD(q, ti-t), node.clade)
+    wm.nodes[j] = wgd
+    delete!(parent.children, i)
+    push!(parent.children, j)
+    node.parent = j
+    idx = findfirst(x->x==I(i), wm.order)
+    insert!(wm.order, idx+1, j)
+    setabove!(wm[j], wm)
+end
 
-function (wm::WhaleModel{T,I})(θ::Vector{V}, r::R) where {T,V,I,R<:RatesModel}
+function rmwgd!(wm::WhaleModel{T,I}, i) where {T,I}
+    wgdnode = wm[i]
+    @assert iswgd(wgdnode) "Not a WGD node $i"
+    ti = wgdnode.event.t
+    parent = wm[wgdnode.parent]
+    child = wm[first(wgdnode.children)]
+    child.parent = parent.id
+    delete!(parent.children, i)
+    push!(parent, child.id)
+    child.slices = vcat(child.slices, wgdnode.slices[2:end,:])
+    idx = findfirst(x->x==I(i), wm.order)
+    deleteat!(wm.order, idx)
+    delete!(wm.nodes, i)
+    setabove!(wm[child.id], wm)
+end
+
+# model acrobatics
+abstract type RatesModel{T} end
+
+struct ConstantRates{T} <: RatesModel{T}
+    λ::T
+    μ::T
+    η::T
+end
+
+ConstantRates(l, m, e) = ConstantRates(promote(l, m, e)...)
+
+struct BranchRates{T} <: RatesModel{T}
+    λ::Vector{T}
+    μ::Vector{T}
+    q::Vector{T}
+    η::T
+end
+
+function (wm::WhaleModel{T,I})(θ::R) where {T,V,I,R<:RatesModel{V}}
     d = Dict{I,WhaleNode{V,<:Event{V},I}}()
-    recursivecopy!(d, θ, r, wm[1], nothing)
+    recursivecopy!(d, θ, wm[1], nothing)
     m = WhaleModel(d, wm.leaves, wm.order)
     set!(m)
     return m
 end
 
-function recursivecopy!(d, θ, r, x, y)
-    d[x.id] = copynode!(x, y, θ, r)  # modifies y (parent)
+function recursivecopy!(d, θ, x, y)
+    d[x.id] = copynode!(x, y, θ)  # modifies y (parent)
     if !isleaf(x)
         for c in x.children
-            recursivecopy!(d, θ, r, wm[c], d[x.id])
+            recursivecopy!(d, θ, wm[c], d[x.id])
         end
     end
 end
 
-copynode!(x::WhaleNode{T,Root{T},I}, y, θ, ::ConstantRates) where {T,I} =
-    WhaleNode(x.id, I(0), copy(x.children), copy(x.slices),
-        Root(θ[end], θ[1], θ[2]), copy(x.clade))
+copynode!(x::WhaleNode{T,Root{T},I}, y, θ::ConstantRates{V}) where {T,I,V} =
+    WhaleNode(x.id, I(0), copy(x.children), V.(x.slices),
+        Root(θ.η, θ.λ, θ.μ), copy(x.clade))
 
-copynode!(x::WhaleNode{T,Speciation{T},I}, y, θ, ::ConstantRates) where {T,I} =
-    WhaleNode(x.id, x.parent, copy(x.children), copy(x.slices),
-        Speciation(θ[1], θ[2], x.event.t), copy(x.clade))
+copynode!(x::WhaleNode{T,Speciation{T},I}, y, θ::ConstantRates{V}) where {T,I,V} =
+    WhaleNode(x.id, x.parent, copy(x.children), V.(x.slices),
+        Speciation(θ.λ, θ.μ, x.event.t), copy(x.clade))
+
+copynode!(x::WhaleNode{T,Root{T},I}, y, θ::BranchRates{V}) where {T,I,V} =
+    WhaleNode(x.id, I(0), copy(x.children), V.(x.slices),
+        Root(θ.η, θ.λ[1], θ.μ[1]), copy(x.clade))
+
+copynode!(x::WhaleNode{T,Speciation{T},I}, y, θ::BranchRates{V}) where {T,I,V} =
+    WhaleNode(x.id, x.parent, copy(x.children), V.(x.slices),
+        Speciation(θ.λ[x.id], θ.μ[x.id], x.event.t), copy(x.clade))
