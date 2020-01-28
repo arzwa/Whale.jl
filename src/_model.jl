@@ -52,6 +52,8 @@ NewickTree.isleaf(n::WhaleNode) = length(n.children) == 0
 children(n::WhaleNode) = n.children
 parentnode(n::WhaleNode) = n.parent
 iswgd(n::WhaleNode) = typeof(n.event)<:WGD
+nnonwgd(wm::WhaleModel) = 2*length(wm.leaves) - 1
+nwgd(wm::WhaleModel) = length(wm) - nnonwgd(wm)
 
 function nonwgdchild(n::WhaleNode, wm::WhaleModel)
     while iswgd(n)
@@ -198,16 +200,31 @@ function rmwgd!(wm::WhaleModel{T,I}, i) where {T,I}
     setabove!(wm[child.id], wm)
 end
 
+getq(wm::WhaleModel) = [wm[i].event.q for i in nnonwgd(wm)+1:length(wm)]
+
 # model acrobatics
+# would it be better to have the RatesModels as types in the WhaleModel?
+# in this implementation, a RatesModel has to implement:
+# (1) a constructor that takes a vector
+# (2) a constructor that takes a model
 abstract type RatesModel{T} end
 
-struct ConstantRates{T} <: RatesModel{T}
-    λ::T
-    μ::T
-    η::T
+asvec(r::RatesModel) = vcat(r.λ, r.μ, r.q, r.η)
+(r::T)(θ) where T<:RatesModel = T(θ)
+
+@with_kw struct ConstantRates{T} <: RatesModel{T}
+    λ::T = 1.
+    μ::T = 1.
+    q::Vector{T} = Float64[]
+    η::T = 1.
 end
 
-ConstantRates(l, m, e) = ConstantRates(promote(l, m, e)...)
+ConstantRates(θ) = ConstantRates(θ[1], θ[2], θ[3:end-1], θ[end])
+
+function ConstantRates(wm::WhaleModel)
+    @unpack λ, μ, η = wm[1].event
+    ConstantRates(λ=λ, μ=μ, q=getq(wm), η=η)
+end
 
 struct BranchRates{T} <: RatesModel{T}
     λ::Vector{T}
@@ -216,35 +233,53 @@ struct BranchRates{T} <: RatesModel{T}
     η::T
 end
 
+BranchRates(θ, n) = BranchRates(θ[1:n], θ[n+1:2n], θ[2n+1:end-1], θ[end])
+
+function BranchRates(wm::WhaleModel)
+    λ = zeros(nnonwgd(wm))
+    μ = zeros(nnonwgd(wm))
+    q = getq(wm)
+    for i=1:length(λ)
+        @inbounds λ[i] = wm[i].event.λ
+        @inbounds μ[i] = wm[i].event.μ
+    end
+    BranchRates(λ, μ, q, wm[1].event.η)
+end
+
 function (wm::WhaleModel{T,I})(θ::R) where {T,V,I,R<:RatesModel{V}}
     d = Dict{I,WhaleNode{V,<:Event{V},I}}()
-    recursivecopy!(d, θ, wm[1], nothing)
+    recursivecopy!(d, θ, wm[1], nothing, wm)
     m = WhaleModel(d, wm.leaves, wm.order)
     set!(m)
     return m
 end
 
-function recursivecopy!(d, θ, x, y)
-    d[x.id] = copynode!(x, y, θ)  # modifies y (parent)
+function recursivecopy!(d, θ, x, y, wm)
+    d[x.id] = copynode!(x, y, θ, wm)  # modifies y (parent)
     if !isleaf(x)
         for c in x.children
-            recursivecopy!(d, θ, wm[c], d[x.id])
+            recursivecopy!(d, θ, wm[c], d[x.id], wm)
         end
     end
 end
 
-copynode!(x::WhaleNode{T,Root{T},I}, y, θ::ConstantRates{V}) where {T,I,V} =
-    WhaleNode(x.id, I(0), copy(x.children), V.(x.slices),
-        Root(θ.η, θ.λ, θ.μ), copy(x.clade))
+copynode!(x::WhaleNode{T,Root{T}}, y, θ::ConstantRates{V}, _) where {T,V} =
+    copynode!(x, Root(θ.η, θ.λ, θ.μ))
 
-copynode!(x::WhaleNode{T,Speciation{T},I}, y, θ::ConstantRates{V}) where {T,I,V} =
-    WhaleNode(x.id, x.parent, copy(x.children), V.(x.slices),
-        Speciation(θ.λ, θ.μ, x.event.t), copy(x.clade))
+copynode!(x::WhaleNode{T,Speciation{T}}, y, θ::ConstantRates{V}, _) where {T,V} =
+    copynode!(x, Speciation(θ.λ, θ.μ, x.event.t))
 
-copynode!(x::WhaleNode{T,Root{T},I}, y, θ::BranchRates{V}) where {T,I,V} =
-    WhaleNode(x.id, I(0), copy(x.children), V.(x.slices),
-        Root(θ.η, θ.λ[1], θ.μ[1]), copy(x.clade))
+copynode!(x::WhaleNode{T,WGD{T}}, y, θ::ConstantRates{V}, wm::WhaleModel) where {T,V} =
+    copynode!(x, WGD(θ.q[x.id-nnonwgd(wm)], x.event.t))
 
-copynode!(x::WhaleNode{T,Speciation{T},I}, y, θ::BranchRates{V}) where {T,I,V} =
-    WhaleNode(x.id, x.parent, copy(x.children), V.(x.slices),
-        Speciation(θ.λ[x.id], θ.μ[x.id], x.event.t), copy(x.clade))
+copynode!(x::WhaleNode{T,Root{T}}, y, θ::BranchRates{V}, _) where {T,V} =
+    copynode!(x, Root(θ.η, θ.λ[1], θ.μ[1]))
+
+copynode!(x::WhaleNode{T,Speciation{T}}, y, θ::BranchRates{V}, _) where {T,V} =
+    copynode!(x, Speciation(θ.λ[x.id], θ.μ[x.id], x.event.t))
+
+copynode!(x::WhaleNode{T,WGD{T}}, y, θ::BranchRates{V}, wm::WhaleModel) where {T,V} =
+    copynode!(x, WGD(θ.q[x.id-nnonwgd(wm)], x.event.t))
+
+copynode!(x::WhaleNode, ev::Event{T}) where T =
+    WhaleNode(x.id, x.parent, copy(x.children), T.(x.slices), ev, copy(x.clade))

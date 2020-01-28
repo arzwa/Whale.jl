@@ -2,6 +2,7 @@ using Pkg; Pkg.activate("./test")
 using Parameters
 using NewickTree
 using BenchmarkTools
+using DistributedArrays
 # using ForwardDiff
 # using Optim
 include("_model.jl")

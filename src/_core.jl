@@ -37,6 +37,9 @@ function logpdf(wm::WhaleModel{T}, x::CCD, condition::Function=pbothsides) where
     ℓhood(L - nf)
 end
 
+logpdf(wm::WhaleModel, X::CCDArray, condition::Function=pbothsides) =
+    mapreduce((x)->logpdf(wm, x, condition), +, X)
+
 # log probability of non-extinction
 pnonextinct(wm::WhaleModel) = log(1. - integratedϵ(getϵ(wm[1]), wm[1].event.η))
 
@@ -73,10 +76,9 @@ function whale!(n::WhaleNode{T,Speciation{T}}, ℓ, x, wm) where T
 end
 
 function whale!(n::WhaleNode{T,WGD{T}}, ℓ, x, wm) where T
+    e = n.id
     nextsp = nonwgdchild(n, wm)
-    e = nextsp.id
-    start = length()
-    ℓ[e][:,start:end] .= 0.
+    ℓ[e] .= 0.
     λ = nextsp.event.λ
     μ = nextsp.event.μ
     for γ in x.clades
@@ -89,19 +91,13 @@ function whale!(n::WhaleNode{T,WGD{T}}, ℓ, x, wm) where T
                 p += Πwgdretention(γ, ℓ, n)
             end
             p += Πwgdloss(γ, ℓ, n, wm)
-            # TODO: challenging if we don't want to modify the rec matrix
-            # since normally we'd have one more entry for the probabilty right
-            # after the WGD. We should be able to skip storing that one however
-            # and just add it to the next slice? I mean, one could see it as
-            # if it were an additional factor in the propagation probability of
-            # the model without the WGD I guess?
-            # ℓ[e][γ.id,start] = p * getϕ(n, i)
-            # for i=start+1:length(n)  # iterate over slices
-            #     ℓ[e][γ.id,i] += getϕ(n, i)*ℓ[e][γ.id,i-1]
-            #     if !leaf
-            #         ℓ[e][γ.id,i] += Πduplication(γ, ℓ, n, i, λ=λ, μ=μ)
-            #     end
-            # end
+            ℓ[e][γ.id,1] = p
+            for i=2:length(n)  # iterate over slices
+                ℓ[e][γ.id,i] += getϕ(n, i)*ℓ[e][γ.id,i-1]
+                if !leaf
+                    ℓ[e][γ.id,i] += Πduplication(γ, ℓ, n, i, λ, μ)
+                end
+            end
         end
     end
 end

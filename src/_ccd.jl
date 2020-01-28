@@ -1,4 +1,6 @@
-
+"""
+    Triple
+"""
 struct Triple{T<:Integer}
     γ1::T
     γ2::T
@@ -8,6 +10,9 @@ end
 Triple{T}(x::Tuple) where T = Triple(T(x[1]), T(x[2]), x[3])
 Triple{T}(x::Tuple, count) where T = Triple(T(x[1]), T(x[2]), x[3]/count)
 
+"""
+    Clade
+"""
 struct Clade{T<:Integer}
     id     ::T
     count  ::Int
@@ -26,6 +31,9 @@ function Base.show(io::IO, c::Clade{T}) where T
     write(io, "Clade{$T}(γ$id, $count, $(length(c)))")
 end
 
+"""
+    CCD
+"""
 mutable struct CCD{T<:Integer,V<:Real}
     total  ::Int               # number of trees on which the CCD is based
     clades ::Vector{Clade{T}}  # ordered by size (small to large)! (no reason for dict!)
@@ -39,7 +47,7 @@ Base.getindex(ccd::CCD, i::Int) = ccd.clades[i]
 Base.show(io::IO, ccd::CCD{T,V}) where {T,V} =
     write(io, "CCD{$T,$V}(Γ=$(length(ccd)), 𝓛=$(length(ccd.leaves)))")
 
-CCD(fname::String, wm::WhaleModel) = CCD(parse_aleobserve(fname), wm)
+CCD(s::String, wm::WhaleModel) = CCD(parse_aleobserve(s), wm)
 
 function CCD(ale::NamedTuple, wm::WhaleModel)
     @unpack Bip_counts, Dip_counts, set_id, Bip_bls, leaf_id, observations = ale
@@ -63,8 +71,23 @@ function CCD(ale::NamedTuple, wm::WhaleModel)
     CCD(observations, clades, leaves, ℓmat, deepcopy(ℓmat))
 end
 
+"""
+    read_ale(path, wm::WhaleModel)
+"""
+function read_ale(s::String, wm::WhaleModel)
+    @assert ispath(s) "Not a file nor directory"
+    return isfile(s) ? CCD(s, wm) :
+        [CCD(joinpath(s,x), wm) for x in readdir(s) if endswith(x, ".ale")]
+end
+
 getspecies(leaves, ids, spmap) =
     Set([spmap[split(leaves[id], "_")[1]] for id in ids])
+
+"""
+    CCDArray{I,T}
+"""
+const CCDArray{I,T} = DArray{CCD{I,T},1,Array{CCD{I,T},1}} where {T,I}
+CCDArray(ccd::Vector{CCD{I,T}}) where {I,T} = distribute(ccd)
 
 # ALEobserve parser
 """
