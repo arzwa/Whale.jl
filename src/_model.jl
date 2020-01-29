@@ -210,7 +210,6 @@ getq(wm::WhaleModel) = [wm[i].event.q for i in nnonwgd(wm)+1:length(wm)]
 abstract type RatesModel{T} end
 
 asvec(r::RatesModel) = vcat(r.λ, r.μ, r.q, r.η)
-(r::T)(θ) where T<:RatesModel = T(θ)
 
 @with_kw struct ConstantRates{T} <: RatesModel{T}
     λ::T = 1.
@@ -219,7 +218,9 @@ asvec(r::RatesModel) = vcat(r.λ, r.μ, r.q, r.η)
     η::T = 1.
 end
 
-ConstantRates(θ) = ConstantRates(θ[1], θ[2], θ[3:end-1], θ[end])
+ConstantRates(θ) = ConstantRates(λ=θ[1], μ=θ[2], q=θ[3:end-1], η=θ[end])
+(r::ConstantRates)(θ) = ConstantRates(θ)
+(r::ConstantRates)(θ::NamedTuple) = ConstantRates(λ=θ.λ, μ=θ.μ, q=θ.q, η=θ.η)
 
 function ConstantRates(wm::WhaleModel)
     @unpack λ, μ, η = wm[1].event
