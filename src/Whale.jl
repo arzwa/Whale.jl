@@ -12,15 +12,15 @@ module Whale
     using TransformVariables
     using DynamicHMC
     import TransformVariables: TransformTuple, transform_and_logjac
-    import LogDensityProblems: logdensity_and_gradient, transform_and_logjac
+    import LogDensityProblems: logdensity_and_gradient
 
     import Distributions: logpdf
 
     include("model.jl")
     include("ccd.jl")
     include("core.jl")
-    # include("grad.jl")
     include("dhmc.jl")
 
-    export WhaleModel, CCD, read_ale
+    export WhaleModel, CCD, read_ale, logpdf, logpdf!, addwgd!
+    export WhaleProblem, CRPrior, IRPrior
 end

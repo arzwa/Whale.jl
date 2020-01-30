@@ -33,7 +33,6 @@ function (problem::CRWhaleProblem)(θ) where T
     @unpack ccd, πr, πη, πq = problem
     logpdf(wm(ConstantRates(λ=λ, μ=μ, η=η, q=q)), ccd) +
         logpdf(πη, η) + logpdf(πr, log.([λ, μ])) + sum(logpdf.(πq, q))
-    logpdf(wm(ConstantRates(λ=λ, μ=μ, η=η, q=q)), ccd)
 end
 
 p = CRWhaleProblem(D, wm, MvNormal(ones(2)), Beta(3,1), Beta())

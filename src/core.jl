@@ -27,7 +27,8 @@ function logpdf!(wm::WhaleModel{T}, x::CCD{I,V},
     ℓhood(L - nf)::V
 end
 
-function logpdf(wm::WhaleModel{T}, x::CCD, condition::Function=pbothsides) where T
+function logpdf(wm::WhaleModel{T}, x::CCD,
+        condition::Function=pbothsides) where T
     ℓ = [zeros(T, length(x.clades), length(wm[i])) for i in 1:length(wm)]
     for n in wm.order
         whale!(wm[n], ℓ, x, wm)

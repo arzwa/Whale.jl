@@ -2,7 +2,6 @@
 # hyperparameters that are sampled but do not end up in the RatesModel, however
 # the RatesModel layer in between the prior and the model provides an opportunity
 # to handle this.
-
 """
     Prior
 
@@ -118,22 +117,3 @@ logpdf_evalue(d, r) = isnothing(d) ? 0. : logpdf(d[1], exp.(d[2].*(r[1,:].-r[2,:
 RatesModel(prior::IRPrior) = BranchRates
 trans(::IRPrior, model::WhaleModel) = as((r=as(Array, asℝ₊, 2, nnonwgd(model)),
         q=as(Array, as𝕀, nwgd(model)), η=as𝕀))
-
-
-# ConstantRates
-wm = WhaleModel(Whale.extree)
-Whale.addwgd!(wm, 5, 0.25, rand())
-D = distribute(read_ale("./example/example-ale", wm))
-
-prior = CRPrior(MvNormal(ones(2)), Beta(3,1), Beta())
-problem = WhaleProblem(wm, D, prior)
-@show logdensity_and_gradient(problem, zeros(4))
-
-# BranchRates
-prior = IRPrior(Ψ=[1. 0.; 0. 1.])
-problem = WhaleProblem(wm, D, prior)
-@show logdensity_and_gradient(problem, zeros(36))
-
-progress = LogProgressReport(step_interval=100, time_interval_s=10)
-@time results = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 2000,
-    reporter = progress)
