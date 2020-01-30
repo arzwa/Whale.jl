@@ -16,12 +16,13 @@ function pdup(λ, μ, t)
     return (1. - α)*(1. - β)*β
 end
 
-function logpdf!(wm::WhaleModel{T}, x::CCD{I,V}, condition::Function=pbothsides) where {T,I,V}
+function logpdf!(wm::WhaleModel{T}, x::CCD{I,V},
+        condition::Function=pbothsides) where {T,I,V}
     for n in wm.order
-        whale!(wm[n], ccd.ℓtmp, x, wm)
+        whale!(wm[n], x.ℓtmp, x, wm)
     end
     nf = condition(wm)
-    L = ccd.ℓtmp[1][end,1]
+    L = x.ℓtmp[1][end,1]
     L = L > zero(L) ? log(L) : -Inf
     ℓhood(L - nf)::V
 end
@@ -39,6 +40,9 @@ end
 
 logpdf(wm::WhaleModel, X::CCDArray, condition::Function=pbothsides) =
     mapreduce((x)->logpdf(wm, x, condition), +, X)
+
+logpdf!(wm::WhaleModel, X::CCDArray, condition::Function=pbothsides) =
+    mapreduce((x)->logpdf!(wm, x, condition), +, X)
 
 # log probability of non-extinction
 pnonextinct(wm::WhaleModel) = log(1. - integratedϵ(getϵ(wm[1]), wm[1].event.η))
