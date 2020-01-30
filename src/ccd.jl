@@ -76,8 +76,13 @@ end
 """
 function read_ale(s::String, wm::WhaleModel)
     @assert ispath(s) "Not a file nor directory"
-    return isfile(s) ? CCD(s, wm) :
+    return if isfile(s) && endswith(s, ".ale")
+        CCD(s, wm)
+    elseif isfile(s)
+        [read_ale(l, wm) for l in readlines(s) if !startswith(s, "#")]
+    else
         [CCD(joinpath(s,x), wm) for x in readdir(s) if endswith(x, ".ale")]
+    end
 end
 
 getspecies(leaves, ids, spmap) =
