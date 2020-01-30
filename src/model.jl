@@ -1,5 +1,9 @@
 # How to get type stability in the WhaleModel?
 # maybe have a look at Distributions.jl? I think they have similar situations
+# NOTE: set while computing logpdf should give speed bonus? Taking set!
+# in whale! seems to be a good idea in general, since even if we rely on partial
+# recomputation, the parts that have to be reset are always the parts for which
+# the DP matrix is being recomputed.
 
 const extree = "((MPOL:4.752,PPAT:4.752):0.292,(SMOE:4.457,(((OSAT:1.555,(ATHA:0.5548,CPAP:0.5548):1.0002):0.738,ATRI:2.293):1.225,(GBIL:3.178,PABI:3.178):0.34):0.939):0.587);"
 
@@ -200,7 +204,7 @@ function rmwgd!(wm::WhaleModel{T,I}, i) where {T,I}
     setabove!(wm[child.id], wm)
 end
 
-getq(wm::WhaleModel) = [wm[i].event.q for i in nnonwgd(wm)+1:length(wm)]
+getq(m::WhaleModel{T}) where T = T[m[i].event.q for i in nnonwgd(m)+1:length(m)]
 
 # model acrobatics
 # would it be better to have the RatesModels as types in the WhaleModel?
@@ -215,44 +219,42 @@ asvec(r::RatesModel) = vcat(r.λ, r.μ, r.q, r.η)
     λ::T = 1.
     μ::T = 1.
     q::Vector{T} = Float64[]
-    η::T = 1.
+    η::T = 0.9
 end
 
-ConstantRates(θ) = ConstantRates(λ=θ[1], μ=θ[2], q=θ[3:end-1], η=θ[end])
+ConstantRates(θ::Vector) = ConstantRates(λ=θ[1], μ=θ[2], q=θ[3:end-1], η=θ[end])
+ConstantRates(θ::NamedTuple) = ConstantRates(θ...)
 (r::ConstantRates)(θ) = ConstantRates(θ)
-(r::ConstantRates)(θ::NamedTuple) = ConstantRates(λ=θ.λ, μ=θ.μ, q=θ.q, η=θ.η)
+(r::ConstantRates)(θ::NamedTuple) = ConstantRates(θ...)
 
 function ConstantRates(wm::WhaleModel)
     @unpack λ, μ, η = wm[1].event
     ConstantRates(λ=λ, μ=μ, q=getq(wm), η=η)
 end
 
-struct BranchRates{T} <: RatesModel{T}
-    λ::Vector{T}
-    μ::Vector{T}
-    q::Vector{T}
-    η::T
+@with_kw struct BranchRates{T} <: RatesModel{T}
+    r::Matrix{T}
+    q::Vector{T} = Float64[]
+    η::T = 0.9
 end
 
-BranchRates(θ, n) = BranchRates(θ[1:n], θ[n+1:2n], θ[2n+1:end-1], θ[end])
+# BranchRates(θ::Vector, n) = BranchRates(θ[1:n], θ[n+1:2n], θ[2n+1:end-1], θ[end])
+BranchRates(θ::NamedTuple) = BranchRates(θ...)
 
 function BranchRates(wm::WhaleModel)
-    λ = zeros(nnonwgd(wm))
-    μ = zeros(nnonwgd(wm))
+    r = zeros(2, nnonwgd(wm))
     q = getq(wm)
-    for i=1:length(λ)
-        @inbounds λ[i] = wm[i].event.λ
-        @inbounds μ[i] = wm[i].event.μ
+    for i=1:size(r)[2]
+        @inbounds r[:,i] = [wm[i].event.λ, wm[i].event.μ]
     end
-    BranchRates(λ, μ, q, wm[1].event.η)
+    BranchRates(r, q, wm[1].event.η)
 end
 
 function (wm::WhaleModel{T,I})(θ::R) where {T,V,I,R<:RatesModel{V}}
+    # NOTE, this does not set the slices etc.
     d = Dict{I,WhaleNode{V,<:Event{V},I}}()
     recursivecopy!(d, θ, wm[1], nothing, wm)
-    m = WhaleModel(d, wm.leaves, wm.order)
-    set!(m)
-    return m
+    WhaleModel(d, wm.leaves, wm.order)
 end
 
 function recursivecopy!(d, θ, x, y, wm)
@@ -264,22 +266,22 @@ function recursivecopy!(d, θ, x, y, wm)
     end
 end
 
-copynode!(x::WhaleNode{T,Root{T}}, y, θ::ConstantRates{V}, _) where {T,V} =
+copynode!(x::WhaleNode{T,Root{T}}, y, θ::ConstantRates, _) where T =
     copynode!(x, Root(θ.η, θ.λ, θ.μ))
 
-copynode!(x::WhaleNode{T,Speciation{T}}, y, θ::ConstantRates{V}, _) where {T,V} =
+copynode!(x::WhaleNode{T,Speciation{T}}, y, θ::ConstantRates, _) where T =
     copynode!(x, Speciation(θ.λ, θ.μ, x.event.t))
 
-copynode!(x::WhaleNode{T,WGD{T}}, y, θ::ConstantRates{V}, wm::WhaleModel) where {T,V} =
+copynode!(x::WhaleNode{T,WGD{T}}, y, θ::ConstantRates, wm::WhaleModel) where T =
     copynode!(x, WGD(θ.q[x.id-nnonwgd(wm)], x.event.t))
 
-copynode!(x::WhaleNode{T,Root{T}}, y, θ::BranchRates{V}, _) where {T,V} =
-    copynode!(x, Root(θ.η, θ.λ[1], θ.μ[1]))
+copynode!(x::WhaleNode{T,Root{T}}, y, θ::BranchRates, _) where T =
+    copynode!(x, Root(θ.η, θ.r[1,1], θ.r[2,1]))
 
-copynode!(x::WhaleNode{T,Speciation{T}}, y, θ::BranchRates{V}, _) where {T,V} =
-    copynode!(x, Speciation(θ.λ[x.id], θ.μ[x.id], x.event.t))
+copynode!(x::WhaleNode{T,Speciation{T}}, y, θ::BranchRates, _) where T =
+    copynode!(x, Speciation(θ.r[1,x.id], θ.r[2,x.id], x.event.t))
 
-copynode!(x::WhaleNode{T,WGD{T}}, y, θ::BranchRates{V}, wm::WhaleModel) where {T,V} =
+copynode!(x::WhaleNode{T,WGD{T}}, y, θ::BranchRates, wm::WhaleModel) where T =
     copynode!(x, WGD(θ.q[x.id-nnonwgd(wm)], x.event.t))
 
 copynode!(x::WhaleNode, ev::Event{T}) where T =

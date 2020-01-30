@@ -1,31 +1,26 @@
 module Whale
     using Distributed
-    using PhyloTrees
-    using ConsensusTrees
-    using Distributions
+    using Parameters
+    using NewickTree
     using DistributedArrays
-    using Optim
+    using Distributions
     using ForwardDiff
     using Random
-    using Parameters
-    using DataFrames
-    using CSV
-    import ProgressMeter: @showprogress
-    import Distributions: @check_args, logpdf
+    using LinearAlgebra
 
-    # I guess order matters for type dependencies
-    include("slicedtree.jl")
+    using LogDensityProblems
+    using TransformVariables
+    using DynamicHMC
+    import TransformVariables: TransformTuple, transform_and_logjac
+    import LogDensityProblems: logdensity_and_gradient, transform_and_logjac
+
+    import Distributions: logpdf
+
+    include("model.jl")
     include("ccd.jl")
     include("core.jl")
-    include("mle.jl")
-    include("gbm.jl")
-    include("mcmc.jl")
-    include("backtrack.jl")
-    include("consensus.jl")
+    # include("grad.jl")
+    include("dhmc.jl")
 
-    export
-        SlicedTree, WhaleModel, read_ale, logpdf, nwgd, nrates, nslices, ntaxa,
-        CCD, gradient, mle, set_constantrates!, set_equalrootrates!, describe,
-        WhaleChain, GBMModel, IRModel, mcmc!, backtrack!, consensus, wgds,
-        contreetable, write_consensusrectrees
+    export WhaleModel, CCD, read_ale
 end
