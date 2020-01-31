@@ -76,7 +76,7 @@ function WhaleNode(id::I, event::Union{Speciation,WGD},
     WhaleNode(id, parent, Set{I}(), M, event, Set{I}())
 end
 
-function WhaleModel(nw; Δt=0.05, λ=0.3, μ=0.2, η=0.9, I=UInt16)
+function WhaleModel(nw; Δt=0.05, λ=0.2, μ=0.3, η=0.9, I=UInt16)
     t, l, _ = readnw(nw)
     d = Dict{I,WhaleNode{Float64,<:Event{Float64},I}}(
             I(1)=>WhaleNode{I}(Root(η, λ, μ)))
@@ -166,7 +166,7 @@ function ϕ_slice(λ, μ, t, ε)
 end
 
 # WGDs
-function addwgd!(wm::WhaleModel{T,I}, i, t::T, q::T) where {T,I}
+function addwgd!(wm::WhaleModel{T,I}, i, t::T, q::T=rand(T)) where {T,I}
     node = wm[i]
     @assert !isroot(node) "Cannot add WGD above root node"
     ti = node.event.t
@@ -205,6 +205,9 @@ function rmwgd!(wm::WhaleModel{T,I}, i) where {T,I}
 end
 
 getq(m::WhaleModel{T}) where T = T[m[i].event.q for i in nnonwgd(m)+1:length(m)]
+leaves(n::WhaleNode, wm::WhaleModel) = [wm.leaves[i] for i in n.clade]
+lcanode(wm::WhaleModel, lca::Array{String}) =
+    wm.order[findfirst((n)->lca ⊆ leaves(wm[n], wm), wm.order)]
 
 # model acrobatics
 # would it be better to have the RatesModels as types in the WhaleModel?
@@ -219,7 +222,7 @@ asvec(r::RatesModel) = vcat(r.λ, r.μ, r.q, r.η)
     λ::T = 1.
     μ::T = 1.
     q::Vector{T} = Float64[]
-    η::T = 0.9
+    η::T = 0.8
 end
 
 ConstantRates(θ::Vector) = ConstantRates(λ=θ[1], μ=θ[2], q=θ[3:end-1], η=θ[end])

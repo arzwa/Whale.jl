@@ -1,6 +1,7 @@
+# ALE agorithm for DLWGD model
 
+# utilities
 iscompatible(γ::Clade, n::WhaleNode) = γ.species ⊆ n.clade
-
 getϵ(n::WhaleNode) = n.slices[end,2]
 getϕ(n::WhaleNode) = n.slices[end,3]
 getϵ(n::WhaleNode, i::Int) = n.slices[i,2]
@@ -10,26 +11,18 @@ getα(λ, μ, t) = isapprox(λ, μ) ?
 ℓhood(ℓ) = isfinite(ℓ) ? ℓ : -Inf
 integratedϵ(ϵ, η) = η * ϵ / (1. - (1. - η)*ϵ)
 
+# transition probability under the linear BDP 1 → 2
 function pdup(λ, μ, t)
     α = getα(λ, μ, t)
     β = (λ/μ)*α
     return (1. - α)*(1. - β)*β
 end
 
-function logpdf!(wm::WhaleModel{T}, x::CCD{I,V},
-        condition::Function=pbothsides) where {T,I,V}
-    for n in wm.order
-        whale!(wm[n], x.ℓtmp, x, wm)
-    end
-    nf = condition(wm)
-    L = x.ℓtmp[1][end,1]
-    L = L > zero(L) ? log(L) : -Inf
-    ℓhood(L - nf)::V
-end
+logpdf!(wm::WhaleModel, x::CCD, condition::Function=pbothsides) =
+    logpdf!(wm, x.ℓtmp, x, condition)
 
-function logpdf(wm::WhaleModel{T}, x::CCD,
-        condition::Function=pbothsides) where T
-    ℓ = [zeros(T, length(x.clades), length(wm[i])) for i in 1:length(wm)]
+function logpdf!(wm::WhaleModel{T}, ℓ::Array, x::CCD{I,V},
+        condition::Function=pbothsides) where {T,I,V}
     for n in wm.order
         whale!(wm[n], ℓ, x, wm)
     end
@@ -39,6 +32,13 @@ function logpdf(wm::WhaleModel{T}, x::CCD,
     ℓhood(L - nf)
 end
 
+function logpdf(wm::WhaleModel{T}, x::CCD, condition::Function=pbothsides) where T
+    # using `similar` did not give a speedup?
+    ℓ = [zeros(T, length(x.clades), length(wm[i])) for i in 1:length(wm)]
+    logpdf!(wm, ℓ, x, condition)
+end
+
+# mapreduce implementations of logpdf 
 logpdf(wm::WhaleModel, X::CCDArray, condition::Function=pbothsides) =
     mapreduce((x)->logpdf(wm, x, condition), +, X)
 

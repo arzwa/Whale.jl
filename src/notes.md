@@ -27,3 +27,7 @@ boundary of the original branch. At the model level, the branch gets really
 separated in two branches with independent slices, however the total number of
 slices stays the same, and in the DP matrix we should offset computations for a
 WGD node by the number of slices until the next speciation below the WGD node.
+
+TO DO:
+- implement backtracker
+- implement GBM model (univariate and/or bivariate?)

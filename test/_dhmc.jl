@@ -1,6 +1,6 @@
 using Test
 using Distributed
-addprocs(3)
+# addprocs(3)
 @everywhere using Pkg
 @everywhere Pkg.activate("./test/")
 @everywhere begin
@@ -55,3 +55,12 @@ q = [x.q[1] for x in posterior]
 e = [x.η for x in posterior]
 
 plot(plot(l), plot(m), plot(q), plot(e), legend=false, grid=false)
+
+
+function to_csv(io::IO, results, problem)
+    post = TransformVariables.transform.(problem.trans, results.chain)
+    for k in keys(post[1])
+        typeof(post[1].k)<:AbstractArray ? write(io, join([
+            "$k$i" for i=1:length(post[1].k)]), ",") : write(io, "$k")
+    end
+end

@@ -1,7 +1,14 @@
+# Potentially worth to open issues in DynamicHMC:
+# - save intermediate chains (so that we can run a chain indefinitely, and stop
+#   it when we're happy)
+# - flush monitoring information (can't see monitoring on cluster)
 # NOTE: currently this does not work (well) in the case where there would be
 # hyperparameters that are sampled but do not end up in the RatesModel, however
 # the RatesModel layer in between the prior and the model provides an opportunity
 # to handle this.
+# NOTE: these prior definitions and transformations can be used for other,
+# custom, MCMC samplers as well. Best to keep it as generic as possible
+# NOTE: keep an eye on Bijectors.jl (pot. replacement of TransformVariables.jl)
 """
     Prior
 
@@ -45,6 +52,7 @@ function gradient(wm::WhaleModel, r, data::CCDArray, t, x)
      mapreduce((ccd) -> gradient(wm, r, ccd, t, x), +, data)
 end
 
+# NOTE there is an overhead by needing to use logpdf instead of logpdf! here
 function gradient(wm::WhaleModel, r, ccd::CCD, t, x)
     gradfun = (x) -> logpdf(wm(r(t(x))), ccd)
     ForwardDiff.gradient(gradfun, x)
@@ -54,7 +62,7 @@ function LogDensityProblems.logdensity_and_gradient(p::WhaleProblem, x)
     @unpack model, prior, data, trans, rates = p
     v, J = transform_and_logjac(trans, x)
     π = logpdf(prior, v)
-    ℓ = logpdf(model(rates(v)), data)
+    ℓ = logpdf!(model(rates(v)), data)
     ∇ℓ = gradient(model, rates, data, trans, x)
     ∇π = gradient(prior, trans, x)
     ∇J = gradient(trans, x)
