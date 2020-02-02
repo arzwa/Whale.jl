@@ -4,6 +4,8 @@
 # in whale! seems to be a good idea in general, since even if we rely on partial
 # recomputation, the parts that have to be reset are always the parts for which
 # the DP matrix is being recomputed.
+# NOTE: potential speed-up, instead of copying model, change parameters during
+# postorder pass? Or, keep all params in the RatesModel (kind of reversion)
 
 const extree = "((MPOL:4.752,PPAT:4.752):0.292,(SMOE:4.457,(((OSAT:1.555,(ATHA:0.5548,CPAP:0.5548):1.0002):0.738,ATRI:2.293):1.225,(GBIL:3.178,PABI:3.178):0.34):0.939):0.587);"
 

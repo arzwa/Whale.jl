@@ -56,6 +56,7 @@ end
 function gradient(wm::WhaleModel, r, ccd::CCD, t, x)
     gradfun = (x) -> logpdf(wm(r(t(x))), ccd)
     ForwardDiff.gradient(gradfun, x)
+    # Zygote.gradient(gradfun, x)
 end
 
 function LogDensityProblems.logdensity_and_gradient(p::WhaleProblem, x)

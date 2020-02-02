@@ -38,7 +38,7 @@ function logpdf(wm::WhaleModel{T}, x::CCD, condition::Function=pbothsides) where
     logpdf!(wm, ℓ, x, condition)
 end
 
-# mapreduce implementations of logpdf 
+# mapreduce implementations of logpdf
 logpdf(wm::WhaleModel, X::CCDArray, condition::Function=pbothsides) =
     mapreduce((x)->logpdf(wm, x, condition), +, X)
 

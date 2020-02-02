@@ -31,3 +31,13 @@ WGD node by the number of slices until the next speciation below the WGD node.
 TO DO:
 - implement backtracker
 - implement GBM model (univariate and/or bivariate?)
+
+
+Currently, the model is copied entirely everytime parameters change, this is
+wasteful, it would probably be better to have functions like:
+
+  logpdf(wm::WhaleModel{R}, ccd, θ)
+
+where the RatesModel type defines how to get rates from a parameter vector θ,
+θ being for instance a namedtuple from TransformVariables. This goes back a bit
+to the previous implementation.
