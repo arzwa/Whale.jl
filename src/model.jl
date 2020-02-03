@@ -1,14 +1,3 @@
-# How to get type stability in the WhaleModel?
-# maybe have a look at Distributions.jl? I think they have similar situations
-# NOTE: set while computing logpdf should give speed bonus? Taking set!
-# in whale! seems to be a good idea in general, since even if we rely on partial
-# recomputation, the parts that have to be reset are always the parts for which
-# the DP matrix is being recomputed.
-# NOTE: potential speed-up, instead of copying model, change parameters during
-# postorder pass? Or, keep all params in the RatesModel (kind of reversion)
-
-const extree = "((MPOL:4.752,PPAT:4.752):0.292,(SMOE:4.457,(((OSAT:1.555,(ATHA:0.5548,CPAP:0.5548):1.0002):0.738,ATRI:2.293):1.225,(GBIL:3.178,PABI:3.178):0.34):0.939):0.587);"
-
 # event in a species tree
 abstract type Event{T} end
 
@@ -211,14 +200,7 @@ leaves(n::WhaleNode, wm::WhaleModel) = [wm.leaves[i] for i in n.clade]
 lcanode(wm::WhaleModel, lca::Array{String}) =
     wm.order[findfirst((n)->lca ⊆ leaves(wm[n], wm), wm.order)]
 
-# model acrobatics
-# would it be better to have the RatesModels as types in the WhaleModel?
-# in this implementation, a RatesModel has to implement:
-# (1) a constructor that takes a vector
-# (2) a constructor that takes a model
 abstract type RatesModel{T} end
-
-asvec(r::RatesModel) = vcat(r.λ, r.μ, r.q, r.η)
 
 @with_kw struct ConstantRates{T} <: RatesModel{T}
     λ::T = 1.
@@ -227,10 +209,7 @@ asvec(r::RatesModel) = vcat(r.λ, r.μ, r.q, r.η)
     η::T = 0.8
 end
 
-ConstantRates(θ::Vector) = ConstantRates(λ=θ[1], μ=θ[2], q=θ[3:end-1], η=θ[end])
 ConstantRates(θ::NamedTuple) = ConstantRates(θ...)
-(r::ConstantRates)(θ) = ConstantRates(θ)
-(r::ConstantRates)(θ::NamedTuple) = ConstantRates(θ...)
 
 function ConstantRates(wm::WhaleModel)
     @unpack λ, μ, η = wm[1].event
@@ -243,7 +222,6 @@ end
     η::T = 0.9
 end
 
-# BranchRates(θ::Vector, n) = BranchRates(θ[1:n], θ[n+1:2n], θ[2n+1:end-1], θ[end])
 BranchRates(θ::NamedTuple) = BranchRates(θ...)
 
 function BranchRates(wm::WhaleModel)
@@ -256,10 +234,11 @@ function BranchRates(wm::WhaleModel)
 end
 
 function (wm::WhaleModel{T,I})(θ::R) where {T,V,I,R<:RatesModel{V}}
-    # NOTE, this does not set the slices etc.
     d = Dict{I,WhaleNode{V,<:Event{V},I}}()
     recursivecopy!(d, θ, wm[1], nothing, wm)
-    WhaleModel(d, wm.leaves, wm.order)
+    wm_ = WhaleModel(d, wm.leaves, wm.order)
+    set!(wm_)
+    wm_
 end
 
 function recursivecopy!(d, θ, x, y, wm)

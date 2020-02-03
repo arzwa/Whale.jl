@@ -21,7 +21,7 @@ end
 logpdf!(wm::WhaleModel, x::CCD, condition::Function=pbothsides) =
     logpdf!(wm, x.ℓtmp, x, condition)
 
-function logpdf!(wm::WhaleModel{T}, ℓ::Array, x::CCD{I,V},
+@inline function logpdf!(wm::WhaleModel{T}, ℓ::Array, x::CCD{I,V},
         condition::Function=pbothsides) where {T,I,V}
     for n in wm.order
         whale!(wm[n], ℓ, x, wm)
@@ -59,7 +59,6 @@ function pbothsides(wm::WhaleModel)
 end
 
 function whale!(n::WhaleNode{T,Speciation{T}}, ℓ, x, wm) where T
-    set!(n, wm)
     e = n.id
     ℓ[e] .= 0.
     for γ in x.clades
@@ -82,7 +81,6 @@ function whale!(n::WhaleNode{T,Speciation{T}}, ℓ, x, wm) where T
 end
 
 function whale!(n::WhaleNode{T,WGD{T}}, ℓ, x, wm) where T
-    set!(n, wm)
     e = n.id
     nextsp = nonwgdchild(n, wm)
     ℓ[e] .= 0.
@@ -110,7 +108,6 @@ function whale!(n::WhaleNode{T,WGD{T}}, ℓ, x, wm) where T
 end
 
 function whale!(n::WhaleNode{T,Root{T}}, ℓ, x, wm) where T
-    set!(n, wm)
     ℓ[1] .= 0.
     η_ = 1.0/(1. - (1. - n.event.η) * getϵ(n))^2
     for γ in x.clades
@@ -157,13 +154,12 @@ end
 @inline function Πwgdloss(γ, ℓ, n, wm)
     f = first(children(n))
     q = n.event.q
-    (1.0 - q)*ℓ[f][γ.id,end] + 2*q*getϵ(wm[f])*ℓ[f][γ.id,end]
+    @inbounds (1.0 - q)*ℓ[f][γ.id,end] + 2*q*getϵ(wm[f])*ℓ[f][γ.id,end]
 end
 
 @inline function Πloss(γ, ℓ, n, wm)
     f, g = children(n)
-    @inbounds p = ℓ[f][γ.id,end]*getϵ(wm[g]) + ℓ[g][γ.id,end]*getϵ(wm[f])
-    return p
+    @inbounds ℓ[f][γ.id,end]*getϵ(wm[g]) + ℓ[g][γ.id,end]*getϵ(wm[f])
 end
 
 @inline function Πduplication(γ, ℓ, n, i, λ=n.event.λ, μ=n.event.μ)
@@ -172,5 +168,5 @@ end
         @inbounds p += t.p * ℓ[n.id][t.γ1,i-1] * ℓ[n.id][t.γ2,i-1]
     end
     # return p * n.event.λ * n.slices[i,1]
-    return p * pdup(λ, μ, n.slices[i,1])
+    @inbounds return p * pdup(λ, μ, n.slices[i,1])
 end

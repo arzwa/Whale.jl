@@ -48,15 +48,20 @@ function gradient(trans::TransformTuple, x)
     ForwardDiff.gradient(gradfun, x)
 end
 
+gradient(p::WhaleProblem, x) = gradient(p.model, p.rates, p.data, p.trans, x)
+
 function gradient(wm::WhaleModel, r, data::CCDArray, t, x)
-     mapreduce((ccd) -> gradient(wm, r, ccd, t, x), +, data)
+    y = [@spawnat i _grad(wm, r, localpart(data), t, x) for i in procs(data)]
+    sum(fetch.(y))
 end
 
-# NOTE there is an overhead by needing to use logpdf instead of logpdf! here
-function gradient(wm::WhaleModel, r, ccd::CCD, t, x)
-    gradfun = (x) -> logpdf(wm(r(t(x))), ccd)
-    ForwardDiff.gradient(gradfun, x)
-    # Zygote.gradient(gradfun, x)
+function _grad(wm::WhaleModel, r, data::Vector, t, x)
+    function gradfun(x)
+        model = wm(r(t(x)))  # sets the model
+        mapreduce(u->logpdf(model, u), +, data)
+    end
+    cfg = ForwardDiff.GradientConfig(gradfun, x, ForwardDiff.Chunk{length(x)}())
+    ForwardDiff.gradient(gradfun, x, cfg)
 end
 
 function LogDensityProblems.logdensity_and_gradient(p::WhaleProblem, x)
@@ -75,54 +80,3 @@ LogDensityProblems.capabilities(::Type{<:WhaleProblem}) =
     LogDensityProblems.LogDensityOrder{1}()
 
 LogDensityProblems.dimension(p::WhaleProblem) = dimension(p.trans)
-
-"""
-    CRPrior
-
-Prior for constant rates model (i.e. one duplication rate and one loss rate
-for the entire tree). Supports arbitrary, but fixed number of WGDs.
-"""
-struct CRPrior <: Prior
-    πr::MvNormal
-    πq::Beta
-    πη::Beta
-end
-
-function logpdf(prior::CRPrior, θ)
-    @unpack λ, μ, η, q = θ
-    @unpack πr, πη, πq = prior
-    logpdf(πη, η) + logpdf(πr, log.([λ, μ])) + sum(logpdf.(πq, q))
-end
-
-RatesModel(prior::CRPrior) = ConstantRates
-trans(::CRPrior, model::WhaleModel) =
-    as((λ=asℝ₊, μ=asℝ₊, q=as(Array, as𝕀, nwgd(model)), η=as𝕀))
-
-"""
-    IRPrior
-
-Bivariate independent rates prior.
-"""
-@with_kw struct IRPrior <: Prior
-    Ψ ::Matrix{Float64}
-    πr::MvNormal = MvNormal([10.,10.])
-    πq::Beta = Beta()
-    πη::Beta = Beta(3,1)
-    πE::Union{Nothing,Tuple{Normal,Vector{Float64}}} = nothing
-end
-
-function logpdf(prior::IRPrior, θ)
-    @unpack Ψ, πr, πq, πη, πE = prior
-    @unpack r, q, η = θ
-    X₀ = log.(r[:,1])
-    Y = log.(r[:,2:end]) .- X₀  # centered rate vectors prior ~ MvNormal(0, Ψ)
-    p = logpdf_pics(Ψ, Y, 3) + logpdf_evalue(πE, r)
-    p + logpdf(πη, η) + logpdf(πr, X₀) + sum(logpdf.(πq, q))
-end
-
-logpdf_pics(Ψ, Y, ν) = log(det(Ψ)) - ((ν+size(Y)[2])/2)*log(det(Ψ + Y*Y'))
-logpdf_evalue(d, r) = isnothing(d) ? 0. : logpdf(d[1], exp.(d[2].*(r[1,:].-r[2,:])))
-
-RatesModel(prior::IRPrior) = BranchRates
-trans(::IRPrior, model::WhaleModel) = as((r=as(Array, asℝ₊, 2, nnonwgd(model)),
-        q=as(Array, as𝕀, nwgd(model)), η=as𝕀))
