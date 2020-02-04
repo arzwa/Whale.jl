@@ -43,6 +43,7 @@ mutable struct CCD{T<:Integer,V<:Real}
 end
 
 Base.length(ccd::CCD) = length(ccd.clades)
+Base.lastindex(ccd::CCD) = length(ccd)
 Base.getindex(ccd::CCD, i::Int) = ccd.clades[i]
 Base.show(io::IO, ccd::CCD{T,V}) where {T,V} =
     write(io, "CCD{$T,$V}(Γ=$(length(ccd)), 𝓛=$(length(ccd.leaves)))")

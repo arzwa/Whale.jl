@@ -27,7 +27,11 @@ problem = WhaleProblem(wm, D, prior)
 P = TransformedLogDensity(problem.trans, problem)
 ∇P = ADgradient(:ForwardDiff, P)
 
+plog = LogProgressReport(step_interval=100, time_interval_s=10,
+    logger=SimpleLogger(open("log.txt", "w+")))
+
 plog = LogProgressReport(step_interval=100, time_interval_s=10)
+
 @time results = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 100, reporter=plog)
 
 @time results = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 100, reporter=plog,
@@ -41,4 +45,4 @@ m = [x.r[1,4] for x in posterior]
 q = [x.q[1] for x in posterior]
 e = [x.η for x in posterior]
 
-Plots.plot(Plots.plot(l), Plots.plot(m), Plots.plot(q), Plots.plot(e), legend=false, grid=false)
+plot(e)

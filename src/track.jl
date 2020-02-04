@@ -13,55 +13,54 @@
 # realize we can look at it like latent states
 
 # Should think about how this can be implemented elegantly
-
-struct RecNode{I}
-    rec ::I
-    kind::Symbol
+# a node in a reconciled tree always corresponds to some clade, this connects
+# the rectree to the CCD
+@with_kw struct _RecNode{I}
+    γ       ::I
+    rec     ::I = UInt16(1)
+    kind    ::Symbol = :root
+    children::Set{_RecNode{I}} = Set{_RecNode{UInt16}}()
+    parent  ::Union{Nothing,_RecNode{I}} = nothing
 end
 
 # during the recusions, we return these SliceStates, which tell us from where
 # to continue backtracking
-struct SliceState
-    n::RecNode
-    e::
-    γ::
-    t::
+struct _SliceState{I}
+    e::I
+    n::_RecNode{I}
+    t::Int64
 end
 
-initroot(m, c) = SliceState(RecNode(m[1].id, :root), m[1].id, c.clades[end], 1)
+initroot(m, c) = _SliceState(m[1].id, _RecNode(γ=c[end], rec=m[1].id), 1)
 
 # do the backtracking (exported function?)
-backtrack(wm::WhaleModel, ccd) = backtrack!(initroot(wm, ccd), wm, ccd)
+backtrack(wm::WhaleModel, c) = backtrack!(initroot(wm, ccd), wm, c)
 
 # dispatch on node type
-backtrack!(s::SliceState, wm, ccd) = backtrack!(s, wm[s.e], wm, ccd)
+backtrack!(s::SliceState, wm, c) = backtrack!(s, wm[s.e], wm, c)
 
-function backtrack!(ss::Vector{SliceState}, wm, ccd)
+function backtrack!(ss::Vector{SliceState}, wm, c)
     for s in ss
-        backtrack!(s, wm[s.e], wm, ccd)
+        backtrack!(s, wm[s.e], wm, c)
     end
 end
 
 # root backtracking
-function backtrack!(s, m::WhaleNode{T,Root{T}}, wm, ccd) where T
-    p = ccd.ℓmat[1][γ,1]
-    r = n.kind == :root ? rand()*p/m.event.η : rand()*p
+function backtrack!(s::SliceState, m::WhaleNode{T,Root{T}}, wm, c) where T
+    @unpack e, n, t = s
+    @unpack kind, γ = n
+    p = c.ℓmat[1][γ,1]
+    r = kind == :root ? rand()*p/m.event.η : rand()*p
     η_ = 1.0/(1. - (1. - m.event.η) * getϵ(m))^2
-
-    # bifurcating events
-    if !isleaf(γ)
-        @unpack r, next = root_bifurcation(r, )
+    if !isleaf(γ)  # bifurcating events
+        @unpack r, next = root_bifurcation(r, m, c.ℓmat, γ, η, η_)
     end
-
-    # loss events
-    if r > 0.
+    if r > 0. # loss events
         @unpack r, next = root_nonbifurcation()
     end
-
     if r > 0.
         error("Backtracking failed, could not obtain latent state, $s")
     end
-
     backtrack!(next, wm, ccd)
 end
 
@@ -84,14 +83,29 @@ function root_bifurcation(r, m, ℓ, γ, η, η_)
         # either stay in root and duplicate
         r -= p * ℓ[1,t.γ1,1] * ℓ[1,γ2,1] * √(1.0/η_)*(1.0-η)
         if r < 0.
+            n1 = RecNode(γ=, rec=m., kind=, parent=m)
             return (r=r, next=[SliceState(1, γ1, 1), SliceState(1, γ2, 1)])
         end
         # or speciate
         r -= p * ℓ[f][γ1, end] * ℓ[g][γ2, end] * η_
-        r < 0. ? (return r, γ1, γ2, f, g) : nothing
-
+        if r < 0.
+            return (r=r, next=[SliceState(f, γ1, 1), SliceState(g, γ2, 1)])
+        end
         r -= p * ℓ[g][γ1, end] * ℓ[f][γ2, end] * η_
-        r < 0. ? (return r, γ1, γ2, g, f) : nothing
+        if r < 0.
+            return (r=r, next=[SliceState(g, γ1, 1), SliceState(f, γ2, 1)])
+        end
     end
-    return r, -1, -1, g, f
+end
+
+function root_nonbifurcation(r, m, ℓ, γ, η_, wm)
+    f, g = m.children
+    r -= ℓ[f][γ,end] * getϵ(wm[g]) * η_
+    if r < 0.
+        return (r=r, next=SliceState(f, γ, 1))
+    end
+    r -= ℓmat[g][γ,end] * getϵ(wm[f]) * η_
+    if r < 0.
+        return (r=r, next=SliceState(g, γ, 1))
+    end
 end
