@@ -60,31 +60,30 @@ end
 WhaleNode{I}(event::Root) where I<:Integer =
     WhaleNode(I(1), I(0), Set{I}(), ones(1,3), event, Set{I}())
 
-function WhaleNode(id::I, event::Union{Speciation,WGD},
-        parent::I, Δt::T) where {T<:Real,I<:Integer}
-    n = ceil(Int, event.t / Δt)  # number of slices
+function WhaleNode(id::I, event::Union{Speciation,WGD}, parent::I, n) where I
     M = [vcat(0.0, repeat([event.t/n], n)) ones(n+1) ones(n+1)]
     WhaleNode(id, parent, Set{I}(), M, event, Set{I}())
 end
 
-function WhaleModel(nw; Δt=0.05, λ=0.2, μ=0.3, η=0.9, I=UInt16)
-    t, l, _ = readnw(nw)
+function WhaleModel(nw; Δt=0.05, minn=5, λ=0.2, μ=0.3, η=0.9, I=UInt16)
+    @unpack nodes, leaves, values = readnw(nw)
     d = Dict{I,WhaleNode{Float64,<:Event{Float64},I}}(
             I(1)=>WhaleNode{I}(Root(η, λ, μ)))
     n = Dict{I,String}()
     order = I[]
     function walk(x, y)
-        id = I(x.i)
+        id = I(x.id)
         push!(order, id)
         if isroot(x)
             x_ = d[id]
         else
-            d[id] = x_ = WhaleNode(id, Speciation(λ, μ, x.x), y.id, Δt)
+            nslices = max(minn, ceil(Int, x.x / Δt))
+            d[id] = x_ = WhaleNode(id, Speciation(λ, μ, x.x), y.id, nslices)
             push!(y, id)  # add child to parent
         end
-        isleaf(x) ? n[id] = l[id] : [walk(c, x_) for c in x.c]
+        isleaf(x) ? n[id] = leaves[id] : [walk(c, x_) for c in x.children]
     end
-    walk(t, nothing)
+    walk(nodes[1], nothing)
     wm = WhaleModel(d, n, reverse(order))
     setclades!(wm)
     set!(wm)
@@ -198,7 +197,7 @@ end
 getq(m::WhaleModel{T}) where T = T[m[i].event.q for i in nnonwgd(m)+1:length(m)]
 leaves(n::WhaleNode, wm::WhaleModel) = [wm.leaves[i] for i in n.clade]
 lcanode(wm::WhaleModel, lca::Array{String}) =
-    wm.order[findfirst((n)->lca ⊆ leaves(wm[n], wm), wm.order)]
+    wm.order[findfirst((n)->lca ⊆ leaves(wm[n], wm) && !iswgd(wm[n]), wm.order)]
 
 abstract type RatesModel{T} end
 

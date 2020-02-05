@@ -3,7 +3,7 @@ using Distributions
 @testset "Priors" begin
     wm = WhaleModel(Whale.extree)
     Whale.addwgd!(wm, 5, 0.25, rand())
-    D = distribute(read_ale("./example/example-ale", wm)[1:2])
+    D = distribute(read_ale("../example/example-ale", wm)[1:2])
 
     @testset "CR prior" begin
         prior = Whale.CRPrior(MvNormal(ones(2)), Beta(3,1), Beta())
