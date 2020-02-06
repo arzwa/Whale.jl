@@ -1,20 +1,4 @@
-# recursive stochastic backtracking of reconciled trees
-# i.e. sampling reconciled trees conditional on the data and parameters
-# this corresponds actually to sampling latent states, not posterior prediction
-# Posterior prediction would be this:
-# R|X ~ p(R|X) = (∫θ) p(R|θ,X) p(θ|X) = (∫θ) p(R|θ) p(θ|X)
-# but this is not what we do when backtracking trees.
-# the ALE algorithm computes a marginal likelihood, integrating over latent
-# states (latent states can be thought of as assignments of clades γ to (e,t))
-# i.e. slices of the tree.
-# in other words, in the Bayesian setting this does not amount to posterior
-# prediction (obviously actually) but to sampling a reconciliation from the
-# posterior, which is how I treated them in the past, but I didn't actually
-# realize we can look at it like latent states
 
-# Should think about how this can be implemented elegantly
-# a node in a reconciled tree always corresponds to some clade, this connects
-# the rectree to the CCD
 @with_kw struct RecNode{I}
     γ       ::I
     rec     ::I = UInt16(1)
@@ -33,6 +17,8 @@ struct SliceState{I}
     t::Int64
 end
 
+Base.show(io::IO, s::SliceState) = write(io, "$(Int64.((s.e, s.γ, s.t)))")
+
 struct BackTracker{I}
     state::SliceState{I}
     node ::RecNode{I}
@@ -40,145 +26,252 @@ struct BackTracker{I}
     ccd  ::CCD
 end
 
-BackTracker(model, ccd) = BackTracker(
-    SliceState(model[1].id, ccd[end].id, 1),
-    RecNode(γ=ccd[end].id, rec=model[1].id))
+function Base.:-(b::BackTracker)
+    @unpack e, γ, t = b.state
+    BackTracker(SliceState(e, γ, t-1), b.node, b.model, b.ccd)
+end
 
-# non-bifurcations can be sploss or wgdloss
-function update(b::BackTracker, newstate::SliceState)
-    @unpack state, node, model, ccd = b
-    @unpack e, γ, t = newstate
-    if iswgd(model[e])  # newstate is in WGD branch
-        # add WGD node
-        newnode =
-    else
-        # add sploss node
-        newnode =
-    end
-    BackTracker(newstate, newnode, model, ccd)
+BackTracker(model::WhaleModel, ccd::CCD) = BackTracker(
+    SliceState(model[1].id, ccd[end].id, 1),
+    RecNode(γ=ccd[end].id, rec=model[1].id), model, ccd)
+
+# We use 'the abstract types can be an implementation detail' technique I
+# once read in a blog post by Tamas Papp, basically non-wgds (root speciation)
+# are handled by dipatching on the abstract WhaleNode, wgds by dispatch on the
+# concrete subtype.
+# non-bifurcations
+function update(b::BackTracker, newstate::SliceState, n::WhaleNode{T,WGD{T}}) where T
+    @unpack γ, e = newstate
+    newnode = RecNode(γ=γ, rec=e, kind=:wgdloss, parent=b.node)
+    BackTracker(newstate, newnode, b.model, b.ccd)
+end
+
+function update(b::BackTracker, newstate::SliceState, n::WhaleNode)
+    @unpack γ, e = newstate
+    newnode = RecNode(γ=γ, rec=e, kind=:sploss, parent=b.node)
+    BackTracker(newstate, newnode, b.model, b.ccd)
 end
 
 # bifurcations
-function update!(b::BackTracker, newstates::Vector{SliceState})
-    @unpack state, node, model = b
-    @unpack e, γ, t = newstate
-    # TODO don't like this, should be dispatching on node type?
-    if state.e != e && !iswgd(model[e])   # speciation
-    elseif state.e != e  # WGD retention
-    elseif t == 1 # we stayed in the root
-    else  # we duplicated (stayed in same branch, t != 0)
+function update(b::BackTracker, newstates::Vector, n::WhaleNode{T,WGD{T}}) where T
+    next = similar(newstates, BackTracker)
+    for (i, newstate) in enumerate(newstates)
+        @unpack e, γ = newstate
+        newnode = RecNode(γ=γ, rec=e, kind=:wgd, parent=b.node)
+        next[i] = BackTracker(newstate, newnode, b.model, b.ccd)
     end
+    next
+end
+
+function update(b::BackTracker, newstates::Vector, n::WhaleNode{T,Speciation{T}}) where T
+    next = similar(newstates, BackTracker)
+    for (i, newstate) in enumerate(newstates)
+        @unpack e, γ = newstate
+        newnode = RecNode(γ=γ, rec=e, kind=:sp, parent=b.node)
+        next[i] = BackTracker(newstate, newnode, b.model, b.ccd)
+    end
+    next
+end
+
+function update(b::BackTracker, newstates::Vector, n::WhaleNode{T,Root{T}}) where T
+    next = similar(newstates, BackTracker)
+    for (i, newstate) in enumerate(newstates)
+        @unpack e, γ = newstate
+        newnode = RecNode(γ=γ, rec=e, kind=:duplication, parent=b.node)
+        next[i] = BackTracker(newstate, newnode, b.model, b.ccd)
+    end
+    next
+end
+
+function update(b::BackTracker, newstates::Vector)
+    next = similar(newstates, BackTracker)
+    for (i, newstate) in enumerate(newstates)
+        @unpack e, γ = newstate
+        newnode = RecNode(γ=γ, rec=e, kind=:duplication, parent=b.node)
+        next[i] = BackTracker(newstate, newnode, b.model, b.ccd)
+    end
+    next
 end
 
 # do the backtracking (exported function?)
 backtrack(wm::WhaleModel, ccd) = backtrack!(BackTracker(wm, ccd))
 
 # dispatch on node type
-backtrack!(b::BackTracker) = backtrack!(b, b.model[b.state.e])
+function backtrack!(b::BackTracker)
+    if b.state.t == 1
+        @show b.state
+        backtrack!(b, b.model[b.state.e])
+    else
+        backtrack_intra!(b)
+    end
+end
 
 # root backtracking
 function backtrack!(b::BackTracker, n::WhaleNode{T,Root{T}}) where T
-    @unpack node, state, model, ccd = b
+    @unpack node, state, ccd = b
     @unpack e, γ, t = state
-    p = ccd.ℓmat[e][γ,t]
+    p = ccd.ℓtmp[e][γ,t]
     r = node.kind == :root ? rand()*p/n.event.η : rand()*p
-    η_ = 1.0/(1. - (1. - n.event.η) * getϵ(m))^2
-    if !isleaf(γ)  # bifurcating events
-        @unpack r, next = root_bifurcation!(r, state, n, ccd.ℓmat, η, η_)
+    η_ = 1.0/(1. - (1. - n.event.η) * getϵ(n))^2
+    if !isleaf(ccd[γ])  # bifurcating events
+        @unpack r, next = rootbifurcation(r, b, n, n.event.η, η_)
         if r < 0.0
-            bs = update(b, next)  # TODO add new node to rectree and updates state
-            return backtrack!.(bs)
+            newbs = update(b, next, n)
+            return backtrack!.(newbs)
         end
     end
     # loss
-    @unpack r, next = root_nonbifurcation!(r, state, n, ccd.ℓmat, η_, model)
+    @unpack r, next = rootloss(r, b, n, η_)
     if r < 0.0
-        update!(b, next)
-        return backtrack!(b)
+        newb = update(b, next, n)
+        return backtrack!(newb)
     else
-        error("Backtracking failed, could not obtain latent state, $s")
+        error("Backtrace failed ($n), could not obtain latent state, $s")
     end
 end
 
-# inter branch backtracking
-function backtrack!(s::SliceState, m::WhaleNode{T,Speciation{T}}, ccd, γ) where T
-    @unpack e, γ, t, n = s
-    r = rand()*ccd.ℓmat[e][γ,t]
-    @unpack r, next = non_bifurcation!(r, m, s, ccd.ℓmat, wm)
+# speciation
+function backtrack!(b::BackTracker, n::WhaleNode{T,Speciation{T}}) where T
+    if isleaf(n)
+        return b
+    end
+    @unpack node, state, ccd = b
+    @unpack e, γ, t = state
+    r = rand()*ccd.ℓtmp[e][γ,t]
+    @unpack r, next = sploss(r, b, n)
+    if r < 0.
+        newb = update(b, next, n)
+        backtrack!(newb)
+    elseif isleaf(ccd[γ])
+        error("Backtrace failed $(n), isleaf(γ) == true but no sp+loss")
+    end
+    @unpack r, next = speciation(r, b, n)
+    if r < 0.
+        newbs = update(b, next, n)
+        return backtrack!.(newbs)
+    else
+        error("Backtrace failed ($n), could not obtain latent state, $s")
+    end
 end
 
-function backtrack!(s::SliceState, m::WhaleNode{T,WGD{T}}, ccd, γ) where T
+function backtrack!(b::BackTracker, m::WhaleNode{T,WGD{T}}) where T
 end
 
 # intra branch backtracking
-function backtrack!(n::RecNode, m, ccd, γ, t) where T
+function backtrack_intra!(b::BackTracker)
+    @unpack state, ccd, model = b
+    @unpack e, γ, t = state
+    if isleaf(ccd[γ])
+        newstate = SliceState(e, γ, 1)
+        return backtrack!(BackTracker(newstate, b.node, ccd, model))
+    end
+    r = rand()*ccd.ℓtmp[e][γ,t]
+    r -= getϕ(model[e], t) * ccd.ℓtmp[e][γ,t-1]
+    if r < 0.
+        backtrack!(-b)
+    end
+    @unpack r, next = duplication(r, b)
+    if r < 0.
+        newbs = update(b, next)
+        return backtrack!.(newbs)
+    else
+        error("Backtrace failed ($r), could not obtain latent state, $state")
+    end
 end
 
-
-function non_bifurcation!(r, s::SliceState, m::WhaleNode, ℓ, wm)
-    @unpack e, γ, t, n = s
-    f, g = m.children
-    r -= ℓ[f][γ,end]*getϵ(wm[g])
-    if r < 0.
-        newnode = splossnode!(n, e, γ)
-        return (r=r, next=SliceState(f, γ, 1))
+function duplication(r, b::BackTracker)
+    @unpack state, ccd, model = b
+    @unpack e, γ, t = state
+    nextsp = nonwgdchild(model[e], model)
+    @unpack λ, μ = nextsp.event
+    Δt = model[e].slices[t,1]
+    ℓ = ccd.ℓtmp
+    for triple in ccd[γ].splits
+        @unpack p, γ1, γ2 = triple
+        r -= p * ℓ[e][γ1,t-1] * ℓ[e][γ2,t-1] * pdup(λ, μ, Δt)
+        if r < 0.
+            return (r=r, next=[SliceState(e, γ1, t-1), SliceState(e, γ2, t-1)])
+        end
     end
-    r -= ℓ[g][γ,end]*getϵ(wm[f])
-    if r < 0.
-        newnode = splossnode!(n, e, γ)
-        return (r=r, next=SliceState(g, γ, 1))
-    end
+    return (r=r, next=SliceState[])
 end
 
-function root_bifurcation!(r, s::SliceState, m::WhaleNode, ℓ, η, η_)
-    @unpack e, γ, t, n = s
+function speciation(r, b::BackTracker, m::WhaleNode)
+    @unpack state, ccd, model = b
+    @unpack e, γ, t = state
     f, g = m.children
-    for t in γ.splits
-        @unpack p, γ1, γ2 = t
+    tf = lastslice(model, f)
+    tg = lastslice(model, g)
+    ℓ = ccd.ℓtmp
+    for triple in ccd[γ].splits
+        @unpack p, γ1, γ2 = triple
+        r -= p * ℓ[f][γ1,end] * ℓ[g][γ2,end]
+        if r < 0.
+            return (r=r, next=[SliceState(f, γ1, tf), SliceState(g, γ2, tg)])
+        end
+        r -= p * ℓ[g][γ1,end] * ℓ[f][γ2,end]
+        if r < 0.
+            return (r=r, next=[SliceState(g, γ1, tg), SliceState(f, γ2, tf)])
+        end
+    end
+    return (r=r, next=SliceState[])
+end
+
+function sploss(r, b::BackTracker, m::WhaleNode)
+    @unpack state, ccd, model = b
+    @unpack e, γ, t, = state
+    ℓ = ccd.ℓtmp
+    f, g = m.children
+    r -= ℓ[f][γ,end]*getϵ(model[g])
+    if r < 0.
+        return (r=r, next=SliceState(f, γ, lastslice(model, f)))
+    end
+    r -= ℓ[g][γ,end]*getϵ(model[f])
+    if r < 0.
+        return (r=r, next=SliceState(g, γ, lastslice(model, g)))
+    end
+    return (r=r, next=SliceState[])
+end
+
+function rootbifurcation(r, b::BackTracker, m::WhaleNode, η, η_)
+    @unpack state, ccd, model = b
+    @unpack e, γ, t, = state
+    ℓ = ccd.ℓtmp
+    f, g = m.children
+    tf = lastslice(model, f)
+    tg = lastslice(model, g)
+    for triple in ccd[γ].splits
+        @unpack p, γ1, γ2 = triple
         # either stay in root and duplicate
-        r -= p * ℓ[e,t.γ1,t] * ℓ[e,γ2,t] * √(1.0/η_)*(1.0-η)
+        r -= p * ℓ[e][γ1,t] * ℓ[e][γ2,t] * √(1.0/η_)*(1.0-η)
         if r < 0.
             return (r=r, next=[SliceState(e, γ1, t), SliceState(e, γ2, t)])
         end
         # or speciate
         r -= p * ℓ[f][γ1,end] * ℓ[g][γ2,end] * η_
         if r < 0.
-            return (r=r, next=[SliceState(f, γ1, t), SliceState(g, γ2, t)])
+            return (r=r, next=[SliceState(f, γ1, tf), SliceState(g, γ2, tg)])
         end
         r -= p * ℓ[g][γ1,end] * ℓ[f][γ2,end] * η_
         if r < 0.
-            return (r=r, next=[SliceState(g, γ1, t), SliceState(f, γ2, t)])
+            return (r=r, next=[SliceState(g, γ1, tg), SliceState(f, γ2, tf)])
         end
     end
+    return (r=r, next=SliceState[])
 end
 
-function root_nonbifurcation!(r, s::SliceState, m::WhaleNode, ℓ, η_, wm)
-    @unpack e, γ, t, n = s
+function rootloss(r, b::BackTracker, m::WhaleNode, η_)
+    @unpack state, ccd, model = b
+    @unpack e, γ, t, = state
+    ℓ = ccd.ℓtmp
     f, g = m.children
-    r -= ℓ[f][γ,end] * getϵ(wm[g]) * η_
+    r -= ℓ[f][γ,end] * getϵ(model[g]) * η_
     if r < 0.
-        return (r=r, next=SliceState(f, γ, 1))
+        return (r=r, next=SliceState(f, γ, lastslice(model, f)))
     end
-    r -= ℓmat[g][γ,end] * getϵ(wm[f]) * η_
+    r -= ℓtmp[g][γ,end] * getϵ(model[f]) * η_
     if r < 0.
-        return (r=r, next=SliceState(g, γ, 1))
+        return (r=r, next=SliceState(g, γ, lastslice(model, g)))
     end
-end
-
-function dupnode!(n::RecNode{I}, γ::I) where I
-    newnode = RecNode(γ=γ, rec=n.rec, kind=:duplication, parent=n)
-    push!(n, newnode)
-    newnode
-end
-
-function spnode!(n::RecNode{I}, e::I, γ::I)
-    newnode = RecNode(γ=γ, rec=e, kind=:speciation, parent=n)
-    push!(n, newnode)
-    newnode
-end
-
-function splossnode!(n::RecNode{I}, e::I, γ::I)
-    newnode = RecNode(γ=γ, rec=e, kind=:sploss, parent=n)
-    push!(n, newnode)
-    newnode
+    return (r=r, next=SliceState[])
 end

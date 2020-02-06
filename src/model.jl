@@ -49,6 +49,8 @@ parentnode(n::WhaleNode) = n.parent
 iswgd(n::WhaleNode) = typeof(n.event)<:WGD
 nnonwgd(wm::WhaleModel) = 2*length(wm.leaves) - 1
 nwgd(wm::WhaleModel) = length(wm) - nnonwgd(wm)
+lastslice(wn::WhaleNode) = lastindex(wn.slices, 1)
+lastslice(wm::WhaleModel, i::Integer) = lastindex(wm[i].slices, 1)
 
 function nonwgdchild(n::WhaleNode, wm::WhaleModel)
     while iswgd(n)
@@ -171,12 +173,13 @@ function addwgd!(wm::WhaleModel{T,I}, node, t::T, q::T=rand(T)) where {T,I}
     j = I(length(wm)+1)
     wgdslices = vcat(node.slices[1,:]', node.slices[k:end,:])
     node.slices = node.slices[1:k-1,:]
-    wgd = WhaleNode(j, parent.id, Set{I}(i), wgdslices, WGD(q, ti-t), node.clade)
+    wgd = WhaleNode(j, parent.id, Set{I}(node.id), wgdslices, WGD(q, ti-t), node.clade)
     wm.nodes[j] = wgd
-    delete!(parent.children, i)
+    delete!(parent.children, node.id)
     push!(parent.children, j)
     node.parent = j
-    idx = findfirst(x->x==I(i), wm.order)
+    node.event.t = t
+    idx = findfirst(x->x==I(node.id), wm.order)
     insert!(wm.order, idx+1, j)
     setabove!(wm[j], wm)
 end
@@ -204,6 +207,11 @@ lcanode(wm::WhaleModel, lca::Array{String}) =
 
 abstract type RatesModel{T} end
 
+"""
+    ConstantRates
+
+Rates model with one λ and one μ for the entire tree.
+"""
 @with_kw struct ConstantRates{T} <: RatesModel{T}
     λ::T = 1.
     μ::T = 1.
@@ -218,6 +226,13 @@ function ConstantRates(wm::WhaleModel)
     ConstantRates(λ=λ, μ=μ, q=getq(wm), η=η)
 end
 
+"""
+    BranchRates
+
+Rates model with a λ and μ rate parameter for each branch in the tree,
+including the root (which may represent a mean rate for instance in
+a hierarchical prior setting).
+"""
 @with_kw struct BranchRates{T} <: RatesModel{T}
     r::Matrix{T}
     q::Vector{T} = Float64[]

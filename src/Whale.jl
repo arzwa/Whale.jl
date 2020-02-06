@@ -21,6 +21,7 @@ module Whale
     include("core.jl")
     include("dhmc.jl")
     include("prior.jl")
+    include("track.jl")
 
     # an example tree
     const extree = "((MPOL:4.752,PPAT:4.752):0.292,(SMOE:4.457,(((OSAT:1.555,(ATHA:0.5548,CPAP:0.5548):1.0002):0.738,ATRI:2.293):1.225,(GBIL:3.178,PABI:3.178):0.34):0.939):0.587);"
