@@ -98,8 +98,8 @@ backtrack(wm::WhaleModel, ccd) = backtrack!(BackTracker(wm, ccd))
 
 # dispatch on node type
 function backtrack!(b::BackTracker)
+    @show b.state
     if b.state.t == 1
-        @show b.state
         backtrack!(b, b.model[b.state.e])
     else
         backtrack_intra!(b)
@@ -163,7 +163,7 @@ function backtrack_intra!(b::BackTracker)
     @unpack e, γ, t = state
     if isleaf(ccd[γ])
         newstate = SliceState(e, γ, 1)
-        return backtrack!(BackTracker(newstate, b.node, ccd, model))
+        return backtrack!(BackTracker(newstate, b.node, model, ccd))
     end
     r = rand()*ccd.ℓtmp[e][γ,t]
     r -= getϕ(model[e], t) * ccd.ℓtmp[e][γ,t-1]
