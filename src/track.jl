@@ -13,14 +13,18 @@ are identified by having `γ == 0`.
     parent  ::Union{Nothing,RecNode{I}} = nothing
 end
 
+Base.hash(r::RecNode) = hash((r.γ, r.rec, hash(r.children)))
 Base.push!(n::RecNode{I}, m::RecNode{I}) where I = push!(n.children, m)
 Base.show(io::IO, n::RecNode) = write(io, "RecNode(γ=$(n.γ); rec=$(n.rec))")
+
+rectuple(r::RecNode) = (r.γ, r.rec)
+cladehash(r::RecNode) = r.γ == 0 ? hash((r.γ, r.rec, sister(r).γ)) :
+    hash((r.γ, r.rec, Set(rectuple.(r.children))))
 
 NewickTree.isleaf(n::RecNode) = length(n.children) == 0
 NewickTree.isroot(n::RecNode) = isnothing(n.parent)
 NewickTree.children(n::RecNode) = collect(n.children)
-NewickTree.id(n::RecNode) = n.γ == 0 ?
-    "$(n.γ)_$(sister(n).γ).$(n.rec)" : "$(n.γ).$(n.rec)"
+NewickTree.id(n::RecNode) = cladehash(n)
 NewickTree.tonw(n::RecNode, wm::WhaleModel, ccd::CCD) = NewickTree.tonw(n,
     (n)->n.γ == 0 ? "loss_$(n.rec)" : ccd.leaves[n.γ], label=(n)->n.rec)
 
@@ -106,20 +110,18 @@ end
 
 # for posteriors from DynamicHMC
 function backtrack(wm, ccd, posterior, rates)
-    function _backtrack(x)
+    function bt(x)
         wmm = wm(rates(x))
         logpdf!(wmm, ccd)
         Array(backtrack(wmm, ccd))
     end
-    hcat(map(_backtrack, posterior)...)
+    permutedims(hcat(map(bt, posterior)...))
 end
 
 backtrack!(b::BackTracker) = b.state.γ == 0 ? (return) : b.state.t == 1 ?
     _backtrack!(b, b.model[b.state.e]) : _backtrack!(b)
 
 backtrack!(b::BackTracker, next::SliceState) = backtrack!(b(next))
-
-# terminate(b, next) = isleaf(b.model[next.e]) && isleaf(b.ccd[b.state.γ])
 
 function backtrack!(b::BackTracker, next::Vector)
     for nextstate in next
@@ -128,7 +130,7 @@ function backtrack!(b::BackTracker, next::Vector)
 end
 
 function _backtrack!(b, n)  # internode backtracking
-    isleaf(n) ? (return) : nothing  # XXX?
+    isleaf(n) ? (return) : nothing  # terminates recursion
     @unpack node, state, ccd = b
     @unpack e, γ, t = state
     r = rand()*ccd.ℓtmp[e][γ,t]
