@@ -28,4 +28,5 @@ module Whale
 
     export WhaleModel, CCD, CCDArray, read_ale, logpdf, logpdf!, addwgd!
     export WhaleProblem, CRPrior, IRPrior, ConstantRates, BranchRates
+    export backtrack
 end

@@ -25,9 +25,9 @@ This struct defines all DynamicHMC related functionalities and can be
 constructed from a WhaleModel instance, data set and prior struct (the rationale
 is that the prior struct full defines the problem).
 """
-struct WhaleProblem{V<:Prior,R,T}
-    data ::CCDArray
-    model::WhaleModel
+struct WhaleProblem{V<:Prior,R,T,I,U}
+    data ::CCDArray{I,U}
+    model::WhaleModel{I,U}
     prior::V
     rates::R
     trans::T
@@ -73,7 +73,7 @@ function LogDensityProblems.logdensity_and_gradient(p::WhaleProblem, x)
     ∇π = gradient(prior, trans, x)
     ∇J = gradient(trans, x)
     # @show ∇ℓ, ∇π, ∇J
-    return ℓ + π + J, ∇ℓ .+ ∇π .+ ∇J
+    return (ℓ + π + J)::Float64, (@. ∇ℓ + ∇π + ∇J)::Vector{Float64}
 end
 
 LogDensityProblems.capabilities(::Type{<:WhaleProblem}) =

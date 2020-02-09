@@ -8,7 +8,7 @@ using Distributed
 end
 
 wm = Whale.WhaleModel(Whale.extree)
-addwgd!(wm, 5, 0.25, rand())
+addwgd!(wm, wm[5], 0.25, rand())
 D = distribute(read_ale("./example/example-ale", wm)[1:10])
 
 # ConstantRates
@@ -46,3 +46,7 @@ q = [x.q[1] for x in posterior]
 e = [x.η for x in posterior]
 
 plot(e)
+
+wmm = wm(ConstantRates(posterior[5]))
+logpdf!(wmm, D)
+R = backtrack(wmm, D)

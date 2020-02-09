@@ -39,11 +39,11 @@ function logpdf(wm::WhaleModel{T}, x::CCD, condition::Function=pbothsides) where
 end
 
 # mapreduce implementations of logpdf
-logpdf(wm::WhaleModel, X::CCDArray, condition::Function=pbothsides) =
+logpdf(wm::WhaleModel{T}, X::AbstractVector, condition::Function=pbothsides) where T =
     mapreduce((x)->logpdf(wm, x, condition), +, X)
 
-logpdf!(wm::WhaleModel, X::CCDArray, condition::Function=pbothsides) =
-    mapreduce((x)->logpdf!(wm, x, condition), +, X)
+logpdf!(wm::WhaleModel{T}, X::AbstractVector, condition::Function=pbothsides) where T =
+    mapreduce((x)->logpdf!(wm, x, condition), +, X)::T
 
 # log probability of non-extinction
 pnonextinct(wm::WhaleModel) = log(1. - integratedϵ(getϵ(wm[1]), wm[1].event.η))
