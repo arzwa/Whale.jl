@@ -33,7 +33,7 @@ sister(n::RecNode) = first(setdiff(n.parent.children, Set([n])))
 """
     SliceState{I}
 
-Should not be exported. This essentially holds the last backtraced state
+Should not be exported. This essentially holds the last backtracked state
 for the slice (branch=e,time=t). An instance thus represents the observed
 (sampled) state for the latent random variable Yₜᵉ. A sequence of these
 Yₜᵉ across all (e,t) defines a reconciled tree.
@@ -86,7 +86,7 @@ end
 
 """
     backtrack(wm::WhaleModel, ccd::CCD)
-    backtrack(wm::WhaleModel, ccd::CCDArray)
+    backtrack(wm::WhaleModel, ccd::AbstractVector{CCD})
 
 Backtracking function, samples latent states (which corresponds to a
 reconciliation) conditional on the current `ℓmat` in the CCD object(s) (i.e.
@@ -100,9 +100,9 @@ rtree = backtrack(wm, ccd)
 NewickTree.print_tree(rtree)
 ```
 """
-backtrack(wm, D::AbstractVector) = map((ccd)->backtrack(wm, ccd), D)
+backtrack(wm::WhaleModel, D::AbstractVector) = map((ccd)->backtrack(wm, ccd), D)
 
-function backtrack(wm, ccd::CCD)
+function backtrack(wm::WhaleModel, ccd::CCD)
     bt = BackTracker(wm, ccd)
     backtrack!(bt)
     return bt.node

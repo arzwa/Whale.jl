@@ -1,3 +1,9 @@
+"""
+    Prior
+
+A prior subtype implements a logpdf function, a ratesmodel and a transformation.
+"""
+abstract type Prior end
 
 """
     CRPrior

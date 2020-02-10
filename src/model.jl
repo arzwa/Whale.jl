@@ -42,10 +42,13 @@ Base.show(io::IO, n::WhaleNode{T,E}) where {T,E} = write(io, "WhaleNode{$T,$E}")
 Base.push!(n::WhaleNode, i) = push!(n.children, i)
 Base.getindex(wm::WhaleModel, i) = wm.nodes[i]
 
+NewickTree.id(n::WhaleNode) = n.id
 NewickTree.isroot(n::WhaleNode) = typeof(n.event)<:Root
 NewickTree.isleaf(n::WhaleNode) = length(n.children) == 0
-children(n::WhaleNode) = n.children
+NewickTree.distance(n::WhaleNode) = isroot(n) ? 0. : n.event.t
+NewickTree.children(n::WhaleNode) = n.children
 parentnode(n::WhaleNode) = n.parent
+
 iswgd(n::WhaleNode) = typeof(n.event)<:WGD
 nnonwgd(wm::WhaleModel) = 2*length(wm.leaves) - 1
 nwgd(wm::WhaleModel) = length(wm) - nnonwgd(wm)
@@ -201,6 +204,7 @@ function rmwgd!(wm::WhaleModel{T,I}, i) where {T,I}
 end
 
 getq(m::WhaleModel{T}) where T = T[m[i].event.q for i in nnonwgd(m)+1:length(m)]
+getwgd(m::WhaleModel) = nnonwgd(m)+1:length(m)
 leaves(n::WhaleNode, wm::WhaleModel) = [wm.leaves[i] for i in n.clade]
 lcanode(wm::WhaleModel, lca::Array{String}) =
     wm.order[findfirst((n)->lca ⊆ leaves(wm[n], wm) && !iswgd(wm[n]), wm.order)]

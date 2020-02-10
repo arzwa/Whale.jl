@@ -1,11 +1,14 @@
+using DynamicHMC, Whale, DistributedArrays, Distributions, Random
+using TransformVariables
+
 wm = WhaleModel(Whale.extree, Δt=0.1)
-ccd = read_ale("example/example-ale/", wm)
-NewickTree.distance(n::Whale.RecNode) = 1.
-wm = wm(BranchRates(r=exp.(randn(2,17)), η=0.9))
-logpdf!(wm, ccd)
-
-
-r = backtrack(wmm, ccd)
+ccd = distribute(read_ale("example/example-ale/", wm))
+prior = Whale.CRPrior(MvNormal(ones(2)), Beta(3,1), Beta())
+problem = Whale.WhaleProblem(wm, ccd, prior)
+results = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 100)
+posterior = TransformVariables.transform.(problem.trans, results.chain)
+trees = backtrack(wm, ccd, posterior, ConstantRates)
+rectrees = sumtrees(trees, ccd, wm)
 
 begin
     i = 2

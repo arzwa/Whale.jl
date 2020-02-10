@@ -10,13 +10,6 @@
 # custom, MCMC samplers as well. Best to keep it as generic as possible
 # NOTE: keep an eye on Bijectors.jl (pot. replacement of TransformVariables.jl)
 """
-    Prior
-
-A prior subtype implements a logpdf function, a ratesmodel and a transformation.
-"""
-abstract type Prior end
-
-"""
     WhaleProblem
 
 A generic Whale 'problem' interface ̀a la LogDensityProblems.jl. This holds
@@ -80,3 +73,6 @@ LogDensityProblems.capabilities(::Type{<:WhaleProblem}) =
     LogDensityProblems.LogDensityOrder{1}()
 
 LogDensityProblems.dimension(p::WhaleProblem) = dimension(p.trans)
+
+backtrack(p::WhaleProblem, posterior) =
+    backtrack(p.model, p.data, posterior, p.rates)

@@ -1,5 +1,4 @@
 # ALE agorithm for DLWGD model
-
 # utilities
 iscompatible(γ::Clade, n::WhaleNode) = γ.species ⊆ n.clade
 getϵ(n::WhaleNode) = n.slices[end,2]
@@ -18,6 +17,17 @@ function pdup(λ, μ, t)
     return (1. - α)*(1. - β)*β
 end
 
+"""
+    logpdf!(model, ccd [, condition::Function])
+
+Compute the log-likelihood of the data (a single CCD or vector of CCDs) given
+the parameterized model `model`.
+
+The third argument is a conditioning function, where currently `pbothsides`
+(i.e. condition on non-extinction in both clades stemming fom the root) and
+`pnonextinct` (i.e. condition on the family being non-extinct) are implemented.
+Default is `pbothsides`.
+"""
 logpdf!(wm::WhaleModel, x::CCD, condition::Function=pbothsides) =
     logpdf!(wm, x.ℓtmp, x, condition)
 
