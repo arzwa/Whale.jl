@@ -80,3 +80,8 @@ the reconciled tree? This gives the most important info, but it would be nicer
 if we could include information on the other reconciliations of each clade as
 well instead of only showing the MAP event. Ideally would have a more
 comprehensive summary from which such a table could be easily obtained...
+
+
+# References
+
+peerJ (Fourment) phylogenetic inference in Stan: https://peerj.com/articles/8272/

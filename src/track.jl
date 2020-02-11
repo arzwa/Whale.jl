@@ -7,26 +7,27 @@ with the number of leaves should give sufficient information. Loss nodes
 are identified by having `γ == 0`.
 """
 @with_kw struct RecNode{I}
-    γ       ::I
-    rec     ::I = UInt16(1)
+    γ::I                # clade in CCD
+    e::I = UInt16(1)    # edge (in species tree)
+    t::Int = 1          # alice index along edge `e`
     children::Set{RecNode{I}} = Set{RecNode{UInt16}}()
     parent  ::Union{Nothing,RecNode{I}} = nothing
 end
 
-Base.hash(r::RecNode) = hash((r.γ, r.rec, hash(r.children)))
+# NOTE `t` is not inhash, because duplications with different `t` should ==
+Base.hash(r::RecNode) = hash((r.γ, r.e, hash(r.children)))
 Base.push!(n::RecNode{I}, m::RecNode{I}) where I = push!(n.children, m)
-Base.show(io::IO, n::RecNode) = write(io, "RecNode(γ=$(n.γ); rec=$(n.rec))")
+Base.show(io::IO, n::RecNode) = write(io, "RecNode(γ=$(n.γ); rec=$(n.e))")
 
-rectuple(r::RecNode) = (r.γ, r.rec)
-cladehash(r::RecNode) = r.γ == 0 ? hash((r.γ, r.rec, sister(r).γ)) :
-    hash((r.γ, r.rec, Set(rectuple.(r.children))))
+rectuple(r::RecNode) = (r.γ, r.e)
+cladehash(r::RecNode) = r.γ == 0 ? hash((r.γ, r.e, sister(r).γ)) :
+    hash((r.γ, r.e, Set(rectuple.(r.children))))
 
 NewickTree.isleaf(n::RecNode) = length(n.children) == 0
 NewickTree.isroot(n::RecNode) = isnothing(n.parent)
 NewickTree.children(n::RecNode) = collect(n.children)
 NewickTree.id(n::RecNode) = cladehash(n)
-NewickTree.tonw(n::RecNode, wm::WhaleModel, ccd::CCD) = NewickTree.tonw(n,
-    (n)->n.γ == 0 ? "loss_$(n.rec)" : ccd.leaves[n.γ], label=(n)->n.rec)
+NewickTree.distance(r::RecNode) = 1.
 
 sister(n::RecNode) = first(setdiff(n.parent.children, Set([n])))
 
@@ -71,12 +72,12 @@ end
 
 BackTracker(model::WhaleModel, ccd::CCD) = BackTracker(
     SliceState(model[1].id, ccd[end].id, 1),
-    RecNode(γ=ccd[end].id, rec=model[1].id), model, ccd)
+    RecNode(γ=ccd[end].id, e=model[1].id), model, ccd)
 
 function (b::BackTracker)(newstate::SliceState)
-    @unpack γ, e = newstate
-    if γ != b.node.γ || e != b.node.rec
-        newnode = RecNode(γ=γ, rec=e, parent=b.node)
+    @unpack γ, e, t = newstate
+    if γ != b.node.γ || e != b.node.e
+        newnode = RecNode(γ=γ, e=e, t=t, parent=b.node)
         push!(b.node, newnode)
     else
         newnode = b.node

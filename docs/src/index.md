@@ -44,67 +44,6 @@ To perform analyses with Whale, you will need
 !!! warning
     Most analyses in Whale assume that for each family, **there is at least one gene in both clades stemming from the root of the species tree**. The likelihood in Whale is the conditional likelihood under this assumption. This is to rule out the possibility of *de novo* gain of a gene family along a branch of the species tree. The orthogroup data should therefore always be filtered to be in accordance with this criterion. This can also be done using the `orthofilter.py` script.
 
-## Quick start
-
-If you're not familiar with `julia`, and you simply want to run analyses as performed for instance in [Zwaenepoel & Van de Peer (2019)](https://academic.oup.com/mbe/advance-article/doi/10.1093/molbev/msz088/5475503) the following scripts will be helpful. If you want to get a more detailed view of the library, please consult the [Manual](@ref).
-
-### Maximum likelihood estimation
-
-I assume that your tree is called `tree_file.nw` and your `.ale` files are in a directory `ccd_dir`. For maximum likelihood estimation with a constant rates model, the following script should work
-
-```julia
-@everywhere using Whale
-
-# data and config
-st = SlicedTree("tree_file.nw")
-ccd = read_ale("ccd_dir", st)
-constant = true  # set to false for branch-wise rates
-
-# inference
-constant ? set_constantrates!(st) : nothing
-w = WhaleModel(st)
-out = mle(w, ccd)
-```
-
-Save this script to a file (say `whale-mle.jl`). To run the inference using 16 processors for instance, run `julia -p 16 whale-mle.jl`. Do not forget the `@everywhere` before the `using` statement, as this will load the Whale library on all available processors.
-
-To add WGDs, a `wgd_conf` argument should be provide to `SLicedTree`, please see the docs for [`SlicedTree`](@ref). See the manual section on [Rate indices](@ref) on how to specify local-clock models.
-
-!!! warning
-    Depending on the time scale and data set at hand, you may need to tweak the initial values of the `WhaleModel` to prevent Numerical issues!
-
-!!! warning
-    ML estimation with branch-wise rates may result in poor convergence for large species trees.
-
-### Bayesian inference with MCMC
-
-A similar script for Bayesian inference using MCMC looks like (here with a hypothetical WGD configuration)
-
-```julia
-@everywhere using Whale
-
-# data and config
-wgd_conf = Dict(
-    "wgd1" => ("taxon1,taxon2", 1.2),  # (LCA, time BP)
-    "wgd2" => ("taxon1,taxon5", 3.2)
-)
-st = SlicedTree("tree_file.nw", wgd_conf)
-ccd = read_ale("ccd_dir", st)
-model = IRModel(st)      # independent log-normal rates
-# model = GBMModel(st)   # autocorrelated rates
-n = 11000
-
-w = WhaleChain(st, model)
-chain = mcmc!(w, ccd, n, show_every=10)
-```
-
-again, saving this as `whale-bay.jl` and running this with `julia -p <nCPU> whale-bay.jl` will start the MCMC with the likelihood evaluation performed on `nCPU` cores.
-
-!!! note
-    You might want to save the MCMC simulation to a file. In the above example one can either save the `chain` variable to a file using [`JLD`](https://github.com/JuliaIO/JLD.jl), save the data frame in the field `chain.df` using `CSV.write` or alternatively one can just set the `show_every` argument to the desired thinning level and  redirect `stdout` to a file while running the MCMC.
-
-!!! warning
-    Please take you time to understand the hierarchical model used in Whale and to modify the prior distributions to suit your data set! In particular, note that mixing can be very poor when the `η` and/or `ν` parameters are considere random variables and assigned hyperpriors. Fixing `η` and/or `ν` is therefore often necessary. Please consult the [Bayesian inference](@ref) section of the manual. 
 
 ## References
 

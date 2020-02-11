@@ -8,7 +8,7 @@ struct RecTree{I}
     annot ::Dict{}  # flexible
 end
 
-Base.show(io::IO, rtree::RecTree) = show(io, hash(rtree.root))
+Base.show(io::IO, rtree::RecTree) = write(io, "RecTree($(rtree.root))")
 
 """
     sumtrees(trees, ccd, wm)
@@ -47,9 +47,9 @@ end
 
 # don't like this, very ad hoc
 function getlabel(n::RecNode, wm::WhaleModel)
-    childrec = [c.rec for c in children(n)]
-    dup = all(n.rec .== childrec) && length(childrec) == 2
-    wgd = iswgd(wm[n.rec])
+    childrec = [c.e for c in children(n)]
+    dup = all(n.e .== childrec) && length(childrec) == 2
+    wgd = iswgd(wm[n.e])
     return if n.γ == 0
         "loss"
     elseif dup && wgd
