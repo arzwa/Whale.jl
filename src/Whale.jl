@@ -5,10 +5,10 @@ module Whale
     using DistributedArrays
     using Distributions
     using ForwardDiff
+    using DiffResults
     using Random
     using LinearAlgebra
     using StatsBase
-
     using LogDensityProblems
     using TransformVariables
     using DynamicHMC

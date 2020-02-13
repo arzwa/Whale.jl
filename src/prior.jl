@@ -11,10 +11,10 @@ abstract type Prior end
 Prior for constant rates model (i.e. one duplication rate and one loss rate
 for the entire tree). Supports arbitrary, but fixed number of WGDs.
 """
-struct CRPrior <: Prior
-    πr::MvNormal
-    πq::Beta
-    πη::Beta
+@with_kw struct CRPrior <: Prior
+    πr::MvNormal = MvNormal(ones(2))
+    πq::Beta = Beta()
+    πη::Beta = Beta(1,3)
 end
 
 function logpdf(prior::CRPrior, θ)

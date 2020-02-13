@@ -35,12 +35,12 @@ end
 cladecounts(trees) = countmap(vcat(map((t)->cladehash.(postwalk(t)), trees)...))
 
 function RecTree(tree::RecNode, clades, N, leafnames, wm)
-    d = Dict{typeof(id(tree)),NamedTuple}()
+    d = Dict{typeof(cladehash(tree)),NamedTuple}()
     for n in postwalk(tree)
-        cred = clades[id(n)]/N
+        cred = clades[cladehash(n)]/N
         label = getlabel(n, wm)
         name = isleaf(n) && label != "loss" ? leafnames[n.γ] : ""
-        d[id(n)] = (cred=cred, label=label, name=name)
+        d[cladehash(n)] = (cred=cred, label=label, name=name)
     end
     RecTree(tree, d)
 end
@@ -58,9 +58,31 @@ function getlabel(n::RecNode, wm::WhaleModel)
         "wgdloss"
     elseif dup
         "duplication"
-    elseif length(childrec) == 1
+    elseif any(x->x==0, [c.γ for c in children(n)])
         "sploss"
     else
         "speciation"
+    end
+end
+
+function pruneloss!(tree::RecTree)
+    @unpack root, annot = tree
+    nodes = postwalk(root)
+    ids = cladehash.(nodes)
+    for (h, n) in zip(ids, nodes)
+        if annot[h].label == "loss"  # deletion happens at sploss node
+            delete!(tree.annot, h)
+        elseif annot[h].label == "sploss"
+            child = children(n)[1]
+            newchild = RecNode(child.γ, child.e, child.t,
+                child.children, n.parent)
+            delete!(n.parent.children, n)
+            delete!(tree.annot, h)
+            push!(n.parent, newchild)
+        else
+            ann = annot[h]
+            delete!(tree.annot, h)
+            tree.annot[cladehash(n)] = ann
+        end
     end
 end

@@ -1,22 +1,45 @@
 
-# Bayesian inference of reconciled gene trees
+# Bayesian inference of reconciled gene trees - Constant rates
 
-We first do inference using NUTS with a constant-rates model
+We first do inference using NUTS with a constant-rates model. We'll need the
+following modules loaded:
 
 ```@example rectree
 using DynamicHMC, Whale, DistributedArrays, Distributions, Random
 ```
 
-set-up
+We'll use the example data that can be found in the git-repository of Whale,
+The associated species tree is already in the Whale module (`extree`)
 
 ```@example rectree
-wm      = WhaleModel(Whale.extree, Δt=0.1)
-ccd     = distribute(read_ale(joinpath(@__DIR__, "../../../example/example-ale"), wm))
-prior   = CRPrior(MvNormal(ones(2)), Beta(3,1), Beta())
+wm  = WhaleModel(Whale.extree, Δt=0.1)
+ccd = distribute(read_ale(joinpath(@__DIR__, "../../../example/example-ale"), wm))
+```
+
+The data are a bunch of CCDs (conditional clade distributions) obtained using
+MrBayes + ALEobserve on a bunch of amino-acid alignments of protein-coding
+genes. Note that if julia is running on multiple processes, the `distribute`
+call will enable calculation of the likelihood and gradients in parallel.
+
+!!! note
+    For a small data set like this, using multiple processes will probably not
+    result in a speed-up. It seems that 1 CPU core per 100 gene families is a
+    reasonable rule of thumb for a typical 10-taxon species tree.
+
+Now we specify the prior and bundle together prior, model and data into a
+`WhaleProblem` object
+
+```@example rectree
+prior   = CRPrior(πr=MvNormal(ones(2)), πη=Beta(3,1))
 problem = WhaleProblem(wm, ccd, prior)
 ```
 
-MCMC
+Note our prior choices: we use a bivariate normal prior for the logarithm
+of the duplication and loss rate with identity covariance matrix and a
+Beta(3,1) prior for the geometric prior on the number of lineages at the root.
+
+Now we start the MCMC using the NUTS (No U-turn sampler) implementation in
+the wonderful `DynamicHMC` module:
 
 ```@example rectree
 progress  = NoProgressReport()
@@ -24,12 +47,17 @@ results   = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 100, reporter=progress)
 posterior = transform.(problem.trans, results.chain)
 ```
 
-Note, now one should do some routine MCMC diagnostics, ensuring there
-are no convergence issues etc. Also typically one would do a lot more
-iterations. Furthermore, I would not generally recommend to turn of the
-progress reporter (this is just turned off for rendering this file).
+!!! note
+    Now one should do some routine MCMC diagnostics, ensuring there
+    are no convergence issues etc. Also typically one would do a lot more
+    iterations. Furthermore, I would not generally recommend to turn of the
+    progress reporter (this is just turned off for rendering this file).
 
-Sample a tree (latent state) for each posterior sample
+Whale does not sample reconciled trees during the MCMC, but integrates over
+them. We can however sample trees from the acquired posterior using a
+stochastic backtracking algorithm. The following will sample exactly one
+reconciled tree for each sample of the posterior. The resulting sample of
+trees should be an approimate sample from the posterior distribution
 
 ```@example rectree
 trees    = backtrack(problem, posterior)
@@ -37,10 +65,14 @@ rectrees = sumtrees(trees, ccd, wm)
 rectrees[1]  # have a look at the first family
 ```
 
-This shows all trees observed in the sample, ranked by their observed
-frequency.
+This shows all reconciled trees observed in the sample, ranked by their
+observed frequency (approximate posterior probability).
 
-Now we'll make a plot of the most probable tree for the first gene family
+!!! note
+    Not all trees for the same family have an equal number of nodes, since they
+    can have distinct numbers of loss nodes.
+
+Now we'll make a plot of the most probable tree for the first gene family.
 
 ```@example rectree
 using PalmTree, Parameters, Luxor
@@ -53,20 +85,20 @@ begin
     PalmTree.cladogram!(tl)
 
     colfun = (n)->annot[n].label != "loss" ? RGB() : RGB(0.99,0.99,0.99)
-    labfun = (k, p)->settext(" $(annot[k].name)", p, valign="center")
+    labfun = (k, p)->settext(" $(split(annot[k].name, "_")[1])", p, valign="center")
     credfn = (k, p)->settext(k ∉ tl.leaves ?
         " $(annot[k].cred)" : "", p, valign="center")
     @svg begin
-        origin(Point(10,10))
+        origin(Point(-20,20))
         setfont("Noto sans italic", 11)
         drawtree(tl, color=colfun)
         nodemap(tl, labfun)
         nodemap(tl, credfn)
-    end 500 350
+    end 450 350 #"../assets/cr-rectree.svg"
 end
 ```
 
-![](../../assets/cr-rectree.svg)
+![](../assets/cr-rectree.svg)
 
 Here each split is annotated by its observed frequency in the set of
 reconciled trees sampled from the posterior. Note that this is the marginal
