@@ -9,6 +9,7 @@ NewickTree = "b0a14db8-6308-4ebc-8917-f72cd81f5094"
 Optim = "429524aa-4258-5aef-a3af-852621145aeb"
 PalmTree = "103a96ca-e421-11e8-0497-536c6ddde151"
 Parameters = "d96e819e-fc66-5662-9728-84c9c7592b0a"
+UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"
 Whale = "eab5b8f2-ac71-4eb1-ac2b-64791b8dae63"
 
 [compat]

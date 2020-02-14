@@ -68,6 +68,8 @@ function pbothsides(wm::WhaleModel)
     p > zero(p) ? log(p) : -Inf
 end
 
+# log probability of non-extinction everywhere? seems a bit tricky
+
 function whale!(n::WhaleNode{T,Speciation{T}}, ℓ, x, wm) where T
     e = n.id
     ℓ[e] .= 0.

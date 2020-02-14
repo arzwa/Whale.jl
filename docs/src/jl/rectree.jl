@@ -9,7 +9,7 @@ using DynamicHMC, Whale, DistributedArrays, Distributions, Random
 # We'll use the example data that can be found in the git-repository of Whale,
 # The associated species tree is already in the Whale module (`extree`)
 wm  = WhaleModel(Whale.extree, Δt=0.1)
-ccd = distribute(read_ale(joinpath(@__DIR__, "../../../example/example-ale"), wm))
+ccd = read_ale(joinpath(@__DIR__, "../../../example/example-ale"), wm)
 
 # The data are a bunch of CCDs (conditional clade distributions) obtained using
 # MrBayes + ALEobserve on a bunch of amino-acid alignments of protein-coding
@@ -33,7 +33,7 @@ problem = WhaleProblem(wm, ccd, prior)
 # Now we start the MCMC using the NUTS (No U-turn sampler) implementation in
 # the wonderful `DynamicHMC` module:
 progress  = NoProgressReport()
-results   = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 100)
+results   = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 100, reporter=progress)
 posterior = transform.(problem.trans, results.chain)
 
 # !!! note

@@ -18,8 +18,18 @@ mutable struct WGD{T<:Real} <: Event{T}
     t::Float64
 end
 
-# problem: slice lengths could be different type from ϵ and ϕ (e.g. ForwardDiff)
-# solution could be a Slices struct, having a vector and a matrix as fields
+"""
+    WhaleNode{T,E<:Event{T},I}
+
+The node struct for the WhaleModel, not part of the API.
+
+!!! note
+    Here I'm still unsure whether it would be better to store links to
+    children directly, insetad of storing links to their indices. For
+    many downstream stuff it is more convenient that the node holds
+    direct references to its neighbors, but there are more type related
+    issues in that case.
+"""
 mutable struct WhaleNode{T<:Real,E<:Event{T},I<:Integer}
     id      ::I
     parent  ::I            # parent node ID
@@ -29,6 +39,12 @@ mutable struct WhaleNode{T<:Real,E<:Event{T},I<:Integer}
     clade   ::Set{I}
 end
 
+"""
+    WhaleModel{T,I}
+
+The model structure, i.e. a tree consisting of parameterized
+event nodes (e.g. Speciation, WGD, Root).
+"""
 struct WhaleModel{T<:Real,I<:Integer}
     nodes ::Dict{I,WhaleNode{T,<:Event{T},I}}
     leaves::Dict{I,String}
@@ -287,3 +303,16 @@ copynode!(x::WhaleNode{T,WGD{T}}, y, θ::BranchRates, wm::WhaleModel) where T =
 
 copynode!(x::WhaleNode, ev::Event{T}) where T =
     WhaleNode(x.id, x.parent, copy(x.children), T.(x.slices), ev, copy(x.clade))
+
+function branchlengths(wm::WhaleModel)
+    b = zeros(nnonwgd(wm))
+    for (i,n) in wm.nodes
+        t = isroot(n) ? 0. : n.event.t
+        while !isroot(n) && iswgd(wm[n.parent])
+            n = n.parent
+            t += n.event.t
+        end
+        b[i] = t
+    end
+    return b
+end

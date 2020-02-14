@@ -13,7 +13,7 @@ The associated species tree is already in the Whale module (`extree`)
 
 ```@example rectree
 wm  = WhaleModel(Whale.extree, Δt=0.1)
-ccd = distribute(read_ale(joinpath(@__DIR__, "../../../example/example-ale"), wm))
+ccd = read_ale(joinpath(@__DIR__, "../../../example/example-ale"), wm)
 ```
 
 The data are a bunch of CCDs (conditional clade distributions) obtained using

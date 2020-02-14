@@ -7,6 +7,7 @@ srcdir = joinpath(@__DIR__, "src", "jl")
 mkpath(outdir)
 for f in readdir(srcdir)
     if endswith(f, ".jl")
+        @info "Literating $f"
         target = string(split(f,".")[1])
         outpath = joinpath(outdir, target*".md")
         push!(fnames, relpath(outpath, joinpath(@__DIR__, "src")))

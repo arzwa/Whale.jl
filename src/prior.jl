@@ -33,7 +33,7 @@ trans(::CRPrior, model::WhaleModel) =
 Bivariate independent rates prior.
 """
 @with_kw struct IRPrior <: Prior
-    Ψ ::Matrix{Float64}
+    Ψ ::Matrix{Float64} = [10. 0.; 0. 10.]
     πr::MvNormal = MvNormal([10.,10.])
     πq::Beta = Beta()
     πη::Beta = Beta(3,1)
@@ -60,7 +60,8 @@ function logpdf(prior::IRPrior, θ)
 end
 
 logpdf_pics(Ψ, Y, ν) = log(det(Ψ)) - ((ν+size(Y)[2])/2)*log(det(Ψ + Y*Y'))
-logpdf_evalue(d, r) = isnothing(d) ? 0. : logpdf(d[1], exp.(d[2].*(r[1,:].-r[2,:])))
+logpdf_evalue(d, r) = isnothing(d) ? 0. :
+    sum(logpdf.(d[1], @. exp(d[2]*(r[1,:]-r[2,:]))))
 
 RatesModel(prior::IRPrior) = BranchRates
 trans(::IRPrior, model::WhaleModel) = as((r=as(Array, asℝ₊, 2, nnonwgd(model)),
