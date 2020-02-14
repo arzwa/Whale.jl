@@ -8,14 +8,16 @@ A more flexible, hopefully performant implementation. What would we like.
 3. WGDs should be easy to consider randomly located
 4. we should be able to introduce and remove WGDs efficiently, enabling rjMCMC
 5. reimplement the CCD data structure properly
+6. keep the library simple, only HMC inference provided from within the library
+7. interoperable with Beluga (basically, serve as a model for reimplementation of Beluga)
 
 The trick with the CCD object, which I also used in Beluga, was to have a single
 struct that is distributed, containing all the computed stuff that has to be
 performant and is updated in MCMC like applictions. This essentially means
-keeping a copy at all times of the computed PGM.
-
-I still think this is quite good, I don't see another approach how we can
-efficiently recompute these DP matrices and restore the upon rejection.
+keeping a copy at all times of the computed PGM. I still think this is quite good,
+I don't see another approach how we can efficiently recompute these DP matrices
+and restore the upon rejection. However, when using HMC, we do not need this,
+currently this is some dead weight, but it isn't hurting.
 
 thinking about (4), we could only introduce WGDs at particular slice boundaries
 (different from original Whale, where this affected the slices). That way we
@@ -56,32 +58,3 @@ Now I did the latter, for each worker we now differentiate the sum, instead
 of differentiating all CCDs and summing. In other words, the gradient closure
 works on a vector now but is still in parallel, and the model is copied and
 reset once per worker. It gave a slight speed-up.
-
-# Summarizing reconciliations
-
-This remains a tricky part. We can of course abstract the reconciliation and
-compute consensus topologies, no problem, but what happens to the
-reconciliations?
-
-The topology can be separated from the reconciliation, so if we have a consensus
-topology, we can get for each clade in the consensus topology its approximate
-pmf for reconciliations as a separate table, e.g. for the MAP reconcilation:
-
-```
-clade maprec  mapevent      pp    cladep
-γ1    e       :speciation   0.8   0.9
-γ2    f       :sploss       0.6   0.8
-γ3    f       :duplication  0.3   0.9
-...
-```
-In the above, pp could be the posterior probability of the MAP reconciliation of
-the `clade`, and `cladep` could be the posterior probability that the clade is in
-the reconciled tree? This gives the most important info, but it would be nicer
-if we could include information on the other reconciliations of each clade as
-well instead of only showing the MAP event. Ideally would have a more
-comprehensive summary from which such a table could be easily obtained...
-
-
-# References
-
-peerJ (Fourment) phylogenetic inference in Stan: https://peerj.com/articles/8272/
