@@ -80,9 +80,9 @@ function read_ale(s::String, wm::WhaleModel)
     return if isfile(s) && endswith(s, ".ale")
         CCD(s, wm)
     elseif isfile(s)
-        [read_ale(l, wm) for l in readlines(s) if !startswith(s, "#")]
+        distribute([read_ale(l, wm) for l in readlines(s) if !startswith(s, "#")])
     else
-        [CCD(joinpath(s,x), wm) for x in readdir(s) if endswith(x, ".ale")]
+        distribute([CCD(joinpath(s,x), wm) for x in readdir(s) if endswith(x, ".ale")])
     end
 end
 
@@ -93,7 +93,6 @@ getspecies(leaves, ids, spmap) =
     CCDArray{I,T}
 """
 const CCDArray{I,T} = DArray{CCD{I,T},1,Array{CCD{I,T},1}} where {T,I}
-CCDArray(ccd::Vector{CCD{I,T}}) where {I,T} = distribute(ccd)
 
 # ALEobserve parser
 """
@@ -190,3 +189,19 @@ function addubiquitous!(d::Dict)
     d[:set_id][Γ] = l[triple[1]] ∪ l[triple[2]]
     d[:Bip_bls][Γ] = 0.
 end
+
+# Something like this should be possible
+# function getccd(trees::Vector{String})
+#     ccd = getccd(tree)
+#     for i in 2:length(trees)
+#         tree = readnw(trees[i])
+#         update!(ccd, tree)
+#     end
+#     ccd
+# end
+#
+# function getccd(tree)
+#     function walk(n)
+#
+#     end
+# end

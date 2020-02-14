@@ -161,10 +161,6 @@ function ϕ_slice(λ, μ, t, ε)
 end
 
 # WGDs
-# suitable for adding random WGDs (WGD time as fraction of branch length)
-addwgd!(wm::WhaleModel{T,I}, i::I, r=rand()) where {T,I} =
-    addwgd!(wm, wm[i], wm[i].event.t*r, rand())
-
 function addwgd!(wm::WhaleModel{T,I}, node, t::T, q::T=rand(T)) where {T,I}
     @assert !isroot(node) "Cannot add WGD above root node"
     ti = node.event.t

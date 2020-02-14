@@ -15,7 +15,7 @@ constructed from a WhaleModel instance, data set and prior struct (the rationale
 is that the prior struct full defines the problem).
 """
 struct WhaleProblem{V<:Prior,R,T,I,U}
-    data ::CCDArray{I,U}  # AbstractVector ?
+    data ::CCDArray{I,U}  # NOTE require DArray
     model::WhaleModel{I,U}
     prior::V
     rates::R

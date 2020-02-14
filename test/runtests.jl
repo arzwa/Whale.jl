@@ -1,4 +1,4 @@
-using Pkg; Pkg.activate("./test")
+using Pkg; Pkg.activate(@__DIR__)
 using Whale, DistributedArrays
 using Test
 using Random
