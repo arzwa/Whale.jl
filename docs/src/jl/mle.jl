@@ -27,7 +27,7 @@ addwgd!(wm, wm[node], 0.3, rand())  # random initial retention rate
 wm, wm[19].event
 
 # Get the data (we use the example data available in the git repository)
-ccd = read_ale(joinpath(@__DIR__, "../../../example/example-ale"), wm)
+ccd = read_ale(joinpath(@__DIR__, "../../../example/example-1/ale"), wm)
 
 # Define objective and gradient (note that Optim looks for minima, so we use
 # -ℓ as objective)
@@ -63,7 +63,7 @@ results = optimize(f, g!, lower, upper, init, Fminbox(LBFGS()))
 wm = WhaleModel(Whale.extree)
 node = Whale.lcanode(wm, ["ATHA", "ATRI"])
 addwgd!(wm, wm[node], 0.25, rand())  # random initial retention rate
-ccd = read_ale(joinpath(@__DIR__, "../../../example/example-ale"), wm)
+ccd = read_ale(joinpath(@__DIR__, "../../../example/example-1/ale"), wm)
 
 function objective(x)
     rates = ConstantRates((λ=x[1], μ=x[2], q=x[3:3], η=x[4]))

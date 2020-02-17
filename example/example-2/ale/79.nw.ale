@@ -1,0 +1,33 @@
+#constructor_string
+(vvi_g3:0.11,(ugi_g8:0.0835,sly_g9:0.0835):0.02801);
+#observations
+1
+#Bip_counts
+4	1
+5	1
+6	1
+#Bip_bls
+1	0.13801
+2	0.0835
+3	0.0835
+4	0.13801
+5	0.0835
+6	0.0835
+#Dip_counts
+4	2	3	1
+5	1	3	1
+6	1	2	1
+#last_leafset_id
+6
+#leaf-id
+sly_g9	3
+ugi_g8	2
+vvi_g3	1
+#set-id
+1	:	1
+2	:	2
+6	:	1	2
+3	:	3
+5	:	1	3
+4	:	2	3
+#END
