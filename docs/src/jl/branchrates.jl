@@ -10,7 +10,7 @@ using DynamicHMC, Whale, DistributedArrays, Distributions, Random
 # We'll use the example data that can be found in the git-repository of Whale,
 # The associated species tree is already in the Whale module (`extree`)
 wm  = WhaleModel(Whale.extree, Δt=0.1)
-ccd = DArray(read_ale(joinpath(@__DIR__, "../../../example/example-ale"), wm)[1:2])
+ccd = DArray(read_ale(joinpath(@__DIR__, "../../../example/example-1/ale"), wm)[1:2])
 ts  = Whale.branchlengths(wm)
 
 # Now we specify the prior and bundle together prior, model and data into a

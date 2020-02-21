@@ -1,12 +1,17 @@
 using Documenter, Whale, Literate
 
-fnames = String["index.md"]
+fnames = String[]
+
+ignore = [
+	"branchrates.jl",
+	"distances.jl",
+]
 
 outdir = joinpath(@__DIR__, "src", "generated")
 srcdir = joinpath(@__DIR__, "src", "jl")
 mkpath(outdir)
 for f in readdir(srcdir)
-    if endswith(f, ".jl")
+    if endswith(f, ".jl") && f ∉ ignore
         @info "Literating $f"
         target = string(split(f,".")[1])
         outpath = joinpath(outdir, target*".md")
@@ -23,7 +28,8 @@ makedocs(
     sitename = "Whale.jl",
     authors = "Arthur Zwaenepoel",
     doctest = :fix,
-    pages = fnames,
+	pages = ["Index"=>"index.md",
+			 "Examples"=>fnames],
 )
 
 deploydocs(
