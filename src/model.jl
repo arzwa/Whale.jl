@@ -1,4 +1,6 @@
 # event in a species tree
+# The apprach with the nodes not directly being linked is getting a mess, should
+# test whether direct approach is equally efficient
 abstract type Event{T} end
 
 mutable struct Root{T<:Real} <: Event{T}
@@ -54,7 +56,7 @@ end
 Base.length(wn::WhaleNode) = size(wn.slices)[1]
 Base.length(wm::WhaleModel) = length(wm.nodes)
 Base.show(io::IO, w::WhaleModel{T}) where {T} = write(io, "WhaleModel{$T}(N=$(length(w)))")
-Base.show(io::IO, n::WhaleNode{T,E}) where {T,E} = write(io, "WhaleNode{$T,$E}")
+Base.show(io::IO, n::WhaleNode{T,E}) where {T,E} = write(io, "WhaleNode{$T,$E}($(n.id); $(Int.(n.clade)))")
 Base.push!(n::WhaleNode, i) = push!(n.children, i)
 Base.getindex(wm::WhaleModel, i) = wm.nodes[i]
 

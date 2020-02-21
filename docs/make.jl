@@ -5,10 +5,13 @@ fnames = String[]
 ignore = [
 	"branchrates.jl",
 	"distances.jl",
+	"mle-sims.jl",
+	"mle.jl",
+	"rectree.jl"
 ]
 
-outdir = joinpath(@__DIR__, "src", "generated")
-srcdir = joinpath(@__DIR__, "src", "jl")
+outdir = joinpath(@__DIR__, "src")
+srcdir = joinpath(@__DIR__, "lit")
 mkpath(outdir)
 for f in readdir(srcdir)
     if endswith(f, ".jl") && f ∉ ignore
