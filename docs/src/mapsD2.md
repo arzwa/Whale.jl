@@ -35,8 +35,9 @@ Load the file and parse it
 
 ```@example mapsD2
 post = CSV.read(joinpath(@__DIR__, "../../example/example-3/hmc-D2.mltrees.csv"))
-parsepost!(post);
-dfml = unpack(post)
+parsepost!(post)
+dfml = unpack(post);
+nothing #hide
 ```
 
 A function to easily collect trace plots
@@ -175,32 +176,40 @@ We can also plot trees
 ```@example mapsD2
 using PalmTree, Parameters, Luxor
 import Luxor: RGB
+species = Dict("dzq"=>"Pinus", "iov"=>"Pseudotsuga", "gge"=>"Cedrus",
+             "xtz"=>"Araucaria", "sgt"=>"Ginkgo", "jvs"=>"Equisetum",
+             "smo"=>"Sellaginella", ""=>"")
 function draw(tree)
     @unpack root, annot = tree
-    tl = TreeLayout(root, dim=(380, 260))
+    tl = TreeLayout(root, dim=(350, 260))
     PalmTree.cladogram!(tl)
 
     colfun = (n)->annot[n].label != "loss" ? RGB() : RGB(0.99,0.99,0.99)
-    labfun = (k, p)->settext(" $(split(annot[k].name, "_")[1])", p, valign="center")
+    labfun = (k, p)->settext(" $(species[(split(annot[k].name, "_")[1])])",
+        p, valign="center")
     credfn = (k, p)->settext(k ∉ tl.leaves ?
-        " $(annot[k].cred)" : "", p, valign="center")
+        " $(round(annot[k].cred, digits=2))" : "", p, valign="center")
     @svg begin
         origin(Point(-20,20))
         setfont("Noto sans italic", 11)
         PalmTree.drawtree(tl, color=colfun)
         nodemap(tl, labfun)
         nodemap(tl, credfn)
-    end 400 300 "/tmp/rectree.svg"
+    end 400 300 #"../assets/D2-rectree1.svg"
 end
 
 draw(rectrees[7][1].tree)
 ```
 
+![](../assets/D2-rectree1.svg
+
 ## Constraining duplication and loss rates
 
 A way to constrain this without sacrificing the flexibility of separate duplication
 and loss rates is by using a prior on the expected degree of expansion/contraction
-on each branch.
+on each branch. For the ML trees however, it seems HMC becomes very slow, probably
+because the data is pulling the parameters into regions of parameter space that
+are very unlikely under the prior (is this a feature of HMC ?)
 
 ---
 

@@ -1,5 +1,6 @@
 assets/
 assets
+luxor*
 
 # Created by https://www.gitignore.io/api/julia
 # Edit at https://www.gitignore.io/?templates=julia

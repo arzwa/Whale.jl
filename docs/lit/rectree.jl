@@ -9,7 +9,7 @@ using DynamicHMC, Whale, DistributedArrays, Distributions, Random
 # We'll use the example data that can be found in the git-repository of Whale,
 # The associated species tree is already in the Whale module (`extree`)
 wm  = WhaleModel(Whale.extree, Δt=0.1)
-ccd = read_ale(joinpath(@__DIR__, "../../../example/example-1/ale"), wm)
+ccd = read_ale(joinpath(@__DIR__, "../../example/example-1/ale"), wm)
 
 # The data are a bunch of CCDs (conditional clade distributions) obtained using
 # MrBayes + ALEobserve on a bunch of amino-acid alignments of protein-coding

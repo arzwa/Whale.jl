@@ -8,8 +8,8 @@
 using Whale, Optim, ForwardDiff
 
 # Get species tree and data
-wm = WhaleModel(readline(joinpath(@__DIR__, "../../../example/example-2/tree.nw")))
-ccd = read_ale(joinpath(@__DIR__, "../../../example/example-2/ale"), wm)
+wm = WhaleModel(readline(joinpath(@__DIR__, "../../example/example-2/tree.nw")))
+ccd = read_ale(joinpath(@__DIR__, "../../example/example-2/ale"), wm)
 
 # Define objective and gradient (note that Optim looks for minima, so we use
 # -ℓ as objective)

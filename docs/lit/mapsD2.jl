@@ -26,8 +26,8 @@ unpack(x::Vector, sym::Symbol) =
 # ## Whale posterior for MAPS D2 from the 1KP study
 # Load the file and parse it
 post = CSV.read(joinpath(@__DIR__, "../../example/example-3/hmc-D2.mltrees.csv"))
-parsepost!(post);
-dfml = unpack(post)
+parsepost!(post)
+dfml = unpack(post);
 
 # A function to easily collect trace plots
 traces(df; kwargs...) = [plot(x, title=col; kwargs...)
@@ -91,12 +91,44 @@ plot(ps..., size=(800,600))
 
 # !!! note
 #     This is of course not suitable as a proxy for MAPS, as MAPS uses
-#     a BSV-based cut-off and some taxon-occupancy thresholds as well...
+#     a BSV-based cut-off and some taxon-occupancy thresholds as well... **Turns
+#     out in the 1KP analyses no BSV threshold was used?**
 
 # !!! note
 #     It would be best to validate (using ML for instance) the new implementation
 #     on trees with uncertainty as well (some random swaps etc?) before
 #     we go on with this.
+
+using StatsPlots
+
+ps = [plot(), plot(), plot(), plot()]
+for (p, df) in zip(ps[1:2:4], [dfml, dfmb])
+    for (col, x) in eachcol(df, true)
+        !startswith(col, "r") ? continue : nothing
+        color = startswith(col, "r1") ? :black : :salmon
+        density!(p, x, grid=false, legend=false, yticks=false, title="",
+            color=color, linewidth=1, fill=true, fillalpha=0.2)
+    end
+end
+
+for (p, df) in zip(ps[2:2:4], [dfml, dfmb])
+    for (col, x) in eachcol(df, true)
+        !startswith(col, "r") ? continue : nothing
+        color = startswith(col, "r1") ? :black : :salmon
+        density!(p, log10.(x), grid=false, legend=false, yticks=false, title="",
+            color=color, linewidth=1, fill=true, fillalpha=0.2)
+    end
+end
+plot(ps..., layout=(2,2), size=(500,400))
+
+# This plot shows it perhaps even more clearly. ML tree based estimates seem to
+# be inflated, at least relative to the CCD based estimates... There is still one
+# loss rate that is suspiciously high in the CCD-based estimates, which is for
+# one of the branches coming from the root. It would be cool to test this on
+# simulated data.
+
+# A relevant question is whether similar big differences are observed under a
+# constant rates model.
 
 # ## Sampling reconciled trees
 
@@ -156,10 +188,12 @@ function draw(tree)
         PalmTree.drawtree(tl, color=colfun)
         nodemap(tl, labfun)
         nodemap(tl, credfn)
-    end 400 300 "/tmp/rectree.svg"
+    end 400 300 #"../assets/D2-rectree1.svg"
 end
 
 draw(rectrees[7][1].tree)
+
+# ![](../assets/D2-rectree1.svg)
 
 # ## Constraining duplication and loss rates
 

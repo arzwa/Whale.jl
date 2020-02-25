@@ -185,7 +185,7 @@ function addwgd!(wm::WhaleModel{T,I}, node, t::T, q::T=rand(T)) where {T,I}
     @assert ti - t > 0. "Invalid WGD time $ti - $t < 0."
     parent = wm[node.parent]
     islices = cumsum(node.slices, dims=1)[:,1]
-    k = findfirst(x->abs(x - t) < islices[2]/2, islices)
+    k = findfirst(x->abs(x - t) <= islices[2]/2, islices)
     twgd = islices[k]
     j = I(length(wm)+1)
     wgdslices = vcat(node.slices[1,:]', node.slices[k:end,:])
