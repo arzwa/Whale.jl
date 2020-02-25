@@ -14,7 +14,7 @@ for the entire tree). Supports arbitrary, but fixed number of WGDs.
 @with_kw struct CRPrior <: Prior
     πr::MvNormal = MvNormal(ones(2))
     πq::Beta = Beta()
-    πη::Beta = Beta(1,3)
+    πη::Union{Beta,Normal} = Beta(1,3)
 end
 
 function logpdf(prior::CRPrior, θ)
@@ -31,12 +31,18 @@ trans(::CRPrior, model::WhaleModel) =
     IRPrior
 
 Bivariate independent rates prior.
+
+!!! note
+    If one wishes to use a fixed value for some parameter (e.g. it is reasonable
+    to fix `η`, as using a hyperprior sometimes leads to convergence issues),
+    one can simply specify a `Normal(μ, σ)` distribution with `σ = 0` (which is
+    the same as a dirac mass at `μ`).
 """
 @with_kw struct IRPrior <: Prior
     Ψ ::Matrix{Float64} = [10. 0.; 0. 10.]
     πr::MvNormal = MvNormal([10.,10.])
     πq::Beta = Beta()
-    πη::Beta = Beta(3,1)
+    πη::Union{Beta,Normal} = Beta(3,1)
     πE::Union{Nothing,Tuple{Normal,Vector{Float64}}} = nothing
 end
 
