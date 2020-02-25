@@ -24,7 +24,9 @@ end
 
 function WhaleProblem(wm::WhaleModel, data::CCDArray, prior::P) where P<:Prior
     rates = RatesModel(prior)
-    WhaleProblem(data, wm, prior, rates, trans(prior, wm))
+    tform = trans(prior, wm)
+    init = wm(rand(prior, wm))
+    WhaleProblem(data, init, prior, rates, tform)
 end
 
 function fand∇f(f::Function, x, cfg)

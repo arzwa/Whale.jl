@@ -2,32 +2,7 @@
 # Posterior analytics (not by Aristotle) example and MAPS D2
 
 ```@example mapsD2
-using CSV, Plots, DataFrames
-```
-
-We first define some functions to parse the dumped posterior file.
-
-```@example mapsD2
-function parsepost!(df)
-    f = (x) -> eval.(Meta.parse.(x))
-    for (col, x) in eachcol(df, true)
-        df[!,col] = try; f(x); catch; x; end
-    end
-end
-
-function unpack(df)
-    cols = []
-    for (col, x) in eachcol(df, true)
-        push!(cols, unpack.(x, col))
-    end
-    DataFrame(merge.(cols...))
-end
-
-unpack(x::T, sym::Symbol) where T<:Real = (; sym=>x)
-unpack(x::Matrix, sym::Symbol) = (; [Symbol("$(sym)$(i)_$(j)")=>x[i,j]
-    for i=1:size(x)[1], j=1:size(x)[2]]...)
-unpack(x::Vector, sym::Symbol) =
-    (; [Symbol("$(sym)$(i)")=>x[i] for i=1:length(x)]...)
+using CSV, Plots, DataFrames, Parameters, Whale
 ```
 
 ## Whale posterior for MAPS D2 from the 1KP study
@@ -35,10 +10,13 @@ Load the file and parse it
 
 ```@example mapsD2
 post = CSV.read(joinpath(@__DIR__, "../../example/example-3/hmc-D2.mltrees.csv"))
-parsepost!(post)
-dfml = unpack(post);
+Whale.parsepost!(post)
+dfml = Whale.unpack(post);
 nothing #hide
 ```
+
+`parsepost!` will parse the dumped posterior into the correct julia data
+structures.
 
 A function to easily collect trace plots
 
@@ -79,8 +57,8 @@ unlikely regions of parameter space.
 
 ```@example mapsD2
 post = CSV.read(joinpath(@__DIR__, "../../example/example-3/hmc-D2.mbtrees.csv"))
-parsepost!(post)
-dfmb = unpack(post);
+Whale.parsepost!(post)
+dfmb = Whale.unpack(post);
 ps = traces(dfmb, grid=false, legend=false, xticks=false, yticks=false,
     color=:black, linewidth=0.2, title_loc=:left, titlefont=7)
 plot(ps..., size=(700,600))
@@ -116,12 +94,46 @@ support to q ≈ 0.
 
 !!! note
     This is of course not suitable as a proxy for MAPS, as MAPS uses
-    a BSV-based cut-off and some taxon-occupancy thresholds as well...
+    a BSV-based cut-off and some taxon-occupancy thresholds as well... **Turns
+    out in the 1KP analyses no BSV threshold was used?**
 
 !!! note
     It would be best to validate (using ML for instance) the new implementation
     on trees with uncertainty as well (some random swaps etc?) before
     we go on with this.
+
+```@example mapsD2
+using StatsPlots
+
+ps = [plot(), plot(), plot(), plot()]
+for (p, df) in zip(ps[1:2:4], [dfml, dfmb])
+    for (col, x) in eachcol(df, true)
+        !startswith(col, "r") ? continue : nothing
+        color = startswith(col, "r1") ? :black : :salmon
+        density!(p, x, grid=false, legend=false, yticks=false, title="",
+            color=color, linewidth=1, fill=true, fillalpha=0.2)
+    end
+end
+
+for (p, df) in zip(ps[2:2:4], [dfml, dfmb])
+    for (col, x) in eachcol(df, true)
+        !startswith(col, "r") ? continue : nothing
+        color = startswith(col, "r1") ? :black : :salmon
+        density!(p, log10.(x), grid=false, legend=false, yticks=false, title="",
+            color=color, linewidth=1, fill=true, fillalpha=0.2)
+    end
+end
+plot(ps..., layout=(2,2), size=(500,400))
+```
+
+This plot shows it perhaps even more clearly. ML tree based estimates seem to
+be inflated, at least relative to the CCD based estimates... There is still one
+loss rate that is suspiciously high in the CCD-based estimates, which is for
+one of the branches coming from the root. It would be cool to test this on
+simulated data.
+
+A relevant question is whether similar big differences are observed under a
+constant rates model.
 
 ## Sampling reconciled trees
 
@@ -129,16 +141,11 @@ Let's investigate some reconciled gene trees sampled from the posterior.
 Set up the `WhaleModel` (as it was used for inference).
 
 ```@example mapsD2
-using Whale
+using NewickTree
 wm = WhaleModel(readline(joinpath(@__DIR__, "../../example/example-3/sp.nw")), Δt=0.01)
-wgds = [(["dzq","iov"], 0.005),
-        (["dzq","gge"], 0.045),
-        (["dzq","xtz"], 0.015),
-        (["dzq","sgt"], 0.050),
-        (["dzq","jvs"], 0.015)]
-for (lca, t) in wgds
-    node = Whale.lcanode(wm, lca)
-    addwgd!(wm, wm[node], t, rand())
+for (i, n) in sort(wm.nodes)
+    isroot(n) || isroot(wm[n.parent]) || isleaf(n) ?
+        continue : addwgd!(wm, n, n.event.t*0.501, rand())
 end
 ```
 
@@ -153,11 +160,9 @@ problem = WhaleProblem(wm, ccd, prior)
 get the posterior in the right data structure
 
 ```@example mapsD2
-df2vec(df) = [(; [x=>y[x] for x in names(y)]...) for y in eachrow(df)]
-posterior = df2vec(post)
-
-trees    = backtrack(problem, posterior)
-rectrees = sumtrees(trees, ccd, wm)
+posterior = Whale.df2vec(post)
+rectrees = backtrack(problem, posterior)
+recsum   = sumtrees(rectrees, ccd, wm)
 ```
 
 Some families have very high probability MAP trees, others are associated with
@@ -165,16 +170,69 @@ a rather vague posteroir distribution over tree topologies.
 
 ```@example mapsD2
 ps = []
-for t in rectrees
-    push!(ps, bar([t[i].freq for i=1:min(10, length(t))], legend=false, grid=false, color=:white))
+for rsum in recsum
+    @unpack trees = rsum
+    push!(ps, bar([trees[i].freq for i=1:min(10, length(trees))],
+        legend=false, grid=false, color=:white))
 end
 plot(ps..., xticks=false, ylims=(-0.05,1), size=(700,400))
+```
+
+The `RecSummary` objects also contain a summary of the events for each species
+tree branch observed in the family.
+
+```@example mapsD2
+recsum[2].events
+```
+
+!!! note
+    These are posterior mean values, for instance the duplication column shows
+    for each branch in the species tree the average number of duplications
+    observed in the posterior distribution of reconciled trees (we should
+    add some quantiles or standard deviations).
+
+We can get a summary of the reconciliations across all families, recording the
+average number of duplications, losses, etc. for each species tree branch for
+the full genome.
+
+```@example mapsD2
+sumry = reduce((x,y)->x .+ y, [r.events for r in recsum])
+```
+
+This is similar to what ALE outputs, but in our case these can be interpreted
+as posterior means.
+
+MAPS only looks at internal branches, and has no WGD model. To get a MAPS-like
+output from the Whale results, we add the WGD-reconciled duplications to their
+species tree branches and remove leaf nodes and the root.
+
+```@example mapsD2
+function whale2maps(sumry, wm)
+    df = deepcopy(sumry)
+    df[!,:node] = 1:size(df)[1]
+    for n in Whale.getwgd(wm)
+        df[id(Whale.nonwgdchild(wm[n], wm)),:duplication] += df[n,:wgd]
+    end
+    todel = [[1]; collect(keys(wm.leaves)) ; Whale.getwgd(wm)]
+    deleterows!(df, sort(todel))
+    select!(df, Not([:wgd, :wgdloss]))
+    df[!,:rowsum] = map(x->sum(x), eachrow(df))
+    df
+end
+
+mapslike = whale2maps(sumry, wm)
+```
+
+Now check it
+
+```@example mapsD2
+plot(mapslike[!,:duplication] ./ mapslike[!,:rowsum], color="black", grid=false, size=(400,200), legend=false)
 ```
 
 We can also plot trees
 
 ```@example mapsD2
-using PalmTree, Parameters, Luxor
+using PalmTree, Luxor
 import Luxor: RGB
 species = Dict("dzq"=>"Pinus", "iov"=>"Pseudotsuga", "gge"=>"Cedrus",
              "xtz"=>"Araucaria", "sgt"=>"Ginkgo", "jvs"=>"Equisetum",
@@ -198,10 +256,30 @@ function draw(tree)
     end 400 300 #"../assets/D2-rectree1.svg"
 end
 
-draw(rectrees[7][1].tree)
+rsum = recsum[7]
+draw(rsum.trees[19].tree)
+bar([rsum.trees[i].freq for i=1:length(rsum.trees)], color=:white,
+    grid=false, legend=false, xlabel="Tree", ylabel="P")
 ```
 
-![](../assets/D2-rectree1.svg
+![](../assets/D2-rectree1.svg)
+
+## Comparing with MAPS
+
+Above we performed an inetersting comparison between probabilistic reconciliation
+using ML trees as input and using distributions over trees as input. While the
+MAPS approach is of course related to the former in that it does not take into
+account gene tree uncertainty explicitly, it is still quite different as it is
+not model-based.
+
+!!! note
+    I was able to reproduce the results of the 1KP paper, so now I'm sure what
+    exactly the input data looks like. These are unrooted trees, with no bootstrap
+    support values or branch lengths.
+
+To enable a comparison with MAPS, we should get an idea of the number of
+duplications reconciled to each branch of the species tree in the posterior
+reconciled trees from Whale.
 
 ## Constraining duplication and loss rates
 

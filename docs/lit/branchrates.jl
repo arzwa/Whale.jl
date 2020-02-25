@@ -20,7 +20,7 @@ prior = IRPrior(
     πr=MvNormal(ones(2)),
     πη=Beta(3,1),
     πE=(Normal(1., 0.2), ts))
-
+    
 # We specify a prior on the expected number of lineages at the end of each
 # branch per ancestral lineage at the beginning of the branch (`πE`). This
 # constrains the duplication and loss rate to be similar.

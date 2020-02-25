@@ -14,7 +14,7 @@ for the entire tree). Supports arbitrary, but fixed number of WGDs.
 @with_kw struct CRPrior <: Prior
     πr::MvNormal = MvNormal(ones(2))
     πq::Beta = Beta()
-    πη::Beta = Beta(1,3)
+    πη::Union{Beta,Normal} = Beta(1,3)
 end
 
 function logpdf(prior::CRPrior, θ)
@@ -36,7 +36,7 @@ Bivariate independent rates prior.
     Ψ ::Matrix{Float64} = [10. 0.; 0. 10.]
     πr::MvNormal = MvNormal([10.,10.])
     πq::Beta = Beta()
-    πη::Beta = Beta(3,1)
+    πη::Union{Beta,Normal} = Beta(3,1)
     πE::Union{Nothing,Tuple{Normal,Vector{Float64}}} = nothing
 end
 
@@ -56,7 +56,8 @@ function logpdf(prior::IRPrior, θ)
     X₀ = log.(r[:,1])
     Y = log.(r[:,2:end]) .- X₀  # centered rate vectors prior ~ MvNormal(0, Ψ)
     p = logpdf_pics(Ψ, Y, 3) + logpdf_evalue(πE, r)
-    p + logpdf(πη, η) + logpdf(πr, X₀) + sum(logpdf.(πq, q))
+    p += typeof(πη)<:Normal && πη.σ == zero(πη.σ) ? 0. : logpdf(πη, η)
+    p + logpdf(πr, X₀) + sum(logpdf.(πq, q))
 end
 
 logpdf_pics(Ψ, Y, ν) = log(det(Ψ)) - ((ν+size(Y)[2])/2)*log(det(Ψ + Y*Y'))
@@ -66,3 +67,28 @@ logpdf_evalue(d, r) = isnothing(d) ? 0. :
 RatesModel(prior::IRPrior) = BranchRates
 trans(::IRPrior, model::WhaleModel) = as((r=as(Array, asℝ₊, 2, nnonwgd(model)),
         q=as(Array, as𝕀, nwgd(model)), η=as𝕀))
+
+# wrapper struct for having a fixed η, because Dirac masses do not work directly
+# with DynamicHMC. This is quite a hack, but reasonably elegant as long as we
+# stick to fixing η
+"""
+    Fixedη{Prior}
+
+Wrap a prior to obtain a prior with fixed η parameter (this is a common
+modificationof the prior, so deserves a shortcut for specifying it).
+"""
+struct Fixedη{T<:Prior} <: Prior
+    prior::T
+end
+
+Fixedη(prior::IRPrior, model::WhaleModel) = Fixedη(prior)
+trans(::Fixedη{IRPrior}, model::WhaleModel) =
+    as((r=as(Array, asℝ₊, 2, nnonwgd(model)), q=as(Array, as𝕀, nwgd(model))))
+
+Base.rand(wrapper::Fixedη, wm) = rand(wrapper.prior, wm)
+logpdf(wrapper::Fixedη, θ) = logpdf(wrapper.prior, merge(θ, (η=wrapper.prior.πη.μ,)))
+
+RatesModel(wrapper::Fixedη{IRPrior}) = x->begin
+    η = promote(x.r[1,1], wrapper.prior.πη.μ)[2]
+    BranchRates(merge(x, (η=η,)))
+end

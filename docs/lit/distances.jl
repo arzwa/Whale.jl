@@ -17,7 +17,10 @@ ccd = DArray(read_ale(joinpath(@__DIR__, "../../example/example-1/ale"), wm)[1:1
 prior = IRPrior(
     Ψ=[1. 0.; 0. 1.],
     πr=MvNormal(ones(2)),
-    πη=Beta(3,1))
+    πη=Normal(0.65, 0.))
+
+# Here we fix the η parameter
+prior = Fixedη(prior, wm)
 
 # We specify a prior on the expected number of lineages at the end of each
 # branch per ancestral lineage at the beginning of the branch (`πE`). This
