@@ -80,5 +80,33 @@ LogDensityProblems.capabilities(::Type{<:WhaleProblem}) =
 
 LogDensityProblems.dimension(p::WhaleProblem) = dimension(p.trans)
 
+# NOTE: consider removing these functions, a there is no information that is
+# not contained in the summarized trees
 backtrack(p::WhaleProblem, posterior) =
     backtrack(p.model, p.data, posterior, p.rates)
+
+function backtrack(wm, ccd, posterior, rates)
+    function bt(x)
+        wmm = wm(rates(x))
+        logpdf!(wmm, ccd)
+        Array(backtrack(wmm, ccd))
+    end
+    permutedims(hcat(map(bt, posterior)...))
+end
+
+function sumtrees(p::WhaleProblem, posterior)
+    # NOTE: this will do the whole backtracking + sumarizing routine in the
+    # inner (parallel) loop. This avoids storing a huge array (N × n) of
+    # reconciled trees
+    @unpack rates, model, data = p
+    function track_and_sum(ccd)
+        trees = Array{RecNode,1}(undef, length(posterior))
+        for (i,x) in enumerate(posterior)
+            wmm = model(rates(x))
+            logpdf!(wmm, ccd)
+            trees[i] = backtrack(wmm, ccd)
+        end
+        sumtrees(trees, ccd, model)
+    end
+    map(track_and_sum, data)
+end

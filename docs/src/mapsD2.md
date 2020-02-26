@@ -2,7 +2,7 @@
 # Posterior analytics (not by Aristotle) example and MAPS D2
 
 ```@example mapsD2
-using CSV, Plots, DataFrames, Parameters, Whale
+using CSV, Plots, DataFrames, Parameters, Whale, StatsPlots
 ```
 
 ## Whale posterior for MAPS D2 from the 1KP study
@@ -226,8 +226,13 @@ mapslike = whale2maps(sumry, wm)
 Now check it
 
 ```@example mapsD2
-plot(mapslike[!,:duplication] ./ mapslike[!,:rowsum], color="black", grid=false, size=(400,200), legend=false)
+plot(mapslike[!,:duplication] ./ mapslike[!,:rowsum],
+    color="black", grid=false, size=(400,200), legend=false,
+    xlabel="Node", ylabel="P")
 ```
+
+This looks very much like the results using MAPS, but this is likely
+partly coincidental, since we're only looking at 25 gene families
 
 We can also plot trees
 
@@ -247,26 +252,37 @@ function draw(tree)
         p, valign="center")
     credfn = (k, p)->settext(k ∉ tl.leaves ?
         " $(round(annot[k].cred, digits=2))" : "", p, valign="center")
+    dupfn  = (k, p)->begin
+        if annot[k].label == "duplication"
+            box(p, 5, 5, :fill)
+        elseif annot[k].label == "wgd" || annot[k].label == "wgdloss"
+            star(p, 6.0, 5, 0.4, 0, :fill)
+        end
+    end
     @svg begin
         origin(Point(-20,20))
         setfont("Noto sans italic", 11)
         PalmTree.drawtree(tl, color=colfun)
         nodemap(tl, labfun)
         nodemap(tl, credfn)
-    end 400 300 #"../assets/D2-rectree1.svg"
+        nodemap(tl, dupfn)
+    end 400 300 #"docs/src/assets/D2-rectree1.svg"
 end
 
 rsum = recsum[7]
 draw(rsum.trees[19].tree)
-bar([rsum.trees[i].freq for i=1:length(rsum.trees)], color=:white,
-    grid=false, legend=false, xlabel="Tree", ylabel="P")
 ```
 
 ![](../assets/D2-rectree1.svg)
 
+```@example mapsD2
+bar([rsum.trees[i].freq for i=1:length(rsum.trees)], color=:white,
+    grid=false, legend=false, xlabel="Tree", ylabel="P")
+```
+
 ## Comparing with MAPS
 
-Above we performed an inetersting comparison between probabilistic reconciliation
+Above we performed an interesting comparison between probabilistic reconciliation
 using ML trees as input and using distributions over trees as input. While the
 MAPS approach is of course related to the former in that it does not take into
 account gene tree uncertainty explicitly, it is still quite different as it is

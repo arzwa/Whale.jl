@@ -109,16 +109,6 @@ function backtrack(wm::WhaleModel, ccd::CCD)
     return bt.node
 end
 
-# for posteriors from DynamicHMC
-function backtrack(wm, ccd, posterior, rates)
-    function bt(x)
-        wmm = wm(rates(x))
-        logpdf!(wmm, ccd)
-        Array(backtrack(wmm, ccd))
-    end
-    permutedims(hcat(map(bt, posterior)...))
-end
-
 backtrack!(b::BackTracker) = b.state.γ == 0 ? (return) : b.state.t == 1 ?
     _backtrack!(b, b.model[b.state.e]) : _backtrack!(b)
 

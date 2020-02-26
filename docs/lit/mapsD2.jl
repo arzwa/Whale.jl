@@ -129,8 +129,7 @@ problem = WhaleProblem(wm, ccd, prior)
 
 # get the posterior in the right data structure
 posterior = Whale.df2vec(post)
-rectrees = backtrack(problem, posterior)
-recsum   = sumtrees(rectrees, ccd, wm)
+@time recsum = sumtrees(problem, posterior)
 
 # Some families have very high probability MAP trees, others are associated with
 # a rather vague posteroir distribution over tree topologies.
@@ -202,13 +201,21 @@ function draw(tree)
         p, valign="center")
     credfn = (k, p)->settext(k ∉ tl.leaves ?
         " $(round(annot[k].cred, digits=2))" : "", p, valign="center")
+    dupfn  = (k, p)->begin
+        if annot[k].label == "duplication"
+            box(p, 5, 5, :fill)
+        elseif annot[k].label == "wgd" || annot[k].label == "wgdloss"
+            star(p, 6.0, 5, 0.4, 0, :fill)
+        end
+    end
     @svg begin
         origin(Point(-20,20))
         setfont("Noto sans italic", 11)
         PalmTree.drawtree(tl, color=colfun)
         nodemap(tl, labfun)
         nodemap(tl, credfn)
-    end 400 300 #"../assets/D2-rectree1.svg"
+        nodemap(tl, dupfn)
+    end 400 300 #"docs/src/assets/D2-rectree1.svg"
 end
 
 rsum = recsum[7]

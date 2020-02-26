@@ -15,7 +15,7 @@ struct RecSummary
     events::DataFrame
 end
 
-Base.show(io::IO, rsum::RecSummary) = 
+Base.show(io::IO, rsum::RecSummary) =
     write(io, "RecSummary(# unique trees = $(length(rsum.trees)))")
 
 """
