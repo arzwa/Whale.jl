@@ -110,6 +110,3 @@ function sumtrees(p::WhaleProblem, posterior)
     end
     map(track_and_sum, data)
 end
-
-sumevents(r::AbstractVector{RecSummary}) = 
-    reduce((x,y)->x .+ y.events, r[2:end], init=r[1].events)

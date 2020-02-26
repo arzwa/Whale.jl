@@ -22,9 +22,9 @@ module Whale
     include("ccd.jl")
     include("core.jl")
     include("prior.jl")
-    include("dhmc.jl")
     include("track.jl")
     include("rectree.jl")
+    include("dhmc.jl")
     include("post.jl")
 
     # an example tree

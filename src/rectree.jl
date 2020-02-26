@@ -43,6 +43,9 @@ function sumtrees(trees::AbstractVector, ccd::CCD, wm::WhaleModel)
     RecSummary(summary, events)
 end
 
+sumevents(r::AbstractVector{RecSummary}) =
+    reduce((x,y)->x .+ y.events, r[2:end], init=r[1].events)
+
 cladecounts(trees) = countmap(vcat(map((t)->cladehash.(postwalk(t)), trees)...))
 
 function RecTree(tree::RecNode, clades, N, leafnames, wm)
