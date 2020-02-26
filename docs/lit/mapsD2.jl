@@ -154,7 +154,7 @@ recsum[2].events
 # We can get a summary of the reconciliations across all families, recording the
 # average number of duplications, losses, etc. for each species tree branch for
 # the full genome.
-sumry = reduce((x,y)->x .+ y, [r.events for r in recsum])
+sumry = Whale.sumevents(recsum)
 
 # This is similar to what ALE outputs, but in our case these can be interpreted
 # as posterior means.
