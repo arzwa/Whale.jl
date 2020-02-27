@@ -6,6 +6,7 @@
 # cluster, using about 1 CPU core per 100 families.
 
 using DynamicHMC, Whale, DistributedArrays, Distributions, Random
+using DynamicHMC.Diagnostics
 
 # We'll use the example data that can be found in the git-repository of Whale,
 # The associated species tree is already in the Whale module (`extree`)
@@ -15,15 +16,10 @@ ts  = Whale.branchlengths(wm)
 
 # Now we specify the prior and bundle together prior, model and data into a
 # `WhaleProblem` object
-prior = IRPrior(
+prior = Fixedη(IRPrior(
     Ψ=[1. 0.; 0. 1.],
     πr=MvNormal(ones(2)),
-    πη=Beta(3,1),
-    πE=(Normal(1., 0.2), ts))
-    
-# We specify a prior on the expected number of lineages at the end of each
-# branch per ancestral lineage at the beginning of the branch (`πE`). This
-# constrains the duplication and loss rate to be similar.
+    πη=Normal(0.65, 0.)))
 
 problem = WhaleProblem(wm, ccd, prior)
 
@@ -31,7 +27,8 @@ problem = WhaleProblem(wm, ccd, prior)
 
 warmup    = DynamicHMC.default_warmup_stages(doubling_stages=3)
 results   = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 100, warmup_stages=warmup)
-posterior = transform.(problem.trans, results.chain)
+posterior = Whale.transform.(problem.trans, results.chain)
+summarize_tree_statistics(results.tree_statistics)
 
 # Now we should do diagnostics etc. but note that if we were doing the analysis
 # 'for real', we should run much longer chains to enable better inferences, and

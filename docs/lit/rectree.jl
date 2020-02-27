@@ -5,6 +5,7 @@
 # following modules loaded:
 
 using DynamicHMC, Whale, DistributedArrays, Distributions, Random
+using DynamicHMC.Diagnostics
 
 # We'll use the example data that can be found in the git-repository of Whale,
 # The associated species tree is already in the Whale module (`extree`)
@@ -34,7 +35,8 @@ problem = WhaleProblem(wm, ccd, prior)
 # the wonderful `DynamicHMC` module:
 progress  = NoProgressReport()
 results   = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 100, reporter=progress)
-posterior = transform.(problem.trans, results.chain)
+posterior = Whale.transform.(problem.trans, results.chain)
+summarize_tree_statistics(results.tree_statistics)
 
 # !!! note
 #     Now one should do some routine MCMC diagnostics, ensuring there

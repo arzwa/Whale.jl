@@ -5,6 +5,7 @@
 # kind of duplication and loss distance.
 
 using DynamicHMC, Whale, DistributedArrays, Distributions, Random
+using DynamicHMC.Diagnostics
 
 # We'll use the example data that can be found in the git-repository of Whale,
 # The associated species tree is already in the Whale module (`extree`)
@@ -32,11 +33,12 @@ problem = WhaleProblem(wm, ccd, prior)
 
 warmup    = DynamicHMC.default_warmup_stages(doubling_stages=3)
 results   = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 100, warmup_stages=warmup)
-posterior = transform.(problem.trans, results.chain)
+posterior = Whale.transform.(problem.trans, results.chain);
+@info summarize_tree_statistics(results.tree_statistics)
 
-# Now we should do diagnostics etc. but note that if we were doing the analysis
-# 'for real', we should run much longer chains to enable better inferences, and
-# if possible run multiple chains to assess convergence (or rather assess
+# Now we should do some more diagnostics etc. Note that if we were doing the
+# analysis 'for real', we should run much longer chains to enable better inferences,
+# and if possible run multiple chains to assess convergence (or rather assess
 # convergence issues).
 
 using UnicodePlots

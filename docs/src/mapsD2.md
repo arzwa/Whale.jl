@@ -161,8 +161,7 @@ get the posterior in the right data structure
 
 ```@example mapsD2
 posterior = Whale.df2vec(post)
-rectrees = backtrack(problem, posterior)
-recsum   = sumtrees(rectrees, ccd, wm)
+@time recsum = sumtrees(problem, posterior)
 ```
 
 Some families have very high probability MAP trees, others are associated with
@@ -196,7 +195,7 @@ average number of duplications, losses, etc. for each species tree branch for
 the full genome.
 
 ```@example mapsD2
-sumry = reduce((x,y)->x .+ y, [r.events for r in recsum])
+sumry = Whale.sumevents(recsum)
 ```
 
 This is similar to what ALE outputs, but in our case these can be interpreted
@@ -211,7 +210,8 @@ function whale2maps(sumry, wm)
     df = deepcopy(sumry)
     df[!,:node] = 1:size(df)[1]
     for n in Whale.getwgd(wm)
-        df[id(Whale.nonwgdchild(wm[n], wm)),:duplication] += df[n,:wgd]
+        df[id(Whale.nonwgdchild(wm[n], wm)),:duplication] +=
+            df[n,:wgd] + df[n,:duplication]
     end
     todel = [[1]; collect(keys(wm.leaves)) ; Whale.getwgd(wm)]
     deleterows!(df, sort(todel))
@@ -266,11 +266,11 @@ function draw(tree)
         nodemap(tl, labfun)
         nodemap(tl, credfn)
         nodemap(tl, dupfn)
-    end 400 300 #"docs/src/assets/D2-rectree1.svg"
+    end 400 300 "docs/src/assets/D2-rectree1.svg"
 end
 
 rsum = recsum[7]
-draw(rsum.trees[19].tree)
+draw(rsum.trees[21].tree)
 ```
 
 ![](../assets/D2-rectree1.svg)
