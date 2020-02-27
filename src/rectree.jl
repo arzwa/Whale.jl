@@ -61,22 +61,24 @@ function RecTree(tree::RecNode, clades, N, leafnames, wm)
     (rtree=RecTree(tree, d), df=DataFrame(e))
 end
 
-# don't like this, very ad hoc
+# don't like this, very ad hoc,we could add a 'kind' field in `SliceState` instead
+# that would annotate RecNodes directly?
 const Labels = ["loss", "wgd", "wgdloss", "duplication", "sploss", "speciation"]
 
 function getlabel(n::RecNode, wm::WhaleModel)
     childrec = [c.e for c in children(n)]
     dup = all(n.e .== childrec) && length(childrec) == 2
     wgd = iswgd(wm[n.e])
+    loss = any(x->x==0, [c.γ for c in children(n)])
     return if n.γ == 0
         Labels[1]
-    elseif dup && wgd
+    elseif !dup && !loss && wgd
         Labels[2]
-    elseif !dup && wgd
+    elseif loss && wgd
         Labels[3]
     elseif dup
         Labels[4]
-    elseif any(x->x==0, [c.γ for c in children(n)])
+    elseif loss
         Labels[5]
     else
         Labels[6]

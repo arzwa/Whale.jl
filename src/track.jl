@@ -9,7 +9,7 @@ are identified by having `γ == 0`.
 @with_kw struct RecNode{I}
     γ::I                # clade in CCD
     e::I = UInt16(1)    # edge (in species tree)
-    t::Int = 1          # alice index along edge `e`
+    t::Int = 1          # slice index along edge `e`
     children::Set{RecNode{I}} = Set{RecNode{UInt16}}()
     parent  ::Union{Nothing,RecNode{I}} = nothing
 end
@@ -301,7 +301,10 @@ function rootloss(r, b, m, η_)
     end
     r -= ℓ[g][γ,end] * getϵ(model[f]) * η_
     if r < 0.
+        # XXX (*):  state.node.kind = :sploss
         return (r=r, next=[SliceState(g, γ, lastslice(model, g)), Loss(f)])
     end
     return (r=r, next=SliceState[])
 end
+
+# NOTE: we should set the parent node at the relevant occasion (see e.g. * ↑)

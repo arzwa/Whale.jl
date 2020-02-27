@@ -166,7 +166,8 @@ function whale2maps(sumry, wm)
     df = deepcopy(sumry)
     df[!,:node] = 1:size(df)[1]
     for n in Whale.getwgd(wm)
-        df[id(Whale.nonwgdchild(wm[n], wm)),:duplication] += df[n,:wgd]
+        df[id(Whale.nonwgdchild(wm[n], wm)),:duplication] +=
+            df[n,:wgd] + df[n,:duplication]
     end
     todel = [[1]; collect(keys(wm.leaves)) ; Whale.getwgd(wm)]
     deleterows!(df, sort(todel))
