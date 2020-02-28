@@ -15,14 +15,14 @@ constructed from a WhaleModel instance, data set and prior struct (the rationale
 is that the prior struct full defines the problem).
 """
 struct WhaleProblem{V<:Prior,R,T,I,U}
-    data ::CCDArray{I,U}  # NOTE require DArray
+    data ::Union{Nothing,CCDArray{I,U}}  # NOTE require DArray
     model::WhaleModel{I,U}
     prior::V
     rates::R
     trans::T
 end
 
-function WhaleProblem(wm::WhaleModel, data::CCDArray, prior::P) where P<:Prior
+function WhaleProblem(wm::WhaleModel, data, prior::P) where P<:Prior
     rates = RatesModel(prior)
     tform = trans(prior, wm)
     init = wm(rand(prior, wm))
@@ -46,6 +46,9 @@ function fand∇f(trans::TransformTuple, x)
     cfg = ForwardDiff.GradientConfig(fun, x, ForwardDiff.Chunk{length(x)}())
     return fand∇f(fun, x, cfg)
 end
+
+# for sampling from the prior alone
+fand∇f(wm::WhaleModel, r, data::Nothing, t, x) = 0., zeros(dimension(t))
 
 # parallel computation of ℓ and ∇ℓ, all derivation is within parallel processes
 # and the partial values are accumulated on the main process
@@ -72,6 +75,7 @@ function LogDensityProblems.logdensity_and_gradient(p::WhaleProblem, x)
     ℓ, ∇ℓ = fand∇f(model, rates, data, trans, x)
     π, ∇π = fand∇f(prior, trans, x)
     J, ∇J = fand∇f(trans, x)
+    # @show J, ∇J
     return (ℓ + π + J)::Float64, (@. ∇ℓ + ∇π + ∇J)::Vector{Float64}
 end
 

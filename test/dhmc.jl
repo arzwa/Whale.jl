@@ -3,7 +3,7 @@ using Distributions
 @testset "Log density and gradient" begin
     wm = WhaleModel(Whale.extree)
     Whale.addwgd!(wm, wm[5], 0.25, rand())
-    D = read_ale(joinpath(@__DIR__, "../example/example-ale"), wm)
+    D = read_ale(joinpath(@__DIR__, "../example/example-1/ale"), wm)
     D = DArray(D[1:2])
 
     @testset "CR prior" begin
@@ -15,7 +15,7 @@ using Distributions
     end
 
     @testset "IR prior" begin
-        prior = IRPrior(Ψ=[1. 0.; 0. 1.])
+        prior = Whale.IWIRPrior(Ψ=[1. 0.; 0. 1.])
         problem = WhaleProblem(wm, D, prior)
         p, ∇p = Whale.logdensity_and_gradient(problem, zeros(36))
         @test p ≈ -83.50223627571505

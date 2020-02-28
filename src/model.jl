@@ -1,6 +1,7 @@
 # event in a species tree
-# The apprach with the nodes not directly being linked is getting a mess, should
+# The approach with the nodes not directly being linked is getting a mess, should
 # test whether direct approach is equally efficient
+# NOTE: here λ and μ are stored on a log-scale
 abstract type Event{T} end
 
 mutable struct Root{T<:Real} <: Event{T}
@@ -88,7 +89,7 @@ function WhaleNode(id::I, event::Union{Speciation,WGD}, parent::I, n) where I
     WhaleNode(id, parent, Set{I}(), M, event, Set{I}())
 end
 
-function WhaleModel(nw; Δt=0.05, minn=5, λ=0.2, μ=0.3, η=0.9, I=UInt16)
+function WhaleModel(nw; Δt=0.05, minn=5, λ=0., μ=0., η=0.9, I=UInt16)
     @unpack nodes, leaves, values = readnw(nw)
     d = Dict{I,WhaleNode{Float64,<:Event{Float64},I}}(
             I(1)=>WhaleNode{I}(Root(η, λ, μ)))
@@ -153,11 +154,12 @@ end
 
 function setslices!(A::Matrix, λ, μ)
     for i=2:size(A)[1]
-        A[i,2] = ϵ_slice(λ, μ, A[i,1], A[i-1,2])
-        A[i,3] = ϕ_slice(λ, μ, A[i,1], A[i-1,2])
+        A[i,2] = ϵ_slice(exp(λ), exp(μ), A[i,1], A[i-1,2])
+        A[i,3] = ϕ_slice(exp(λ), exp(μ), A[i,1], A[i-1,2])
     end
 end
 
+# NOTE: here λ and μ should be on rate scale
 function ϵ_slice(λ, μ, t, ε)
     if isapprox(λ, μ, atol=1e-5)
         return 1. + (1. - ε)/(μ * (ε - 1.) * t - 1.)
@@ -166,6 +168,7 @@ function ϵ_slice(λ, μ, t, ε)
     end
 end
 
+# NOTE: here λ and μ should be on rate scale
 function ϕ_slice(λ, μ, t, ε)
     if isapprox(λ, μ, atol=1e-5)
         return 1. / (μ * (ε - 1.) * t - 1.)^2
@@ -231,8 +234,8 @@ abstract type RatesModel{T} end
 Rates model with one λ and one μ for the entire tree.
 """
 @with_kw struct ConstantRates{T} <: RatesModel{T}
-    λ::T = 1.
-    μ::T = 1.
+    λ::T = 0.
+    μ::T = 0.
     q::Vector{T} = Float64[]
     η::T = 0.8
 end

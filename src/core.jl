@@ -1,5 +1,6 @@
 # ALE agorithm for DLWGD model
 # utilities
+# NOTE: in these utils λ and μ should be on 'rate' scale
 iscompatible(γ::Clade, n::WhaleNode) = γ.species ⊆ n.clade
 getϵ(n::WhaleNode) = n.slices[end,2]
 getϕ(n::WhaleNode) = n.slices[end,3]
@@ -96,8 +97,8 @@ function whale!(n::WhaleNode{T,WGD{T}}, ℓ, x, wm) where T
     e = n.id
     nextsp = nonwgdchild(n, wm)
     ℓ[e] .= 0.
-    λ = nextsp.event.λ
-    μ = nextsp.event.μ
+    λ = exp(nextsp.event.λ)
+    μ = exp(nextsp.event.μ)
     for γ in x.clades
         leaf = isleaf(γ)
         p = 0.
@@ -174,7 +175,8 @@ end
     @inbounds ℓ[f][γ.id,end]*getϵ(wm[g]) + ℓ[g][γ.id,end]*getϵ(wm[f])
 end
 
-@inline function Πduplication(γ, ℓ, n, i, λ=n.event.λ, μ=n.event.μ)
+# NOTE: λ and μ on 'rate' scale
+@inline function Πduplication(γ, ℓ, n, i, λ=exp(n.event.λ), μ=exp(n.event.μ))
     p = 0.
     for t in γ.splits
         @inbounds p += t.p * ℓ[n.id][t.γ1,i-1] * ℓ[n.id][t.γ2,i-1]

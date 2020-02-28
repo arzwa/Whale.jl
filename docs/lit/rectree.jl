@@ -1,7 +1,6 @@
-#src to be used with Literate.jl
 # # Bayesian inference of reconciled gene trees - Constant rates
 
-# We first do inference using NUTS with a constant-rates model. We'll need the
+# We will do inference using NUTS with a constant-rates model. We'll need the
 # following modules loaded:
 
 using DynamicHMC, Whale, DistributedArrays, Distributions, Random
@@ -10,6 +9,7 @@ using DynamicHMC.Diagnostics
 # We'll use the example data that can be found in the git-repository of Whale,
 # The associated species tree is already in the Whale module (`extree`)
 wm  = WhaleModel(Whale.extree, Δt=0.1)
+addwgd!(wm, wm[6], wm[6].event.t*0.5, rand())
 ccd = read_ale(joinpath(@__DIR__, "../../example/example-1/ale"), wm)
 
 # The data are a bunch of CCDs (conditional clade distributions) obtained using
@@ -31,12 +31,18 @@ problem = WhaleProblem(wm, ccd, prior)
 # of the duplication and loss rate with identity covariance matrix and a
 # Beta(3,1) prior for the geometric prior on the number of lineages at the root.
 
+# !!! note
+#     We always consider molecular evolutionary rates on a logarithmic scale.
+#     This is convenient, since virtually all clock models are defined on the
+#     real line. Furthermore, we see no strong reason why the natural scale
+#     should be favored anyway for these kinds of parameters.
+
 # Now we start the MCMC using the NUTS (No U-turn sampler) implementation in
 # the wonderful `DynamicHMC` module:
-progress  = NoProgressReport()
-results   = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 100, reporter=progress)
+# progress  = NoProgressReport()
+results   = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 100)
 posterior = Whale.transform.(problem.trans, results.chain)
-summarize_tree_statistics(results.tree_statistics)
+@info summarize_tree_statistics(results.tree_statistics)
 
 # !!! note
 #     Now one should do some routine MCMC diagnostics, ensuring there
@@ -64,7 +70,7 @@ rectrees[1]  # have a look at the first family
 using PalmTree, Parameters, Luxor
 import Luxor: RGB
 
-rectree = rectrees[1][1].tree
+rectree = rectrees[1].trees[1].tree
 begin
     @unpack root, annot = rectree
     tl = TreeLayout(root)
@@ -75,7 +81,7 @@ begin
     credfn = (k, p)->settext(k ∉ tl.leaves ?
         " $(annot[k].cred)" : "", p, valign="center")
     @svg begin
-        origin(Point(-20,20))
+        Luxor.origin(Point(-20,20))
         setfont("Noto sans italic", 11)
         drawtree(tl, color=colfun)
         nodemap(tl, labfun)

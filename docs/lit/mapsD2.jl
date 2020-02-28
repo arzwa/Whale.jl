@@ -43,21 +43,8 @@ post = CSV.read(joinpath(base, "hmc-D2.mbtrees.csv"))
 Whale.parsepost!(post)
 dfmb = Whale.unpack(post);
 
-post2 = CSV.read(joinpath(base, "hmc-D2.mbtrees.2.csv"))
-Whale.parsepost!(post2)
-dfmb2 = Whale.unpack(post2);
-
-ps = []
-for (col, x) in eachcol(dfmb, true)
-    p = plot(dfmb[!,col])
-    plot!(p, dfmb2[!,col])
-    push!(ps, p)
-end
-plot(ps, size=(700,600))
-
 # We'll compare the marginal posterior distributions between the Whale results
 # based on ML trees and those based on CCDs.
-gr()
 Base.startswith(s::Symbol, prefix::String) = startswith(string(s), prefix)
 ps = []
 for (col, x) in eachcol(dfml, true)
@@ -138,11 +125,14 @@ end
 
 # Read some sample CCD files and define the `WhaleProblem`
 ccd = read_ale(joinpath(base, "D2-sample-ale"), wm)
-prior = IRPrior(Ψ=[1. 0.; 0. 1.])
-problem = WhaleProblem(wm, ccd, prior)
+problem = WhaleProblem(wm, ccd, IRPrior())
 
 # get the posterior in the right data structure
 posterior = Whale.df2vec(post)
+
+# implementation changed, now we need log-scale
+logr(tup) = (; [k=> (k==:r ? log.(v) : v) for (k,v) in pairs(tup)]...)
+posterior = [logr(x) for x in posterior]
 @time recsum = sumtrees(problem, posterior)
 
 # Some families have very high probability MAP trees, others are associated with
@@ -174,7 +164,7 @@ sumry = Whale.sumevents(recsum)
 # as posterior means.
 
 # We can also plot trees
-using PalmTree, Luxor
+using PalmTree, Luxor, ColorSchemes
 import Luxor: RGB
 species = Dict("dzq"=>"Pinus", "iov"=>"Pseudotsuga", "gge"=>"Cedrus",
              "xtz"=>"Araucaria", "sgt"=>"Ginkgo", "jvs"=>"Equisetum",
@@ -270,13 +260,13 @@ whaleml = mlsum[!,:duplication]
 notung  = notung[!,:Dups]
 
 # Now plot the comparison
-pyplot()  # doesn't look too nice on GR
+# pyplot()  # doesn't look too nice on GR
 groupedbar([maps maps0 notung whaleml whalemb],
     color=reshape(get(ColorSchemes.viridis, 0.2:0.2:1), (1,5)),
     label=["MAPS" "MAPS (mt=0)" "Notung" "Whale (ML)" "Whale (CCD)"],
-    xlabel="Node", ylabel="# duplication events",
+    xlabel=L"Species tree node", ylabel="# duplication events",
     bar_width=0.7, bar_position=:dodge, size=(600,300),
-    grid=false, legend=:outertopright)
+    grid=false, legend=:topleft)
 
 # Look at that! We infer more duplication events with Whale for all but the
 # first node. This is unexpected, since LCA reconciliation in general results

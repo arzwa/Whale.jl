@@ -23,10 +23,12 @@ g!(G, x) = G .= g(x)
 
 # And now optimize
 init = rand(2)
-lower = zeros(2)    # lower bounds λ, μ and q
-upper = [Inf, Inf]  # upper bounds λ, μ and q
+lower = [-Inf, -Inf]   # lower bounds λ, μ and q
+upper = [Inf, Inf]    # upper bounds λ, μ and q
 results = optimize(f, g!, lower, upper, init, Fminbox(LBFGS()))
 -results.minimum, results.minimizer
+
+@info exp.(results.minimizer)
 
 # Note that we can already retrieve the true values quite nicely for this rather
 # small data set (100 families)

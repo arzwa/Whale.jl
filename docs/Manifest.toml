@@ -128,6 +128,12 @@ git-tree-sha1 = "b57c5d019367c90f234a7bc7e24ff0a84971da5d"
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
 version = "0.2.0+1"
 
+[[Conda]]
+deps = ["JSON", "VersionParsing"]
+git-tree-sha1 = "7a58bb32ce5d85f8bf7559aa7c2842f9aecf52fc"
+uuid = "8f4d0f93-b110-5947-807f-2305c1781a2d"
+version = "1.4.1"
+
 [[Contour]]
 deps = ["LinearAlgebra", "StaticArrays", "Test"]
 git-tree-sha1 = "b974e164358fea753ef853ce7bad97afec15bb80"
@@ -349,9 +355,9 @@ version = "1.3.13+1"
 
 [[HTTP]]
 deps = ["Base64", "Dates", "IniFile", "MbedTLS", "Sockets"]
-git-tree-sha1 = "d52325a46b4df64bdf38ffbbaef00f0a0296943c"
+git-tree-sha1 = "8d9bdd55c9d0d6ddf08f8b5229f90b7f274b6777"
 uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
-version = "0.8.11"
+version = "0.8.12"
 
 [[HarfBuzz_jll]]
 deps = ["Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "Gettext_jll", "Glib_jll", "Graphite2_jll", "Libdl", "Libffi_jll", "Pkg"]
@@ -415,6 +421,11 @@ deps = ["Libdl", "Pkg"]
 git-tree-sha1 = "26ff20dc58051d7eda388662b90049d192f8d0a1"
 uuid = "dd4b983a-f0e5-5f8d-a1b7-129d4a5fb1ac"
 version = "2.10.0+0"
+
+[[LaTeXStrings]]
+git-tree-sha1 = "de44b395389b84fd681394d4e8d39ef14e3a2ea8"
+uuid = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
+version = "1.1.0"
 
 [[LibGit2]]
 uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
@@ -505,10 +516,16 @@ deps = ["Base64"]
 uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
 
 [[MbedTLS]]
-deps = ["BinaryProvider", "Dates", "Libdl", "Random", "Sockets"]
-git-tree-sha1 = "85f5947b53c8cfd53ccfa3f4abae31faa22c2181"
+deps = ["Dates", "MbedTLS_jll", "Random", "Sockets"]
+git-tree-sha1 = "709797fadd2d3b7e3f040a9f6e12726a6d6d2bf5"
 uuid = "739be429-bea8-5141-9913-cc70e7f3736d"
-version = "0.7.0"
+version = "1.0.0"
+
+[[MbedTLS_jll]]
+deps = ["Libdl", "Pkg"]
+git-tree-sha1 = "066a4467008745eed36dad973ceb66405785a621"
+uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
+version = "2.16.0+1"
 
 [[Measures]]
 git-tree-sha1 = "e498ddeee6f9fdb4551ce855a46f54dbd900245f"
@@ -630,7 +647,7 @@ uuid = "30392449-352a-5448-841d-b1acce4e97dc"
 version = "0.38.4+1"
 
 [[Pkg]]
-deps = ["Dates", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "UUIDs"]
+deps = ["Dates", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Test", "UUIDs"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
 [[PlotThemes]]
@@ -689,6 +706,18 @@ git-tree-sha1 = "ea1f4fa0ff5e8b771bf130d87af5b7ef400760bd"
 uuid = "92933f4c-e287-5a05-a399-4b506db050ca"
 version = "1.2.0"
 
+[[PyCall]]
+deps = ["Conda", "Dates", "Libdl", "LinearAlgebra", "MacroTools", "Serialization", "VersionParsing"]
+git-tree-sha1 = "ce0780857d129208c4e5a6d722486fb40ce11bf8"
+uuid = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
+version = "1.91.3"
+
+[[PyPlot]]
+deps = ["Colors", "LaTeXStrings", "PyCall", "Sockets", "Test", "VersionParsing"]
+git-tree-sha1 = "ccecc72cf5b41a5de686bd76999040050a8a3472"
+uuid = "d330b81b-6aea-500a-939a-2ce795aea3ee"
+version = "2.8.2"
+
 [[QuadGK]]
 deps = ["DataStructures", "LinearAlgebra"]
 git-tree-sha1 = "dc84e810393cfc6294248c9032a9cdacc14a3db4"
@@ -733,10 +762,16 @@ uuid = "ae029012-a4dd-5104-9daa-d747884805df"
 version = "1.0.1"
 
 [[Rmath]]
-deps = ["BinaryProvider", "Libdl", "Random", "Statistics"]
-git-tree-sha1 = "2bbddcb984a1d08612d0c4abb5b4774883f6fa98"
+deps = ["Random", "Rmath_jll"]
+git-tree-sha1 = "86c5647b565873641538d8f812c04e4c9dbeb370"
 uuid = "79098fc4-a85e-5d69-aa6a-4863f24498fa"
-version = "0.6.0"
+version = "0.6.1"
+
+[[Rmath_jll]]
+deps = ["Libdl", "Pkg"]
+git-tree-sha1 = "1660f8fefbf5ab9c67560513131d4e933012fc4b"
+uuid = "f50d1b31-88e8-58de-be2c-1cc44531875f"
+version = "0.2.2+0"
 
 [[SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
@@ -857,6 +892,11 @@ deps = ["Dates", "Random", "SparseArrays", "StatsBase", "Test"]
 git-tree-sha1 = "b8e58d4390ccebfa4f3bf502a45e08066eec3bf9"
 uuid = "b8865327-cd53-5732-bb35-84acbb429228"
 version = "1.1.0"
+
+[[VersionParsing]]
+git-tree-sha1 = "80229be1f670524750d905f8fc8148e5a8c4537f"
+uuid = "81def892-9a0e-5fdd-b105-ffc91e053289"
+version = "1.2.0"
 
 [[WeakRefStrings]]
 deps = ["DataAPI", "Random", "Test"]

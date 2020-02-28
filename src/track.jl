@@ -193,7 +193,7 @@ function duplication(r, b)
     ℓ = ccd.ℓtmp
     for triple in ccd[γ].splits
         @unpack p, γ1, γ2 = triple
-        r -= p * ℓ[e][γ1,t-1] * ℓ[e][γ2,t-1] * pdup(λ, μ, Δt)
+        r -= p * ℓ[e][γ1,t-1] * ℓ[e][γ2,t-1] * pdup(exp(λ), exp(μ), Δt)
         if r < 0.
             return (r=r, next=[SliceState(e, γ1, t-1), SliceState(e, γ2, t-1)])
         end

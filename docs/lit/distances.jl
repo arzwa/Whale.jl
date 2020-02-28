@@ -15,7 +15,7 @@ ccd = DArray(read_ale(joinpath(@__DIR__, "../../example/example-1/ale"), wm)[1:1
 
 # Now we specify the prior and bundle together prior, model and data into a
 # `WhaleProblem` object
-prior = IRPrior(
+prior = Whale.IWIRPrior(
     Ψ=[1. 0.; 0. 1.],
     πr=MvNormal(ones(2)),
     πη=Normal(0.65, 0.))
@@ -54,7 +54,7 @@ lineplot!(p, μ8)
 scatterplot(λ8, μ8)
 
 # Get the posterior means for the duplication rates
-λ = mean([x.r[1,i] for x in posterior, i=1:17], dims=1)
+λ = exp.(mean([x.r[1,i] for x in posterior, i=1:17], dims=1))
 
 using PalmTree, Parameters, Luxor, NewickTree
 import Luxor: RGB
