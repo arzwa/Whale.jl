@@ -39,9 +39,8 @@ plot(ps..., size=(700,600))
 
 # ## Using MrBayes tree samples (accounting for tree uncertainty)
 
-post = CSV.read(joinpath(base, "hmc-D2.mbtrees.csv"))
-Whale.parsepost!(post)
-dfmb = Whale.unpack(post);
+dfmb = CSV.read(joinpath(base, "hmc-D2.mb.csv"))
+dfml = CSV.read(joinpath(base, "hmc-D2.ml.csv"))
 
 # We'll compare the marginal posterior distributions between the Whale results
 # based on ML trees and those based on CCDs.
@@ -49,13 +48,14 @@ Base.startswith(s::Symbol, prefix::String) = startswith(string(s), prefix)
 ps = []
 for (col, x) in eachcol(dfml, true)
     title =
-        startswith(col, "r1") ? "\\lambda$(split(string(col), "_")[2])" :
-        startswith(col, "r2") ? "\\mu$(split(string(col), "_")[2])" :
-        col == :η ? "\\eta" : col
-    p = stephist(x, grid=false, legend=false, yticks=false, title=title,
-        color=:black, linewidth=1, title_loc=:left, titlefont=7, normalize=true)
-    stephist!(p, dfmb[:,col], color=:blue, fill=true, alpha=0.3, normalize=true)
-    startswith(col, "q") ? xlims!(0, 1) : nothing
+        startswith(col, "r_1") ? "\\lambda$(split(string(col), "_")[3])" :
+        startswith(col, "r_2") ? "\\mu$(split(string(col), "_")[3])" : col
+    p = stephist(x, grid=false, legend=false, label="ML trees",
+        yticks=false, title=title, color=:salmon, title_loc=:left, titlefont=7,
+        normalize=true, fill=true, alpha=0.5)
+    stephist!(p, dfmb[:,col], color=:firebrick, fill=true, alpha=0.5,
+        normalize=true, label="CCDs")
+    # startswith(col, "q") ? xlims!(0, 1) : nothing
     push!(ps, p)
 end
 plot(ps..., size=(800,600))
@@ -83,25 +83,17 @@ plot(ps..., size=(800,600))
 
 using StatsPlots
 
-ps = [plot(), plot(), plot(), plot()]
-for (p, df) in zip(ps[1:2:4], [dfml, dfmb])
+ps = [plot(), plot()]
+
+for (p, df) in zip(ps, [dfml, dfmb])
     for (col, x) in eachcol(df, true)
         !startswith(col, "r") ? continue : nothing
-        color = startswith(col, "r1") ? :black : :salmon
+        color = startswith(col, "r_1") ? :black : :salmon
         density!(p, x, grid=false, legend=false, yticks=false, title="",
             color=color, linewidth=1, fill=true, fillalpha=0.2)
     end
 end
-
-for (p, df) in zip(ps[2:2:4], [dfml, dfmb])
-    for (col, x) in eachcol(df, true)
-        !startswith(col, "r") ? continue : nothing
-        color = startswith(col, "r1") ? :black : :salmon
-        density!(p, log10.(x), grid=false, legend=false, yticks=false, title="",
-            color=color, linewidth=1, fill=true, fillalpha=0.2)
-    end
-end
-plot(ps..., layout=(2,2), size=(500,400))
+plot(ps..., layout=(2,1), size=(500,400), xlims=(-5,5))
 
 # This plot shows it perhaps even more clearly. ML tree based estimates seem to
 # be inflated, at least relative to the CCD based estimates... There is still one
@@ -119,7 +111,7 @@ plot(ps..., layout=(2,2), size=(500,400))
 using NewickTree
 wm = WhaleModel(readline(joinpath(base, "sp.nw")), Δt=0.01)
 for (i, n) in sort(wm.nodes)
-    isroot(n) || isroot(wm[n.parent]) || isleaf(n) ?
+    isroot(n) || isleaf(n) ?
         continue : addwgd!(wm, n, n.event.t*0.5, rand())
 end
 
@@ -247,26 +239,27 @@ function notung2maps(df)
 end
 
 # Now we can try to compare
-maps   = CSV.read(joinpath(base, "maps-D2.csv"))
-maps0  = CSV.read(joinpath(base, "maps-D2-mt0.csv"))
-notung = notung2maps(CSV.read(joinpath(base, "notung-D2.csv")))
-mbsum  = whale2maps(CSV.read(joinpath(base, "hmc-D2-mbtrees.recsum.csv")), wm)
-mlsum  = whale2maps(CSV.read(joinpath(base, "hmc-D2-mltrees.recsum.csv")), wm)
+mapsdf   = CSV.read(joinpath(base, "maps-D2.csv"))
+maps0df  = CSV.read(joinpath(base, "maps-D2-mt0.csv"))
+notungdf = notung2maps(CSV.read(joinpath(base, "notung-D2.csv")))
+mbsumdf  = whale2maps(CSV.read(joinpath(base, "hmc-D2-mbtrees.recsum.csv")), wm)
+mlsumdf  = whale2maps(CSV.read(joinpath(base, "hmc-D2-mltrees.recsum.csv")), wm)
 
-maps    = maps[!,:Duplication]
-maps0   = maps0[!,:Duplication]
-whalemb = mbsum[!,:duplication]
-whaleml = mlsum[!,:duplication]
-notung  = notung[!,:Dups]
+maps    = mapsdf[!,:Duplication]
+maps0   = maps0df[!,:Duplication]
+whalemb = reverse(mbsumdf[!,:duplication])
+whaleml = reverse(mlsumdf[!,:duplication])
+notung  = notungdf[!,:Dups]
 
 # Now plot the comparison
 # pyplot()  # doesn't look too nice on GR
 groupedbar([maps maps0 notung whaleml whalemb],
     color=reshape(get(ColorSchemes.viridis, 0.2:0.2:1), (1,5)),
     label=["MAPS" "MAPS (mt=0)" "Notung" "Whale (ML)" "Whale (CCD)"],
-    xlabel=L"Species tree node", ylabel="# duplication events",
+    xlabel="Species tree node", ylabel="# duplication events",
     bar_width=0.7, bar_position=:dodge, size=(600,300),
     grid=false, legend=:topleft)
+# savefig("/home/arzwa/vimwiki/presentations/lm0320/assets/reccomp.pdf")
 
 # Look at that! We infer more duplication events with Whale for all but the
 # first node. This is unexpected, since LCA reconciliation in general results

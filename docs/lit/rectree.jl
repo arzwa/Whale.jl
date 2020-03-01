@@ -44,6 +44,7 @@ results   = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 100)
 posterior = Whale.transform.(problem.trans, results.chain)
 @info summarize_tree_statistics(results.tree_statistics)
 
+
 # !!! note
 #     Now one should do some routine MCMC diagnostics, ensuring there
 #     are no convergence issues etc. Also typically one would do a lot more

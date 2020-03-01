@@ -1,9 +1,13 @@
 
 # Sampling from the prior
 
+Here I inspect particular prior paraeterizations for Whale by running the HMC
+sampler in the absence of data.
+
 ```@example prior
 using DynamicHMC, Whale, DistributedArrays, Distributions, Random
 using DynamicHMC.Diagnostics, Test
+using Plots, StatsPlots
 ```
 
 ## Constant rates prior
@@ -20,7 +24,7 @@ problem = WhaleProblem(wm, nothing, prior)
 run DynamicHMC
 
 ```@example prior
-results = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 10000)
+results = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 1000)
 posterior = Whale.transform.(problem.trans, results.chain)
 @info summarize_tree_statistics(results.tree_statistics)
 
@@ -68,7 +72,7 @@ end
 
 This is a hierarchical prior (or multi-level model), where we assume the
 branch-wise rates are assigned a bivariate Normal distribution with
-a mean vector $\theta_0$ that is itself distributed accoridng to a bivariate
+a mean vector $\theta_0$ that is itself distributed according to a bivariate
 Normal and a covariance matrix that is assigned an Inverse-wishart prior.
 Note that we make use of the conjugate relation of the multivariate Normal
 and the Inverse-Wishart distribution to integrate out the covariance matrix,
@@ -93,13 +97,17 @@ results = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 5000)
 posterior = Whale.transform.(problem.trans, results.chain)
 @info summarize_tree_statistics(results.tree_statistics)
 
-λ1 = [x.r[1,4] for x in posterior]
-μ8 = [x.r[2,8] for x in posterior]
-q1 = [x.q[1] for x in posterior]
+df = Whale.unpack(posterior)
+plot(stephist(df[!,:η],     fill=true, alpha=0.5, xlabel="\\eta"),
+     stephist(df[!,:q1],    fill=true, alpha=0.5, xlabel="q"),
+     stephist(df[!,:r1_9],  fill=true, alpha=0.5, xlabel="\\lambda_9"),
+     stephist(df[!,:r2_1],  fill=true, alpha=0.5, xlabel="\\mu_1"),
+     grid=false, legend=false, color=:black)
+
 @testset "IRPrior" begin
-    @test isapprox(mean(λ1), 0., atol=0.1)
-    @test isapprox(mean(μ8), 0., atol=0.1)
-    @test isapprox(mean(q1), 0.5, atol=0.1)
+    @test isapprox(mean(df[!,:r2_1]), 0., atol=0.1)
+    @test isapprox(mean(df[!,:r1_9]), 0., atol=0.1)
+    @test isapprox(mean(df[!,:q1]), 0.5, atol=0.1)
 end
 ```
 
@@ -117,14 +125,16 @@ Note that the parameter of the LKJ prior (usually called $\eta$, but we'll
 call it $\omega$) can be interpreted similarly as the $\alpha$ parameter of a
 Dirichlet distribution, with $\omega > 1$ favoring less correlation (increasing
 mass to the identty matrix) and $\omega < 1$ favoring more correlation.
-
 In our case we use a bivariate distribution, so the LKJ prior reduces in fact
 to a prior on the correlation coefficient.
+
+Note that in contrast with Inverse-Wishart based prior, we here do sample the
+covariance matrix (decomposed as a scale and correlation factor) explicitly.
 
 ```@example prior
 wm = WhaleModel(Whale.extree, Δt=0.1)
 prior = Whale.LKJIRPrior(
-    πR=Whale.LKJCorr(1.),
+    πR=Whale.LKJCorr(.1),
     πτ=Exponential(5.),
     πr=MvNormal([0.5, -1.2], ones(2)),
     πη=Beta(3,1))
@@ -138,20 +148,22 @@ results = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 5000)
 posterior = Whale.transform.(problem.trans, results.chain)
 @info summarize_tree_statistics(results.tree_statistics)
 
-ρ  = [(x.U' * x.U)[1,2] for x in posterior]
-τ  = [x.τ for x in posterior]
-λ1 = [x.r[1,4] for x in posterior]
-μ8 = [x.r[2,8] for x in posterior]
+df = Whale.unpack(posterior)
+plot(stephist(df[!,:U1_2],  fill=true, alpha=0.5, xlabel="\\rho"),
+     stephist(df[!,:τ],     fill=true, alpha=0.5, xlabel="\\tau"),
+     stephist(df[!,:r1_1],  fill=true, alpha=0.5, xlabel="\\lambda_1"),
+     stephist(df[!,:r2_8],  fill=true, alpha=0.5, xlabel="\\mu_8"),
+     grid=false, legend=false, color=:black)
+
 @testset "LKJPrior" begin
-    @test isapprox(mean(λ1),  0.5, atol=0.1)
-    @test isapprox(mean(μ8), -1.2, atol=0.1)
-    @test isapprox(mean(ρ),   0.0, atol=0.1)
-    @test isapprox(mean(τ), mean(prior.πτ), atol=0.3)
+    @test isapprox(mean(df[!,:r1_1]),  0.5, atol=0.1)
+    @test isapprox(mean(df[!,:r2_8]), -1.2, atol=0.1)
+    @test isapprox(mean(df[!,:U1_2]),   0.0, atol=0.1)
+    @test isapprox(mean(df[!,:τ]), mean(prior.πτ), atol=0.3)
 end
 ```
 
-This prior seems to have issues for some prior paraeterizations of $\tau$
-(the scale)
+this seems to be a somewhat trickier prior.
 
 ---
 

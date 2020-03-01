@@ -184,14 +184,25 @@ struct Fixedη{T<:Prior} <: Prior
     prior::T
 end
 
-Fixedη(prior::IWIRPrior, model::WhaleModel) = Fixedη(prior)
 trans(::Fixedη{IWIRPrior}, model::WhaleModel) =
-    as((r=as(Array, asℝ, 2, nnonwgd(model)), q=as(Array, as𝕀, nwgd(model))))
+    as((r=as(Array, asℝ, 2, nnonwgd(model)),
+        q=as(Array, as𝕀, nwgd(model))))
+trans(::Fixedη{LKJIRPrior}, model::WhaleModel) =
+    as((r=as(Array, asℝ, 2, nnonwgd(model)),
+        q=as(Array, as𝕀, nwgd(model)),
+        τ=asℝ₊, U=CorrCholeskyFactor(2)))
+trans(::Fixedη{CRPrior}, model::WhaleModel) =
+    as((λ=asℝ, μ=asℝ, q=as(Array, as𝕀, nwgd(model))))
 
 Base.rand(wrapper::Fixedη, wm) = rand(wrapper.prior, wm)
 logpdf(wrapper::Fixedη, θ) = logpdf(wrapper.prior, merge(θ, (η=wrapper.prior.πη.μ,)))
 
-RatesModel(wrapper::Fixedη{IWIRPrior}) = x->begin
+RatesModel(wrapper::Fixedη) = x->begin
     η = promote(x.r[1,1], wrapper.prior.πη.μ)[2]
     BranchRates(merge(x, (η=η,)))
+end
+
+RatesModel(wrapper::Fixedη{CRPrior}) = x->begin
+    η = promote(x.λ, wrapper.prior.πη.μ)[2]
+    ConstantRates(merge(x, (η=η,)))
 end
