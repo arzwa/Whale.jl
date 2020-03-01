@@ -186,7 +186,8 @@ end
 
 trans(p::Fixedη, model::WhaleModel) =
     TransformTuple((;[k=>v for (k,v) in
-        pairs(trans(p.prior).transformations) if k != :η]...))
+        pairs(trans(p.prior, model).transformations)
+        if k != :η]...))
 
 Base.rand(wrapper::Fixedη, wm) = rand(wrapper.prior, wm)
 logpdf(wrapper::Fixedη, θ) = logpdf(wrapper.prior, merge(θ, (η=wrapper.prior.πη.μ,)))
