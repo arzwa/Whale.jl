@@ -260,7 +260,10 @@ a hierarchical prior setting).
     η::T = 0.9
 end
 
-BranchRates(θ::NamedTuple) = BranchRates(θ...)
+function BranchRates(θ::NamedTuple)
+    @unpack r, q, η = θ  # θ may contain more prameters, so extract
+    BranchRates(r=r, q=q, η=η)
+end
 
 function BranchRates(wm::WhaleModel)
     r = zeros(2, nnonwgd(wm))

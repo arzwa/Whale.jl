@@ -184,15 +184,9 @@ struct Fixedη{T<:Prior} <: Prior
     prior::T
 end
 
-trans(::Fixedη{IWIRPrior}, model::WhaleModel) =
-    as((r=as(Array, asℝ, 2, nnonwgd(model)),
-        q=as(Array, as𝕀, nwgd(model))))
-trans(::Fixedη{LKJIRPrior}, model::WhaleModel) =
-    as((r=as(Array, asℝ, 2, nnonwgd(model)),
-        q=as(Array, as𝕀, nwgd(model)),
-        τ=asℝ₊, U=CorrCholeskyFactor(2)))
-trans(::Fixedη{CRPrior}, model::WhaleModel) =
-    as((λ=asℝ, μ=asℝ, q=as(Array, as𝕀, nwgd(model))))
+trans(p::Fixedη, model::WhaleModel) =
+    TransformTuple((;[k=>v for (k,v) in
+        pairs(trans(p.prior).transformations) if k != :η]...))
 
 Base.rand(wrapper::Fixedη, wm) = rand(wrapper.prior, wm)
 logpdf(wrapper::Fixedη, θ) = logpdf(wrapper.prior, merge(θ, (η=wrapper.prior.πη.μ,)))
