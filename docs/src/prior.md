@@ -99,15 +99,15 @@ posterior = Whale.transform.(problem.trans, results.chain)
 
 df = Whale.unpack(posterior)
 plot(stephist(df[!,:η],     fill=true, alpha=0.5, xlabel="\\eta"),
-     stephist(df[!,:q1],    fill=true, alpha=0.5, xlabel="q"),
-     stephist(df[!,:r1_9],  fill=true, alpha=0.5, xlabel="\\lambda_9"),
-     stephist(df[!,:r2_1],  fill=true, alpha=0.5, xlabel="\\mu_1"),
+     stephist(df[!,:q_1],    fill=true, alpha=0.5, xlabel="q"),
+     stephist(df[!,:r_1_9],  fill=true, alpha=0.5, xlabel="\\lambda_9"),
+     stephist(df[!,:r_2_1],  fill=true, alpha=0.5, xlabel="\\mu_1"),
      grid=false, legend=false, color=:black)
 
 @testset "IRPrior" begin
-    @test isapprox(mean(df[!,:r2_1]), 0., atol=0.1)
-    @test isapprox(mean(df[!,:r1_9]), 0., atol=0.1)
-    @test isapprox(mean(df[!,:q1]), 0.5, atol=0.1)
+    @test isapprox(mean(df[!,:r_2_1]), 0., atol=0.1)
+    @test isapprox(mean(df[!,:r_1_9]), 0., atol=0.1)
+    @test isapprox(mean(df[!,:q_1]), 0.5, atol=0.1)
 end
 ```
 
@@ -133,11 +133,11 @@ covariance matrix (decomposed as a scale and correlation factor) explicitly.
 
 ```@example prior
 wm = WhaleModel(Whale.extree, Δt=0.1)
-prior = Whale.LKJIRPrior(
-    πR=Whale.LKJCorr(.1),
+prior = Fixedη(Whale.LKJIRPrior(
+    πR=Whale.LKJCorr(.5),
     πτ=Exponential(5.),
     πr=MvNormal([0.5, -1.2], ones(2)),
-    πη=Beta(3,1))
+    πη=Normal(0.7,0.)))
 problem = WhaleProblem(wm, nothing, prior)
 ```
 
@@ -149,17 +149,17 @@ posterior = Whale.transform.(problem.trans, results.chain)
 @info summarize_tree_statistics(results.tree_statistics)
 
 df = Whale.unpack(posterior)
-plot(stephist(df[!,:U1_2],  fill=true, alpha=0.5, xlabel="\\rho"),
+plot(stephist(df[!,:U_1_2],  fill=true, alpha=0.5, xlabel="\\rho"),
      stephist(df[!,:τ],     fill=true, alpha=0.5, xlabel="\\tau"),
-     stephist(df[!,:r1_1],  fill=true, alpha=0.5, xlabel="\\lambda_1"),
-     stephist(df[!,:r2_8],  fill=true, alpha=0.5, xlabel="\\mu_8"),
+     stephist(df[!,:r_1_1],  fill=true, alpha=0.5, xlabel="\\lambda_1"),
+     stephist(df[!,:r_2_8],  fill=true, alpha=0.5, xlabel="\\mu_8"),
      grid=false, legend=false, color=:black)
 
 @testset "LKJPrior" begin
-    @test isapprox(mean(df[!,:r1_1]),  0.5, atol=0.1)
-    @test isapprox(mean(df[!,:r2_8]), -1.2, atol=0.1)
-    @test isapprox(mean(df[!,:U1_2]),   0.0, atol=0.1)
-    @test isapprox(mean(df[!,:τ]), mean(prior.πτ), atol=0.3)
+    @test isapprox(mean(df[!,:r_1_1]),  0.5, atol=0.2)
+    @test isapprox(mean(df[!,:r_2_8]), -1.2, atol=0.2)
+    @test isapprox(mean(df[!,:U_1_2]),   0.0, atol=0.2)
+    @test isapprox(mean(df[!,:τ]), mean(prior.prior.πτ), atol=1)
 end
 ```
 
