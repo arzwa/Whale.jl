@@ -181,27 +181,45 @@ function ϕ_slice(λ, μ, t, ε)
     end
 end
 
-# WGDs
-function addwgd!(wm::WhaleModel{T,I}, node, t::T, q::T=rand(T)) where {T,I}
+"""
+    addwgd!(model, node, time, q, minn=5)
+
+Add a WGD to the phylogeny, adapting the slicing of the tree if necessary.
+"""
+function addwgd!(wm::WhaleModel{T,I}, node, t::T, q::T=rand(T), minn=5) where {T,I}
+    # NOTE: these are bug-prone pieces of code, hence the assertions
     @assert !isroot(node) "Cannot add WGD above root node"
     ti = node.event.t
     @assert ti - t > 0. "Invalid WGD time $ti - $t < 0."
     parent = wm[node.parent]
     islices = cumsum(node.slices, dims=1)[:,1]
     k = findfirst(x->abs(x - t) <= islices[2]/2, islices)
-    twgd = islices[k]
+    twgd   = islices[k]
+    tchild = ti - twgd
     j = I(length(wm)+1)
-    wgdslices = vcat(node.slices[1,:]', node.slices[k:end,:])
-    node.slices = node.slices[1:k-1,:]
-    wgd = WhaleNode(j, parent.id, Set{I}(node.id), wgdslices, WGD(q, ti-t), node.clade)
+
+    # adapt slices!
+    slicet = islices[2]
+    # wgd node
+    n = max(minn, ceil(Int, twgd / slicet))
+    wgdslices = [vcat(0.0, repeat([twgd/n], n)) ones(n+1) ones(n+1)]
+    # child node
+    n = max(minn, ceil(Int, tchild / slicet))
+    node.slices = [vcat(0.0, repeat([tchild/n], n)) ones(n+1) ones(n+1)]
+
+    # wgdslices = vcat(node.slices[1,:]', node.slices[k:end,:])
+    # node.slices = node.slices[1:k-1,:]
+    wgd = WhaleNode(j, parent.id, Set{I}(node.id), wgdslices, WGD(q, twgd), node.clade)
     wm.nodes[j] = wgd
     delete!(parent.children, node.id)
     push!(parent.children, j)
     node.parent = j
-    node.event.t = t
+    node.event.t = tchild
     idx = findfirst(x->x==I(node.id), wm.order)
     insert!(wm.order, idx+1, j)
     setabove!(wm[j], wm)
+    @assert ti == wgd.event.t + node.event.t ==
+        sum(wgd.slices[:,1]) + sum(node.slices[:,1])
 end
 
 function rmwgd!(wm::WhaleModel{T,I}, i) where {T,I}

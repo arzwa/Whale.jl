@@ -1,68 +1,62 @@
-# # Posterior analytics (not by Aristotle) example and MAPS D2
-using CSV, Plots, DataFrames, Parameters, Whale, StatsPlots
-
-# ## Whale posterior for MAPS D2 from the 1KP study
-# Load the file and parse it
+# # MAPS D2 analysis
+using CSV, Plots, DataFrames, Parameters, Whale, StatsPlots, LaTeXStrings
 base = joinpath(@__DIR__, "../../example/example-3/")
 
-# ## Using MrBayes tree samples (accounting for tree uncertainty)
-
-dfmb = CSV.read(joinpath(base, "hmc-D2.mb.csv"))
-dfml = CSV.read(joinpath(base, "hmc-D2.ml.csv"))
+# ## Whale posterior for MAPS D2 from the 1KP study
+# We have two chains, one using the ML trees as input data for Whale, and one
+# using CCDs from MrBayes samples as input data. The first case exhibits features
+# of model-based recombination, while the latter exhibits the features of a fully
+# probabilistic approach that takes into account gene tree uncertainty.
+dfml  = CSV.read(joinpath(base, "hmc-D2.ml.csv"))
+dfmb  = CSV.read(joinpath(base, "hmc-D2.mb.csv"))
+dfmb2 = CSV.read(joinpath(base, "hmc-D2.mb.LKJ.csv"))
 
 # We'll compare the marginal posterior distributions between the Whale results
 # based on ML trees and those based on CCDs.
-Base.startswith(s::Symbol, prefix::String) = startswith(string(s), prefix)
-ps = []
-gr()
+Base.startswith(s::Symbol, prefix::String) = startswith(string(s), prefix) # helper function
+plots = []
 for (col, x) in eachcol(dfml, true)
-    title =
-        startswith(col, "r_1") ? "\\lambda$(split(string(col), "_")[3])" :
-        startswith(col, "r_2") ? "\\mu$(split(string(col), "_")[3])" : col
+    title = startswith(col, "r_1") ? "\\lambda$(split(string(col), "_")[3])" :
+            startswith(col, "r_2") ? "\\mu$(split(string(col), "_")[3])" : col
     p = stephist(x, grid=false, legend=false, label="ML trees",
-        yticks=false, title=title, color=:salmon, title_loc=:left, titlefont=7,
-        normalize=true, fill=true, alpha=0.5)
+        yticks=false, color=:salmon, normalize=true, fill=true, alpha=0.5,
+        title=title, title_loc=:left, titlefont=7)
     stephist!(p, dfmb[:,col], color=:firebrick, fill=true, alpha=0.5,
         normalize=true, label="CCDs")
-    startswith(col, "q") ? xticks!(p, 0:0.2:1) : nothing
-    startswith(col, "q") ? xlims!(0, max(0.2, round(maximum(x), digits=1))) : nothing
-    push!(ps, p)
+    stephist!(p, dfmb2[:,col], color=:gold, fill=true, alpha=0.5,
+        normalize=true, label="CCDs")
+    if startswith(col, "q")
+        xticks!(p, 0:0.2:1)
+        xlims!(0, max(0.2, round(maximum(x), digits=1)))
+    end
+    push!(plots, p)
 end
-plot(ps..., size=(800,600))
-savefig("/home/arzwa/vimwiki/presentations/lm0320/assets/posterior-ml-ccd.pdf")
+plot(plots..., size=(800,600))
 
 # For this example, which is a reanalysis of a gymnosperm data set from the 1KP
-# paper (using ML trees, so no gene tree uncertainty is taken into account), we
-# clearly see a consistent inflation of the loss rate relative to the duplication
-# rate. This is rather suspicious, since, if we would take this at face value, it
-# would entail persistent genome contraction, which is no known feature of
-# gymnosperm evolution. It seems the birth-death process is wandering of in rather
-# unlikely regions of parameter space.
+# we see for the ML tree based data clearly a consistent inflation of the loss
+# rate relative to the duplication rate. This is rather suspicious, since, if
+# we would take this at face value, it would entail persistent genome contraction,
+# which is no known feature of gymnosperm evolution. It seems the birth-death
+# process is wandering of in rather unlikely regions of parameter space, at least
+# biologically unlikely that is.
 
-# This is very interesting, it seems taking into account uncertainty in gene
-# trees has a huge effect... There seems to be one branch (3, one of the branches
+# Interestingly, it seems taking into account uncertainty in gene trees has a
+# huge effect on the results... There seems to be one branch (3, one of the branches
 # emanating from the root) where we get higher loss rates than in the ML trees case,
-# but for all other branches we find more reasonable estimates for the CCD
+# but for all other branches we find more reasonable estimates for the CCD-
 # based analysis. Interestingly, also the support for WGD hypotheses is very
 # sensitive to the different data sets, with the Gymnosperm WGD going from extreme
 # support to q ≈ 0.
 
-# !!! note
-#     We should fix η as in the simulations by Li *et al.*
+# Also interesting is that using a different prior on the rates (LKJ prior) does
+# not seem to influence the posterior distribution noticably.
 
 # !!! note
-#     This is of course not suitable as a proxy for MAPS, as MAPS uses
-#     a BSV-based cut-off and some taxon-occupancy thresholds as well... **Turns
-#     out in the 1KP analyses no BSV threshold was used?**
+#     It would be best to validate (using both ML and Bayesian inference) the
+#     new implementation on trees with uncertainty (CCDs) as well, instead of
+#     only on 'true' simulated trees (some random swaps etc?).
 
-# !!! note
-#     It would be best to validate (using ML for instance) the new implementation
-#     on trees with uncertainty as well (some random swaps etc?) before
-#     we go on with this.
-
-using StatsPlots, LaTeXStrings
-
-pyplot()
 ps = [plot(), plot()]
 for (i,(p, df)) in enumerate(zip(ps, [dfml, dfmb]))
     for (col, x) in eachcol(df, true)
@@ -73,7 +67,8 @@ for (i,(p, df)) in enumerate(zip(ps, [dfml, dfmb]))
             color=color, linewidth=1, fill=true, fillalpha=0.2, label=lab)
         xlabel!(p, L"\log \theta")
     end
-    i == 1 ? title!("ML", title_loc=:left, titlefont=9) :
+    i == 1 ?
+        title!("ML", title_loc=:left, titlefont=9) :
         title!("CCD (MrBayes)", title_loc=:left, titlefont=9)
 end
 plot(ps..., layout=(2,1), size=(500,400), xlims=(-5,5))
@@ -82,8 +77,8 @@ savefig("/home/arzwa/vimwiki/presentations/lm0320/assets/whale-ml-mb-rates.pdf")
 # This plot shows it perhaps even more clearly. ML tree based estimates seem to
 # be inflated, at least relative to the CCD based estimates... There is still one
 # loss rate that is suspiciously high in the CCD-based estimates, which is for
-# one of the branches coming from the root. It would be cool to test this on
-# simulated data.
+# one of the branches coming from the root. This is something I should really try
+# to figure out in more detail.
 
 # A relevant question is whether similar big differences are observed under a
 # constant rates model.
@@ -93,33 +88,32 @@ savefig("/home/arzwa/vimwiki/presentations/lm0320/assets/whale-ml-mb-rates.pdf")
 # Let's investigate some reconciled gene trees sampled from the posterior.
 # Set up the `WhaleModel` (as it was used for inference).
 using NewickTree
+
 wm = WhaleModel(readline(joinpath(base, "sp.nw")), Δt=0.01)
 for (i, n) in sort(wm.nodes)
-    isroot(n) || isleaf(n) ?
-        continue : addwgd!(wm, n, n.event.t*0.5, rand())
+    isroot(n) || isleaf(n) ? continue : addwgd!(wm, n, n.event.t*0.5, rand())
 end
 
 # Read some sample CCD files and define the `WhaleProblem`
 ccd = read_ale(joinpath(base, "D2-sample-ale"), wm)
 problem = WhaleProblem(wm, ccd, IRPrior())
 
-# get the posterior in the right data structure
-posterior = Whale.df2vec(post)
-
-# implementation changed, now we need log-scale
-logr(tup) = (; [k=> (k==:r ? log.(v) : v) for (k,v) in pairs(tup)]...)
-posterior = [logr(x) for x in posterior]
+# Get the posterior in the right data structure. (Note that we have to include
+# the `η` parameter ourselves since we fixed it).
+dfmb[:η] = 0.67
+dfmb[:q_5] = 0. # forgot this in the main sampler...
+posterior = Whale.pack(dfmb)
 @time recsum = sumtrees(problem, posterior)
 
 # Some families have very high probability MAP trees, others are associated with
 # a rather vague posteroir distribution over tree topologies.
-ps = []
+plots = []
 for rsum in recsum
     @unpack trees = rsum
-    push!(ps, bar([trees[i].freq for i=1:min(10, length(trees))],
+    push!(plots, bar([trees[i].freq for i=1:min(10, length(trees))],
         legend=false, grid=false, color=:white))
 end
-plot(ps..., xticks=false, ylims=(-0.05,1), size=(700,400))
+plot(plots..., xticks=false, ylims=(-0.05,1), size=(700,400))
 
 # The `RecSummary` objects also contain a summary of the events for each species
 # tree branch observed in the family.
@@ -140,21 +134,18 @@ sumry = Whale.sumevents(recsum)
 # as posterior means.
 
 # We can also plot trees
-using PalmTree, Luxor, ColorSchemes
+using PalmTree, Luxor
 import Luxor: RGB
-species = Dict("dzq"=>"Pinus", "iov"=>"Pseudotsuga", "gge"=>"Cedrus",
-             "xtz"=>"Araucaria", "sgt"=>"Ginkgo", "jvs"=>"Equisetum",
-             "smo"=>"Sellaginella", ""=>"")
+species = Dict(
+    "dzq"=>"Pinus", "iov"=>"Pseudotsuga", "gge"=>"Cedrus", "xtz"=>"Araucaria",
+    "sgt"=>"Ginkgo", "jvs"=>"Equisetum", "smo"=>"Sellaginella", ""=>"")
 function draw(tree)
     @unpack root, annot = tree
     tl = TreeLayout(root, dim=(350, 260))
     PalmTree.cladogram!(tl)
-
     colfun = (n)->annot[n].label != "loss" ? RGB() : RGB(0.99,0.99,0.99)
-    labfun = (k, p)->settext(" $(species[(split(annot[k].name, "_")[1])])",
-        p, valign="center")
-    credfn = (k, p)->settext(k ∉ tl.leaves ?
-        " $(round(annot[k].cred, digits=2))" : "", p, valign="center")
+    labfun = (k, p)->settext(" $(species[(split(annot[k].name, "_")[1])])", p, valign="center")
+    credfn = (k, p)->settext(k ∉ tl.leaves ? " $(round(annot[k].cred, digits=2))" : "", p, valign="center")
     dupfn  = (k, p)->begin
         if annot[k].label == "duplication"
             box(p, 5, 5, :fill)
@@ -169,16 +160,54 @@ function draw(tree)
         nodemap(tl, labfun)
         nodemap(tl, credfn)
         nodemap(tl, dupfn)
-    end 400 300 "docs/src/assets/D2-rectree1.svg"
+    end 400 300 "/tmp/tre.svg" #"docs/src/assets/D2-rectree1.svg"
 end
 
-rsum = recsum[7]
-draw(rsum.trees[21].tree)
+rsum = recsum[8]
+draw(rsum.trees[1].tree)
 
-# ![](../assets/D2-rectree1.svg)
+# A clear example of a gene family that seem to show the pattern that might cause
+# the loss rate inflation on branch 3 is the third gene family. This is in fact
+# very suspicious, as an alternative rooting of the tree would entail no losses,
+# and a duplicate rich ingroup! The latter should have higher posterior probability,
+# no!? However, we find that the latter in fact obtains a posterior probability
+# of 1%, which is more than 10 times lower than the MAP tree. Turns out a speciation
+# at the root is only present in 2% of the reconciled trees!
 
-bar([rsum.trees[i].freq for i=1:length(rsum.trees)], color=:white,
-    grid=false, legend=false, xlabel="Tree", ylabel="P")
+# What happens if we put η ≈ 1 and the inflated loss rate near the dup rate?
+_dfmb = deepcopy(dfmb)
+_dfmb[:η] = 0.99
+_dfmb[:r_2_3] = _dfmb[:r_1_3]
+posterior = Whale.pack(_dfmb)
+@time recsum = sumtrees(problem, posterior)
+
+# and have a look at the MAP tree
+rsum = recsum[3]
+draw(rsum.trees[1].tree)
+
+# So now we do seem to find this 'preferred' rooting (with probaility one)! (
+# This is reassuring, as it suggests that there is no problem with the likelihood
+# model).
+
+# But it seems putting η at about 1 is not even necessary,just having reasonable
+# rates ensures this rooting:
+_dfmb = deepcopy(dfmb)
+_dfmb[:η] = 0.67
+_dfmb[:r_2_3] = _dfmb[:r_1_3]
+posterior = Whale.pack(_dfmb)
+recsum = sumtrees(problem, posterior)
+rsum = recsum[3]
+draw(rsum.trees[1].tree)
+
+# So in other words, the question remains why the rate wanders of to these
+# unreasonable values in the first place?
+
+posterior = Whale.pack(dfmb)
+extinction = permutedims(hcat([[v.slices[end,2] for (k,v) in
+    wm(problem.rates(x)).nodes] for x in posterior]...))
+
+# It seems the slicing of the tree was unreasonable, maybe that influenced these
+# results...
 
 # ## Comparing with MAPS
 
@@ -239,14 +268,13 @@ notung  = notungdf[!,:Dups]
 
 # Now plot the comparison
 # pyplot()  # doesn't look too nice on GR
-using Plots, ColorSchemes
+using ColorSchemes
 groupedbar([maps maps0 notung whaleml whalemb],
     color=reshape(get(ColorSchemes.viridis, 0.2:0.2:1), (1,5)),
     label=["MAPS" "MAPS (mt=0)" "Notung" "Whale (ML)" "Whale (CCD)"],
     xlabel="Species tree node", ylabel="# duplication events",
     bar_width=0.7, bar_position=:dodge, size=(600,300),
     grid=false, legend=:topleft)
-savefig("/home/arzwa/vimwiki/presentations/lm0320/assets/reccomp.pdf")
 
 # Look at that! We infer more duplication events with Whale for all but the
 # first node. This is unexpected, since LCA reconciliation in general results
@@ -259,25 +287,3 @@ savefig("/home/arzwa/vimwiki/presentations/lm0320/assets/reccomp.pdf")
 # The comparison with Notung is shocking. NOTUNG, as expected, infers *a lot*
 # more events than Whale. MAPS, which performs some kind of LCA reconciliation
 # somehow leads to very different and unexpected results...
-
-# However all methods infer similar relative numbers of duplications on different
-# branches relative
-
-using PalmTree, Parameters, Luxor, NewickTree
-import Luxor: RGB
-begin
-    NewickTree.isleaf(i::UInt16) = isleaf(wm[i])
-    NewickTree.distance(i::UInt16) = wm[i].event.t
-    NewickTree.id(i::UInt16) = i
-    NewickTree.children(i::UInt16) = wm[i].children
-    tl = TreeLayout(wm[1], dim=(320,230))
-    labfun = (k, p)->haskey(wm.leaves, k) ?
-        settext(" $(wm.leaves[k])", p, valign="center") : nothing
-    @svg begin
-        setline(3)
-        Luxor.origin(Point(20,20))
-        setfont("Noto sans italic", 13)
-        drawtree(tl)
-        nodemap(tl, labfun)
-    end 380 260 "/home/arzwa/tmp/D2.tree"
-end
