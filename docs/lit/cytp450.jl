@@ -6,7 +6,7 @@ using Plots, StatsPlots
 # families. Here we consider a family of about 100 leaves.
 
 base  = joinpath(@__DIR__, "../../example/example-4")
-model = WhaleModel(readline(joinpath(base, "tree2.nw")), Δt=0.1)
+model = WhaleModel(readline(joinpath(base, "tree.nw")), Δt=0.1)
 data  = read_ale(joinpath(base, "cytp450.ale"), model)
 
 # Reading in the single CCD is already a very heavy operation. The CCD has about
@@ -18,6 +18,11 @@ problem = WhaleProblem(model, distribute([data]), prior)
 results   = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 1000)
 posterior = Whale.transform.(problem.trans, results.chain)
 @info summarize_tree_statistics(results.tree_statistics)
+
+# Save the posterior
+using CSV
+df = Whale.unpack(posterior)
+CSV.write(joinpath(base, "cr-post.csv"))
 
 # Make some trace plots
 df = Whale.unpack(posterior)
@@ -45,7 +50,7 @@ begin
         nodemap(tl, labfun)
         nodemap(tl, credfn)
         nodemap(tl, dupfn)
-    end 650 1250 #"docs/src/assets/cytp450-10.svg"
+    end 650 1250 "docs/src/assets/cytp450-10.svg"
 end
 
 # ![](assets/cytp450-1.svg)
