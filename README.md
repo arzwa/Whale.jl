@@ -1,6 +1,6 @@
 [![](https://img.shields.io/badge/docs-dev-blue.svg)](https://arzwa.github.io/Whale.jl/dev/index.html)
 
-**Note:** If you're interested in using the methods implemented in this library for research purposes, please consider contacting me, as there are some noteworthy developments that have not yet been integrated with the master branch and are not (well-)documented yet.
+**Note:** If you're interested in using the methods implemented in this library for research purposes, please consider contacting me, as there are some noteworthy developments that have not yet been integrated with the master branch and are not (well-)documented yet. For the methods as used in Zwaenepoel & Van de Peer (2019), consider the [v0.3 release](https://github.com/arzwa/Whale.jl/releases/tag/v0.3).
 
 # Whale: whole genome duplication inference by amalgamated likelihood estimation
 
