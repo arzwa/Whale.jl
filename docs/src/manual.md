@@ -19,7 +19,8 @@ julia> st = Whale.example_tree()
 SlicedTree(9, 17, 7)
 
 julia> st.tree
-[0mPhylogenetic tree with 24 nodes and 23 branches
+
+[0mPhylogenetic tree with 24 nodes and 23 branches
 
 julia> st.leaves
 Dict{Int64,String} with 9 entries:
@@ -351,7 +352,7 @@ either `η` or `ν` to ensure proper mixing of the chain.
 julia> st = Whale.example_tree()
 SlicedTree(9, 17, 7)
 
-julia> w = WhaleChain(st, IRModel(st))
+julia> w = WhaleChain(st, IRModel())
 WhaleChain{IRModel}(SlicedTree(9, 17, 7))
 ```
 
@@ -398,7 +399,7 @@ Below the chain is fixed for the parameter values η=0.9 and ν=0.1.
 
 ```julia-repl
 julia> st = Whale.example_tree()
-julia> w = WhaleChain(st, IRModel(st, 0.1, 0.9))
+julia> w = WhaleChain(st, IRModel(ν=Whale.ConstantDistribution(0.1), η=Whale.ConstantDistribution(0.9)))
 julia> chain = mcmc!(w, D, 100, :ν, :η, show_every=10)
 ```
 #### Constraining rates on branches stemming from the root
@@ -441,8 +442,8 @@ It is generally advisable to run a chain without data, to investigate the prior 
 
 ```julia-repl
 julia> st = Whale.example_tree()
-julia> w = WhaleChain(st, IRModel(st, InverseGamma(10), 0.9, Exponential(1.), Exponential(1.)))
-julia> chain = mcmc!(w, 10000, :η)   # e.g. with fixed η
+julia> w = WhaleChain(st, IRModel())
+julia> chain = mcmc!(w, 10000)
 ```
 
 ## Backtracking and consensus reconciled trees
