@@ -90,7 +90,7 @@ function WhaleNode(id::I, event::Union{Speciation,WGD}, parent::I, n) where I
 end
 
 function WhaleModel(nw; Δt=0.05, minn=5, λ=0., μ=0., η=0.9, I=UInt16)
-    @unpack nodes, leaves, values = readnw(nw)
+    root = readnw(nw)
     d = Dict{I,WhaleNode{Float64,<:Event{Float64},I}}(
             I(1)=>WhaleNode{I}(Root(η, λ, μ)))
     n = Dict{I,String}()
@@ -101,13 +101,13 @@ function WhaleModel(nw; Δt=0.05, minn=5, λ=0., μ=0., η=0.9, I=UInt16)
         if isroot(x)
             x_ = d[id]
         else
-            nslices = max(minn, ceil(Int, x.x / Δt))
-            d[id] = x_ = WhaleNode(id, Speciation(λ, μ, x.x), y.id, nslices)
+            nslices = max(minn, ceil(Int, distance(x) / Δt))
+            d[id] = x_ = WhaleNode(id, Speciation(λ, μ, distance(x)), y.id, nslices)
             push!(y, id)  # add child to parent
         end
-        isleaf(x) ? n[id] = leaves[id] : [walk(c, x_) for c in x.children]
+        isleaf(x) ? n[id] = name(x) : [walk(c, x_) for c in children(x)]
     end
-    walk(nodes[1], nothing)
+    walk(root, nothing)
     wm = WhaleModel(d, n, reverse(order))
     setclades!(wm)
     set!(wm)
@@ -218,7 +218,8 @@ function addwgd!(wm::WhaleModel{T,I}, node, t::T, q::T=rand(T), minn=5) where {T
     idx = findfirst(x->x==I(node.id), wm.order)
     insert!(wm.order, idx+1, j)
     setabove!(wm[j], wm)
-    @assert ti == wgd.event.t + node.event.t ==
+    # @show wgd.event.t, node.event.t, sum(wgd.slices[:,1]), sum(node.slices[:,1])
+    @assert ti == wgd.event.t + node.event.t ≈
         sum(wgd.slices[:,1]) + sum(node.slices[:,1])
 end
 
