@@ -15,7 +15,7 @@ module Whale
     using DataFrames
     import TransformVariables: TransformTuple, transform_and_logjac, transform
     import LogDensityProblems: logdensity_and_gradient
-    import NewickTree: id
+    import NewickTree: id, name, distance
     import Distributions: logpdf, logpdf!
 
     include("model.jl")
