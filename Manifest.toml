@@ -2,9 +2,9 @@
 
 [[AbstractTrees]]
 deps = ["Markdown"]
-git-tree-sha1 = "86d092c2599f1f7bb01668bf8eb3412f98d61e47"
+git-tree-sha1 = "33e450545eaf7699da1a6e755f9ea65f14077a45"
 uuid = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
-version = "0.3.2"
+version = "0.3.3"
 
 [[ArgCheck]]
 git-tree-sha1 = "e14de95bcfacd85e00f5369958a38bb72827bce2"

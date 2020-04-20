@@ -1,9 +1,10 @@
 name = "Whale"
 uuid = "eab5b8f2-ac71-4eb1-ac2b-64791b8dae63"
 authors = ["Arthur ZWAENEPOEL <arzwa@psb.ugent.be>"]
-version = "0.3.0"
+version = "1.0.0"
 
 [deps]
+AbstractTrees = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DiffResults = "163ba53b-c6d8-5494-b064-1a9d43ac40c5"
