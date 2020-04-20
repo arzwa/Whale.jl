@@ -1,14 +1,3 @@
-"""
-    RecTree{I}
-
-Holds a reconciled tree, typically a summary from a posterior sample.
-"""
-struct RecTree{I}
-    root  ::RecNode{I}
-    annot ::Dict{}  # flexible
-end
-
-Base.show(io::IO, rtree::RecTree) = write(io, "RecTree($(rtree.root))")
 
 struct RecSummary
     trees ::Vector{NamedTuple}
@@ -36,7 +25,7 @@ function sumtrees(trees::AbstractVector, ccd::CCD, wm::WhaleModel)
     for (h, count) in sort(collect(counts), by=x->x[2], rev=true)
         tree = trees[findfirst(x->x==h, hashes)]
         freq = count/N
-        @unpack rtree, df = RecTree(tree, clades, N, ccd.leaves, wm)
+        rtree, df = label_and_summarize!(tree, clades, N, ccd.leaves, wm)
         push!(summary, (freq=freq, tree=rtree))
         events = isnothing(events) ? df .* freq : events .+ (df .* freq)
     end
@@ -48,16 +37,16 @@ sumevents(r::AbstractVector{RecSummary}) =
 
 cladecounts(trees) = countmap(vcat(map((t)->cladehash.(postwalk(t)), trees)...))
 
-function RecTree(tree::RecNode, clades, N, leafnames, wm)
+function label_and_summarize!(tree::RecNode, clades, N, leafnames, wm)
     d = Dict{typeof(cladehash(tree)),NamedTuple}()
     e = Dict{String,Vector{Int}}(l=>zeros(Int, length(wm)) for l in Labels)
     for n in postwalk(tree)
-        cred = clades[cladehash(n)]/N
         label = getlabel(n, wm)
         e[label][gete(n)]+= 1
-        d[cladehash(n)] = (cred=cred, label=label, name=name(n))
+        n.data.label = label
+        n.data.cred = clades[cladehash(n)]/N
     end
-    (rtree=RecTree(tree, d), df=DataFrame(e))
+    (rtree=tree, df=DataFrame(e))
 end
 
 # don't like this, very ad hoc,we could add a 'kind' field in `SliceState` instead
@@ -84,25 +73,24 @@ function getlabel(n::RecNode, wm::WhaleModel)
     end
 end
 
-
-function pruneloss!(tree::RecTree)
-    @unpack root, annot = tree
-    nodes = postwalk(root)
-    ids = cladehash.(nodes)
-    for (h, n) in zip(ids, nodes)
-        if annot[h].label == "loss"  # deletion happens at sploss node
-            delete!(tree.annot, h)
-        elseif annot[h].label == "sploss"
-            child = children(n)[1]
-            newchild = RecNode(child.γ, child.e, child.t,
-                child.children, n.parent)
-            delete!(n.parent.children, n)
-            delete!(tree.annot, h)
-            push!(n.parent, newchild)
-        else
-            ann = annot[h]
-            delete!(tree.annot, h)
-            tree.annot[cladehash(n)] = ann
-        end
-    end
-end
+# function pruneloss!(tree::RecTree)
+#     @unpack root, annot = tree
+#     nodes = postwalk(root)
+#     ids = cladehash.(nodes)
+#     for (h, n) in zip(ids, nodes)
+#         if annot[h].label == "loss"  # deletion happens at sploss node
+#             delete!(tree.annot, h)
+#         elseif annot[h].label == "sploss"
+#             child = children(n)[1]
+#             newchild = RecNode(child.γ, child.e, child.t,
+#                 child.children, n.parent)
+#             delete!(n.parent.children, n)
+#             delete!(tree.annot, h)
+#             push!(n.parent, newchild)
+#         else
+#             ann = annot[h]
+#             delete!(tree.annot, h)
+#             tree.annot[cladehash(n)] = ann
+#         end
+#     end
+# end

@@ -10,7 +10,9 @@ are identified by having `γ == 0`.
     γ::I                # clade in CCD
     e::I = UInt16(1)    # edge (in species tree)
     t::Int = 1          # slice index along edge `e`
-    name::String = ""
+    name::String  = ""
+    cred::Float64 = NaN
+    label::String = ""
 end
 
 const RecNode{I} = Node{I,RecData{I}} where I<:Integer
@@ -28,11 +30,8 @@ cladehash(r::RecNode) = r.data.γ == 0 ?
     hash((r.data.γ, r.data.e, sister(r).data.γ)) :
     hash((r.data.γ, r.data.e, Set(rectuple.(children(r)))))
 
-# NewickTree.isleaf(n::RecNode) = length(n.children) == 0
-# NewickTree.isroot(n::RecNode) = isnothing(n.parent)
-# NewickTree.children(n::RecNode) = collect(n.children)
-# NewickTree.id(n::RecNode) = cladehash(n)
-NewickTree.distance(r::RecNode) = 1.
+NewickTree.distance(r::RecNode) = NaN
+NewickTree.support(r::RecData) = r.cred
 NewickTree.name(r::RecData) = r.name
 
 """
@@ -123,7 +122,8 @@ end
 
 # backtracking starts here for real
 backtrack!(b::BackTracker) =
-    b.state.γ == 0 ? (return addleafname!(b, "loss_$(hash(parent(b.node)))")) :
+    b.state.γ == 0 ?
+        (return addleafname!(b, "loss_$(hash(parent(b.node)))")) :
         b.state.t == 1 ?
             _backtrack!(b, b.model[b.state.e]) :
             _backtrack!(b)
