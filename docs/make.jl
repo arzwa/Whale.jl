@@ -3,11 +3,14 @@ using Documenter, Whale, Literate
 fnames = String[]
 
 ignore = [
-	# "distances.jl",
-	# "branchrates.jl",
-	# "mle-sims.jl",
-	# "mle.jl",
-	# "rectree.jl"
+	"distances.jl",
+	"branchrates.jl",
+	"mle-sims.jl",
+	"mle.jl",
+	"rectree.jl",
+	"prior.jl",
+	"rectree.jl",
+	"cytp450.jl"
 ]
 
 outdir = joinpath(@__DIR__, "src")
@@ -43,3 +46,9 @@ deploydocs(
     repo = "github.com/arzwa/Whale.jl.git",
     target = "build",
 )
+
+using Literate
+Literate.markdown(
+    joinpath(@__DIR__, "README.jl"),
+    joinpath(@__DIR__, "../"),
+    documenter=false, execute=false)
