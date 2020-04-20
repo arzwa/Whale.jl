@@ -40,7 +40,7 @@ problem = WhaleProblem(data, model, prior)
 # Run HMC using [`DynamicHMC`](https://github.com/tpapp/DynamicHMC.jl)
 results = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 100,
     warmup_stages=DynamicHMC.default_warmup_stages(doubling_stages=3))
-@info summarize_tree_statistics(results.tree_statistics)
+summarize_tree_statistics(results.tree_statistics)
 
 # Obtain the posterior distribution
 posterior = transform.(Ref(problem), results.chain)

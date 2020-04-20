@@ -67,7 +67,13 @@ Run HMC using [`DynamicHMC`](https://github.com/tpapp/DynamicHMC.jl)
 ```julia
 results = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 100,
     warmup_stages=DynamicHMC.default_warmup_stages(doubling_stages=3))
-@info summarize_tree_statistics(results.tree_statistics)
+summarize_tree_statistics(results.tree_statistics)
+```
+```
+Hamiltonian Monte Carlo sample of length 100
+  acceptance rate mean: 0.87, 5/25/50/75/95%: 0.53 0.79 0.95 0.99 1.0
+  termination: divergence => 0%, max_depth => 0%, turning => 100%
+  depth: 0 => 0%, 1 => 1%, 2 => 44%, 3 => 55%
 ```
 
 Obtain the posterior distribution
@@ -79,14 +85,14 @@ first(df, 5)
 ```
 ```
 5×5 DataFrames.DataFrame
-│ Row │ λ        │ μ        │ q_1      │ q_2        │ η        │
-│     │ Float64  │ Float64  │ Float64  │ Float64    │ Float64  │
-├─────┼──────────┼──────────┼──────────┼────────────┼──────────┤
-│ 1   │ 0.104749 │ 0.149621 │ 0.602009 │ 0.00971225 │ 0.86146  │
-│ 2   │ 0.170998 │ 0.165641 │ 0.203148 │ 0.00327049 │ 0.803779 │
-│ 3   │ 0.112158 │ 0.189674 │ 0.854411 │ 0.0824899  │ 0.803101 │
-│ 4   │ 0.140092 │ 0.156727 │ 0.168705 │ 0.0675446  │ 0.847692 │
-│ 5   │ 0.133129 │ 0.149424 │ 0.2378   │ 0.147512   │ 0.814924 │
+│ Row │ λ        │ μ        │ q_1       │ q_2       │ η        │
+│     │ Float64  │ Float64  │ Float64   │ Float64   │ Float64  │
+├─────┼──────────┼──────────┼───────────┼───────────┼──────────┤
+│ 1   │ 0.136215 │ 0.111206 │ 0.265027  │ 0.0272622 │ 0.842992 │
+│ 2   │ 0.123595 │ 0.188431 │ 0.0499744 │ 0.0210474 │ 0.677687 │
+│ 3   │ 0.138503 │ 0.132648 │ 0.033248  │ 0.163219  │ 0.827999 │
+│ 4   │ 0.103857 │ 0.126066 │ 0.0361313 │ 0.0513631 │ 0.757856 │
+│ 5   │ 0.174728 │ 0.119798 │ 0.0746324 │ 0.0405195 │ 0.700785 │
 ```
 
 Obtain reconciled trees sampled from the posterior
@@ -96,18 +102,18 @@ trees = sumtrees(problem, posterior)
 ```
 ```
 12-element DistributedArrays.DArray{Whale.RecSummary,1,Array{Whale.RecSummary,1}}:
- RecSummary(# unique trees = 21)
- RecSummary(# unique trees = 12)
- RecSummary(# unique trees = 25)
- RecSummary(# unique trees = 45)
- RecSummary(# unique trees = 29)
- RecSummary(# unique trees = 21)
- RecSummary(# unique trees = 14)
- RecSummary(# unique trees = 32)
- RecSummary(# unique trees = 7)
- RecSummary(# unique trees = 8)
+ RecSummary(# unique trees = 17)
+ RecSummary(# unique trees = 6)
+ RecSummary(# unique trees = 28)
+ RecSummary(# unique trees = 41)
+ RecSummary(# unique trees = 26)
  RecSummary(# unique trees = 20)
- RecSummary(# unique trees = 22)
+ RecSummary(# unique trees = 16)
+ RecSummary(# unique trees = 29)
+ RecSummary(# unique trees = 12)
+ RecSummary(# unique trees = 11)
+ RecSummary(# unique trees = 17)
+ RecSummary(# unique trees = 29)
 ```
 
 Consider the first gene family
@@ -116,20 +122,16 @@ Consider the first gene family
 family1 = trees[1].trees
 ```
 ```
-21-element Array{NamedTuple,1}:
- (freq = 0.52, tree = RecTree(Node(83, 1, )))
- (freq = 0.15, tree = RecTree(Node(83, 1, )))
+17-element Array{NamedTuple,1}:
+ (freq = 0.33, tree = RecTree(Node(83, 1, )))
+ (freq = 0.27, tree = RecTree(Node(83, 1, )))
+ (freq = 0.14, tree = RecTree(Node(83, 1, )))
  (freq = 0.07, tree = RecTree(Node(83, 1, )))
- (freq = 0.04, tree = RecTree(Node(83, 1, )))
- (freq = 0.04, tree = RecTree(Node(83, 1, )))
  (freq = 0.03, tree = RecTree(Node(83, 1, )))
- (freq = 0.01, tree = RecTree(Node(83, 1, )))
- (freq = 0.01, tree = RecTree(Node(83, 1, )))
- (freq = 0.01, tree = RecTree(Node(83, 1, )))
- (freq = 0.01, tree = RecTree(Node(83, 1, )))
- (freq = 0.01, tree = RecTree(Node(83, 1, )))
- (freq = 0.01, tree = RecTree(Node(83, 1, )))
- (freq = 0.01, tree = RecTree(Node(83, 1, )))
+ (freq = 0.02, tree = RecTree(Node(83, 1, )))
+ (freq = 0.02, tree = RecTree(Node(83, 1, )))
+ (freq = 0.02, tree = RecTree(Node(83, 1, )))
+ (freq = 0.02, tree = RecTree(Node(83, 1, )))
  (freq = 0.01, tree = RecTree(Node(83, 1, )))
  (freq = 0.01, tree = RecTree(Node(83, 1, )))
  (freq = 0.01, tree = RecTree(Node(83, 1, )))
@@ -150,23 +152,23 @@ trees[1].events
 │ Row │ duplication │ loss    │ speciation │ sploss  │ wgd     │ wgdloss │
 │     │ Float64     │ Float64 │ Float64    │ Float64 │ Float64 │ Float64 │
 ├─────┼─────────────┼─────────┼────────────┼─────────┼─────────┼─────────┤
-│ 1   │ 0.03        │ 0.0     │ 0.97       │ 0.06    │ 0.0     │ 0.0     │
-│ 2   │ 0.01        │ 0.03    │ 0.99       │ 0.02    │ 0.0     │ 0.0     │
-│ 3   │ 0.0         │ 0.01    │ 1.0        │ 0.0     │ 0.0     │ 0.0     │
-│ 4   │ 0.0         │ 0.01    │ 0.0        │ 0.0     │ 0.0     │ 1.0     │
+│ 1   │ 0.02        │ 0.0     │ 0.98       │ 0.04    │ 0.0     │ 0.0     │
+│ 2   │ 0.02        │ 0.02    │ 0.98       │ 0.04    │ 0.0     │ 0.0     │
+│ 3   │ 0.0         │ 0.02    │ 1.0        │ 0.0     │ 0.0     │ 0.0     │
+│ 4   │ 0.0         │ 0.02    │ 0.0        │ 0.0     │ 0.0     │ 1.0     │
 │ 5   │ 0.0         │ 1.0     │ 1.0        │ 0.0     │ 0.0     │ 0.0     │
-│ 6   │ 0.02        │ 0.03    │ 0.99       │ 0.03    │ 0.0     │ 0.0     │
-│ 7   │ 0.0         │ 0.02    │ 1.0        │ 0.0     │ 0.0     │ 0.0     │
-│ 8   │ 0.99        │ 0.01    │ 1.0        │ 1.0     │ 0.0     │ 0.0     │
-│ 9   │ 0.01        │ 1.0     │ 0.0        │ 0.0     │ 0.0     │ 1.01    │
-│ 10  │ 0.02        │ 1.01    │ 0.99       │ 0.04    │ 0.0     │ 0.0     │
-│ 11  │ 1.06        │ 0.01    │ 1.0        │ 1.08    │ 0.0     │ 0.0     │
-│ 12  │ 0.0         │ 1.08    │ 1.0        │ 0.0     │ 0.0     │ 0.0     │
-│ 13  │ 0.82        │ 0.0     │ 1.0        │ 1.9     │ 0.0     │ 0.0     │
-│ 14  │ 0.0         │ 1.9     │ 1.0        │ 0.0     │ 0.0     │ 0.0     │
-│ 15  │ 1.1         │ 0.0     │ 4.0        │ 0.0     │ 0.0     │ 0.0     │
-│ 16  │ 0.0         │ 0.03    │ 1.0        │ 0.0     │ 0.0     │ 0.0     │
-│ 17  │ 0.0         │ 0.0     │ 1.0        │ 1.0     │ 0.0     │ 0.0     │
+│ 6   │ 0.0         │ 0.02    │ 1.0        │ 0.0     │ 0.0     │ 0.0     │
+│ 7   │ 0.0         │ 0.0     │ 1.0        │ 0.0     │ 0.0     │ 0.0     │
+│ 8   │ 0.98        │ 0.0     │ 1.0        │ 0.98    │ 0.0     │ 0.0     │
+│ 9   │ 0.0         │ 0.98    │ 0.0        │ 0.0     │ 0.0     │ 1.0     │
+│ 10  │ 0.0         │ 1.0     │ 1.0        │ 0.0     │ 0.0     │ 0.0     │
+│ 11  │ 1.06        │ 0.0     │ 0.99       │ 1.07    │ 0.0     │ 0.0     │
+│ 12  │ 0.0         │ 1.06    │ 1.0        │ 0.0     │ 0.0     │ 0.0     │
+│ 13  │ 0.86        │ 0.01    │ 1.0        │ 1.91    │ 0.0     │ 0.0     │
+│ 14  │ 0.0         │ 1.91    │ 1.0        │ 0.0     │ 0.0     │ 0.0     │
+│ 15  │ 1.09        │ 0.0     │ 4.0        │ 0.0     │ 0.0     │ 0.0     │
+│ 16  │ 0.0         │ 0.0     │ 1.0        │ 0.0     │ 0.0     │ 0.0     │
+│ 17  │ 0.02        │ 0.0     │ 1.0        │ 1.0     │ 0.0     │ 0.0     │
 │ 18  │ 0.0         │ 1.0     │ 1.0        │ 0.0     │ 0.0     │ 0.0     │
 │ 19  │ 0.0         │ 0.0     │ 2.0        │ 0.0     │ 0.0     │ 0.0     │
 ```
