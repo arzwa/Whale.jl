@@ -14,7 +14,7 @@ for the entire tree). Supports arbitrary, but fixed number of WGDs.
 @with_kw struct CRPrior <: Prior
     πr::MvLogNormal = MvLogNormal(ones(2))
     πq::Beta = Beta()
-    πη::Union{Beta,Normal} = Beta(1,3)
+    πη::Union{Beta,Normal} = Beta(3,1)
 end
 
 function logpdf(prior::CRPrior, θ::T) where T
@@ -35,12 +35,12 @@ Bivariate independent rates prior with fixed covariance matrix.
     πη::Union{Beta,Normal} = Beta(3,1)
 end
 
-function logpdf(prior::IRPrior, θ)
-    @unpack πr, πq, πη, πE = prior
-    @unpack λ, μ, η = θ
+function logpdf(prior::IRPrior, θ::T) where T
+    @unpack πr, πq, πη = prior
+    @unpack λ, μ, η = θ.params
     q = hasfield(T, :q) ? θ.q : Float64[]
     p  = typeof(πη)<:Normal && πη.σ == zero(πη.σ) ? 0. : logpdf(πη, η)
-    p += sum(logpdf(πr, r)) + sum(logpdf.(πq, q))
+    p += sum(logpdf(πr, permutedims([λ μ]))) + sum(logpdf.(πq, q))
     isfinite(p) ? p : -Inf
 end
 
@@ -62,7 +62,7 @@ function logpdf(prior::IWIRPrior, θ::T) where T
     @unpack Ψ, πr, πq, πη, πE = prior
     @unpack λ, μ, η = θ.params
     q = hasfield(T, :q) ? θ.q : Float64[]
-    r = log.(permutedims([λ μ]))
+    r = permutedims([λ μ])
     X₀ = r[:,1]
     Y = r[:,2:end] .- X₀  # centered rate vectors prior ~ MvNormal(0, Ψ)
     # Y*Y' is the sample covariance matrix

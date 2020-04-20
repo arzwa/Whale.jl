@@ -1,10 +1,17 @@
-using Distributions
+using Distributions, Test
 
 @testset "Log density and gradient" begin
-    wm = WhaleModel(Whale.extree)
-    Whale.addwgd!(wm, wm[5], 0.25, rand())
+    wm = WhaleModel(Whale.extree1)
     D = read_ale(joinpath(@__DIR__, "../example/example-1/ale"), wm)
     D = DArray(D[1:2])
+
+    @testset begin
+        n = length(postwalk(t))
+        r = RatesModel(DLGWGD(λ=ones(n), μ=ones(n), q=[0.2], η=0.9))
+        w = WhaleModel(r, t)
+        ccd = read_ale("example/example-1/ale", w)
+        @test logpdf!(w, ccd) == -399.4124195572149
+    end
 
     @testset "CR prior" begin
         prior = CRPrior(MvNormal(ones(2)), Beta(3,1), Beta())

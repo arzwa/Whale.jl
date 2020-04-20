@@ -39,16 +39,14 @@ makedocs(
     authors = "Arthur Zwaenepoel",
     doctest = :fix,
 	pages = ["Index"=>"index.md",
-			 "Examples"=>fnames],
-)
+			 "Examples"=>fnames],)
 
 deploydocs(
     repo = "github.com/arzwa/Whale.jl.git",
-    target = "build",
-)
+    target = "build",)
 
 using Literate
 Literate.markdown(
     joinpath(@__DIR__, "README.jl"),
     joinpath(@__DIR__, "../"),
-    documenter=false, execute=false)
+    documenter=false, execute=true)

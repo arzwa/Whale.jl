@@ -54,6 +54,7 @@ struct WhaleModel{T,M,I}
     nodes::Vector{I}
 end
 
+Base.show(io::IO, m::WhaleModel) = write(io::IO, "WhaleModel(\n$(m.rates))")
 Base.length(m::WhaleModel) = length(m.order)
 Base.getindex(m::WhaleModel, i) = m.order[m.nodes[i]]
 Base.lastindex(m::WhaleModel) = lastindex(m.order)

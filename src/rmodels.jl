@@ -1,14 +1,6 @@
 # module RatesModels
 # using Parameters, TransformVariables
 
-# The RatesModel provides an interface between parameter values and a general
-# phylogenetic model, so that we can use the same algorithm routines
-# irrespective of how parameters are shared across nodes/branches/families,...
-# IDEA: define a WGD model as a wrapper around a RatesModel. No WGD models could be traits
-# XXX: should we have Gamma mixtures baked in? Or should that be another
-# wrapper around the ratesmodel?
-# There is some room for metaprogramming hacks here
-
 abstract type Params{T} end
 
 struct RatesModel{T,M<:Params{T},V}
@@ -77,8 +69,13 @@ function (::ConstantDLGWGD)(θ)
     ConstantDLGWGD(;λ=T(θ.λ), μ=T(θ.μ), q=θ.q, κ=T(θ.κ), η=T(θ.η))
 end
 
-ConstantDLWGD(;θ...) = RatesModel(ConstantDLGWGD(; θ...), fixed=(:κ,))
+"""
+    DLG{T}
 
+Simple branch-wise rates duplication-loss and gain model. Gain (κ) is
+assumed to be tree-wide. This assumes a shifted geometric distribution
+on the family size at the root with mean 1/η.
+"""
 @with_kw struct DLG{T} <: Params{T}
     λ::Vector{T}
     μ::Vector{T}
@@ -86,9 +83,11 @@ ConstantDLWGD(;θ...) = RatesModel(ConstantDLGWGD(; θ...), fixed=(:κ,))
     η::T = 0.66
 end
 
-getθ(m::DLG, node) = (λ=m.λ[id(node)], μ=m.μ[id(node)], κ=m.κ, η=m.η)
-trans(m::DLG) = (λ=as(Array, asℝ₊, length(m.λ)),
-    μ=as(Array, asℝ₊, length(m.λ)), κ=asℝ₊, η=as𝕀)
+getθ(m::DLG, node) = (λ=exp(m.λ[id(node)]), μ=exp(m.μ[id(node)]), κ=m.κ, η=m.η)
+trans(m::DLG) = (
+    λ=as(Array, asℝ, length(m.λ)),
+    μ=as(Array, asℝ, length(m.λ)),
+    κ=asℝ₊, η=as𝕀)
 (::DLG)(θ) = DLG(; λ=θ.λ, μ=θ.μ, κ=eltype(θ.λ)(θ.κ), η=eltype(θ.λ)(θ.η))
 
 @with_kw struct DLGWGD{T} <: Params{T}
@@ -99,23 +98,29 @@ trans(m::DLG) = (λ=as(Array, asℝ₊, length(m.λ)),
     η::T = 0.66
 end
 
-# TODO: find a proper way to infer `wgdid`
 function getθ(m::DLGWGD, node)
     return if iswgd(node)
         c = nonwgdchild(node)
-        (λ=m.λ[id(c)], μ=m.μ[id(c)], q=m.q[wgdid(node)], κ=m.κ)
+        (λ=exp(m.λ[id(c)]), μ=exp(m.μ[id(c)]), q=m.q[wgdid(node)], κ=m.κ)
     else
-        (λ=m.λ[id(node)], μ=m.μ[id(node)], κ=m.κ, η=m.η)
+        (λ=exp(m.λ[id(node)]), μ=exp(m.μ[id(node)]), κ=m.κ, η=m.η)
     end
 end
 
 trans(m::DLGWGD) = (
-    λ=as(Array, asℝ₊, length(m.λ)),
-    μ=as(Array, asℝ₊, length(m.λ)),
+    λ=as(Array, asℝ, length(m.λ)),
+    μ=as(Array, asℝ, length(m.λ)),
     q=as(Array, as𝕀, length(m.q)),
     κ=asℝ₊, η=as𝕀)
 
 (::DLGWGD)(θ) = DLGWGD(;
     λ=θ.λ, μ=θ.μ, q=θ.q, κ=eltype(θ.λ)(θ.κ), η=eltype(θ.λ)(θ.η))
+
+# short hands
+ConstantDLWGD(; fixed=(:κ,), θ...) =
+    RatesModel(ConstantDLGWGD(;θ...), fixed=mergetup(fixed, (:κ,)))
+DLWGD(; fixed=(:κ,), θ...) =
+    RatesModel(DLGWGD(;θ...), fixed=mergetup(fixed, (:κ,)))
+mergetup(t1, t2) = tuple(union(t1, t2)...)
 
 # end

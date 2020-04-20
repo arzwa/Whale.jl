@@ -33,25 +33,31 @@ using DynamicHMC.Diagnostics
 tree  = readnw("((MPOL:4.752,(PPAT:2.752)wgd_1:2.0):0.292,(SMOE:4.457,((((OSAT:1.555,(ATHA:0.5548,CPAP:0.5548):1.0002):0.738,ATRI:1.293):1.0)wgd_2:1.225,(GBIL:3.178,PABI:3.178):0.34):0.939):0.587);")
 rates = Whale.ConstantDLWGD(λ=0.1, μ=0.1, q=[0.2, 0.3], η=0.9)
 model = WhaleModel(rates, tree, Δt=0.1)
-data  = read_ale(joinpath(@__DIR__, "../example/example-1/ale"), model)
+data  = read_ale(joinpath(@__DIR__, "example/example-1/ale"), model)
 prior = CRPrior()
 problem = WhaleProblem(data, model, prior)
 
 # Run HMC using [`DynamicHMC`](https://github.com/tpapp/DynamicHMC.jl)
 results = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 100,
     warmup_stages=DynamicHMC.default_warmup_stages(doubling_stages=3))
+@info summarize_tree_statistics(results.tree_statistics)
 
 # Obtain the posterior distribution
 posterior = transform.(Ref(problem), results.chain)
+df = Whale.unpack(posterior)
+first(df, 5)
 
 # Obtain reconciled trees sampled from the posterior
 trees = sumtrees(problem, posterior)
 
 # Consider the first gene family
-trees[1].trees
+family1 = trees[1].trees
 
-# and
+# and a summary of the expected number of events for each branch
 trees[1].events
+
+# get the MAP tree as a newick string
+nwstr(family1[1].tree.root)
 
 # ## Reference
 
