@@ -36,7 +36,6 @@ plot([([i-1, i], [f[i-1], f[i-1]]) for i=2:length(f)], xscale=:identity,
     color=:black, fill=true, fillalpha=0.2, grid=false, size=(800,150),
     legend=false, xlabel="Unique reconciled tree", ylabel="Posterior Pr.",
     bottom_margin=5Measures.mm)
-savefig("/home/arzwa/vimwiki/presentations/lm0320/assets/cytp450-post.pdf")
 
 # Plot the MAP tree
 using PalmTree, Parameters, Luxor

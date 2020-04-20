@@ -9,7 +9,7 @@ families. Here we consider a family of about 100 leaves.
 
 ```@example cytp450
 base  = joinpath(@__DIR__, "../../example/example-4")
-model = WhaleModel(readline(joinpath(base, "tree2.nw")), Δt=0.1)
+model = WhaleModel(readline(joinpath(base, "tree.nw")), Δt=0.1)
 data  = read_ale(joinpath(base, "cytp450.ale"), model)
 ```
 
@@ -29,6 +29,14 @@ posterior = Whale.transform.(problem.trans, results.chain)
 @info summarize_tree_statistics(results.tree_statistics)
 ```
 
+Save the posterior
+
+```@example cytp450
+using CSV
+df = Whale.unpack(posterior)
+CSV.write(joinpath(base, "cr-post.csv"))
+```
+
 Make some trace plots
 
 ```@example cytp450
@@ -40,6 +48,12 @@ Sample reconciled trees
 
 ```@example cytp450
 rectrees = sumtrees(problem, posterior)
+
+using Measures
+plot([([i-1, i], [f[i-1], f[i-1]]) for i=2:length(f)], xscale=:identity,
+    color=:black, fill=true, fillalpha=0.2, grid=false, size=(800,150),
+    legend=false, xlabel="Unique reconciled tree", ylabel="Posterior Pr.",
+    bottom_margin=5Measures.mm)
 ```
 
 Plot the MAP tree
@@ -47,15 +61,15 @@ Plot the MAP tree
 ```@example cytp450
 using PalmTree, Parameters, Luxor
 
-rectree = rectrees[1].trees[1].tree
+rectree = rectrees[1].trees[10].tree
 begin
     @unpack root, annot = rectree
-    tl = TreeLayout(root, dim=(500, 1600))
+    tl = TreeLayout(root, dim=(600, 1200))
     PalmTree.cladogram!(tl)
     colfun = (n)->annot[n].label != "loss" ? RGB() : RGB(0.99,0.99,0.99)
     labfun = (k, p)->settext(" $(split(annot[k].name, "_")[1])", p, valign="center")
-    credfn = (k, p)->settext(k ∉ tl.leaves ? " $(annot[k].cred)" : "", p, valign="center")
-    dupfn  = (k, p)->annot[k].label == "duplication" ? box(p, 5, 5, :fill) : nothing
+    credfn = (k, p)->settext(k ∉ tl.leaves ? " $(round(annot[k].cred, digits=2))" : "", p, valign="center")
+    dupfn  = (k, p)->annot[k].label == "duplication" ? box(p, 7, 7, :fill) : nothing
     @svg begin
         Luxor.origin(Point(-20,20))
         setfont("Noto sans italic", 11)
@@ -63,9 +77,11 @@ begin
         nodemap(tl, labfun)
         nodemap(tl, credfn)
         nodemap(tl, dupfn)
-    end 550 1700 #"../assets/cr-rectree.svg"
+    end 650 1250 "docs/src/assets/cytp450-10.svg"
 end
 ```
+
+![](assets/cytp450-1.svg)
 
 ---
 

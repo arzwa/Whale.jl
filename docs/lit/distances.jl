@@ -21,7 +21,7 @@ prior = Whale.IWIRPrior(
     πη=Normal(0.65, 0.))
 
 # Here we fix the η parameter
-prior = Fixedη(prior, wm)
+prior = Fixedη(prior)
 
 # We specify a prior on the expected number of lineages at the end of each
 # branch per ancestral lineage at the beginning of the branch (`πE`). This

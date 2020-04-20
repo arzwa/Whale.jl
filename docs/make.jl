@@ -3,12 +3,11 @@ using Documenter, Whale, Literate
 fnames = String[]
 
 ignore = [
-	"mapsD2.jl",
-	"distances.jl",
-	"branchrates.jl",
-	"mle-sims.jl",
-	"mle.jl",
-	"rectree.jl"
+	# "distances.jl",
+	# "branchrates.jl",
+	# "mle-sims.jl",
+	# "mle.jl",
+	# "rectree.jl"
 ]
 
 outdir = joinpath(@__DIR__, "src")

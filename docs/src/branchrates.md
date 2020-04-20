@@ -1,53 +1,70 @@
-# # Bayesian inference of branch-wise duplication and loss rates
 
-# Here an example using a branch-wise rates model is shown. This is
-# computationally much more challenging than the constant-rates model with its
-# small number of parameters. In general, you would run this on a computing
-# cluster, using about 1 CPU core per 100 families.
+# Bayesian inference of branch-wise duplication and loss rates
 
+Here an example using a branch-wise rates model is shown. This is
+computationally much more challenging than the constant-rates model with its
+small number of parameters. In general, you would run this on a computing
+cluster, using about 1 CPU core per 100 families.
+
+```@example branchrates
 using DynamicHMC, Whale, DistributedArrays, Distributions, Random
 using DynamicHMC.Diagnostics
+```
 
-# We'll use the example data that can be found in the git-repository of Whale,
-# The associated species tree is already in the Whale module (`extree`)
+We'll use the example data that can be found in the git-repository of Whale,
+The associated species tree is already in the Whale module (`extree`)
+
+```@example branchrates
 wm  = WhaleModel(Whale.extree, Δt=0.1)
 ccd = DArray(read_ale(joinpath(@__DIR__, "../../example/example-1/ale"), wm)[1:2])
 ts  = Whale.branchlengths(wm)
+```
 
-# Now we specify the prior and bundle together prior, model and data into a
-# `WhaleProblem` object
+Now we specify the prior and bundle together prior, model and data into a
+`WhaleProblem` object
+
+```@example branchrates
 prior = Fixedη(IRPrior(
     Ψ=[1. 0.; 0. 1.],
     πr=MvNormal(ones(2)),
     πη=Normal(0.65, 0.)))
 
 problem = WhaleProblem(wm, ccd, prior)
+```
 
-# MCMC is *much* more computationally demanding for the branch-wise rates model.
+MCMC is *much* more computationally demanding for the branch-wise rates model.
 
+```@example branchrates
 warmup    = DynamicHMC.default_warmup_stages(doubling_stages=3)
 results   = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 100, warmup_stages=warmup)
 posterior = Whale.transform.(problem.trans, results.chain)
 summarize_tree_statistics(results.tree_statistics)
+```
 
-# Now we should do diagnostics etc. but note that if we were doing the analysis
-# 'for real', we should run much longer chains to enable better inferences, and
-# if possible run multiple chains to assess convergence (or rather assess
-# convergence issues).
+Now we should do diagnostics etc. but note that if we were doing the analysis
+'for real', we should run much longer chains to enable better inferences, and
+if possible run multiple chains to assess convergence (or rather assess
+convergence issues).
 
+```@example branchrates
 using UnicodePlots
 λ8 = [x.r[1,8] for x in posterior]
 μ8 = [x.r[2,8] for x in posterior]
 p = lineplot(λ8)
 lineplot!(p, μ8)
+```
 
-# We have induced a strong correlation between duplication and loss rates for
-# a given branch by using the `πE` prior, and this has a lot of influence on
-# the posterior as we are only looking at a very limited amount of data
+We have induced a strong correlation between duplication and loss rates for
+a given branch by using the `πE` prior, and this has a lot of influence on
+the posterior as we are only looking at a very limited amount of data
 
+```@example branchrates
 scatterplot(λ8, μ8)
+```
 
-# Get the posterior means for the duplication rates
+Get the posterior means for the duplication rates
+
+```@example branchrates
 λ = mean([x.r[1,i] for x in posterior, i=1:17], dims=1)
 
 normfun(vec) = (x)->(x - minimum(vec))/-(-(extrema(vec)...))
@@ -72,16 +89,19 @@ begin
         nodemap(tl, labfun)
     end 220 180 # "../assets/coltree1.svg"
 end
+```
 
-# !!! note
-#     The NewickTree overloads are really hideous and are necessary because the
-#     nodes in the `WhaleModel` do not store direct links to their children...
-#     This should change in the future.
+!!! note
+    The NewickTree overloads are really hideous and are necessary because the
+    nodes in the `WhaleModel` do not store direct links to their children...
+    This should change in the future.
 
-# ![](../assets/coltree1.svg)
+![](../assets/coltree1.svg)
 
-# Samples for reconciled trees can be obtained using the stochastic backtracking
-# functions.
+Samples for reconciled trees can be obtained using the stochastic backtracking
+functions.
+
+```@example branchrates
 trees    = backtrack(problem, posterior)
 rectrees = sumtrees(trees, ccd, wm)
 rectrees[1]  # have a look at the first family
@@ -106,5 +126,11 @@ begin
         end
     end 550 230 #"../assets/ir-rectree.svg"
 end
+```
 
-# ![](../assets/ir-rectree.svg)
+![](../assets/ir-rectree.svg)
+
+---
+
+*This page was generated using [Literate.jl](https://github.com/fredrikekre/Literate.jl).*
+
