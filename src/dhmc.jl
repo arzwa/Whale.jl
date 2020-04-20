@@ -1,32 +1,16 @@
 # Potentially worth to open issues in DynamicHMC:
 # - save intermediate chains (so that we can run a chain indefinitely, and stop
 #   it when we're happy)
-# NOTE: currently this does not work (well) in the case where there would be
-# hyperparameters that are sampled but do not end up in the RatesModel, however
-# the RatesModel layer in between the prior and the model provides an opportunity
-# to handle this.
+
+# We could have a separate RatesModel interface for hyperparameters of a prior, and define a struct that combines RatesModels into one
+
 """
     WhaleProblem
-
-A generic Whale 'problem' interface ̀a la LogDensityProblems.jl. This holds
-a TransformVariables transformation, prior, ratesmodel, data and WhaleModel.
-This struct defines all DynamicHMC related functionalities and can be
-constructed from a WhaleModel instance, data set and prior struct (the rationale
-is that the prior struct full defines the problem).
 """
-struct WhaleProblem{V<:Prior,R,T,I,U}
-    data ::Union{Nothing,CCDArray{I,U}}  # NOTE require DArray
-    model::WhaleModel{I,U}
+struct WhaleProblem{T,M,V,I}
+    data ::Union{Nothing,CCDArray{T,I}}  # NOTE require DArray
+    model::WhaleModel{T,M,I}
     prior::V
-    rates::R
-    trans::T
-end
-
-function WhaleProblem(wm::WhaleModel, data, prior::P) where P<:Prior
-    rates = RatesModel(prior)
-    tform = trans(prior, wm)
-    init = wm(rand(prior, wm))
-    WhaleProblem(data, init, prior, rates, tform)
 end
 
 function fand∇f(f::Function, x, cfg)
@@ -52,29 +36,27 @@ fand∇f(wm::WhaleModel, r, data::Nothing, t, x) = 0., zeros(dimension(t))
 
 # parallel computation of ℓ and ∇ℓ, all derivation is within parallel processes
 # and the partial values are accumulated on the main process
-function fand∇f(wm::WhaleModel, r, data::CCDArray, t, x)
-    y = [@spawnat i _grad(wm, r, localpart(data), t, x) for i in procs(data)]
+function fand∇f(wm::WhaleModel, data::CCDArray, x)
+    y = [@spawnat i _grad(wm, localpart(data), x) for i in procs(data)]
     result = fetch.(y)
     acc = foldl(+, result)
     acc[1], acc[2:end]
 end
 
-function _grad(wm::WhaleModel, r, data::Vector, t, x)
+function _grad(wm::WhaleModel, data::Vector, x)
     function fun(x)
-        model = wm(r(t(x)))  # sets the model
+        model = wm(x)  # sets the model
         mapreduce(u->logpdf(model, u), +, data)
     end
     cfg = ForwardDiff.GradientConfig(fun, x, ForwardDiff.Chunk{length(x)}())
     vcat(fand∇f(fun, x, cfg)...)
 end
 
-ℓand∇ℓ(p::WhaleProblem, x) = fand∇f(p.model, p.rates, p.data, p.trans, x)
-
 function LogDensityProblems.logdensity_and_gradient(p::WhaleProblem, x)
-    @unpack model, prior, data, trans, rates = p
-    ℓ, ∇ℓ = fand∇f(model, rates, data, trans, x)
-    π, ∇π = fand∇f(prior, trans, x)
-    J, ∇J = fand∇f(trans, x)
+    @unpack model, prior, data = p
+    ℓ, ∇ℓ = fand∇f(model, data, x)
+    π, ∇π = fand∇f(prior, model.rates, x)
+    J, ∇J = fand∇f(model.rates.trans, x)
     # @show J, ∇J
     return (ℓ + π + J)::Float64, (@. ∇ℓ + ∇π + ∇J)::Vector{Float64}
 end
@@ -82,16 +64,19 @@ end
 LogDensityProblems.capabilities(::Type{<:WhaleProblem}) =
     LogDensityProblems.LogDensityOrder{1}()
 
-LogDensityProblems.dimension(p::WhaleProblem) = dimension(p.trans)
+LogDensityProblems.dimension(p::WhaleProblem) = dimension(p.model.rates.trans)
 
-# NOTE: consider removing these functions, a there is no information that is
+TransformVariables.transform(p::WhaleProblem, x) =
+    transform(p.model.rates.trans, x)
+
+# NOTE: consider removing these functions, as there is no information that is
 # not contained in the summarized trees
 backtrack(p::WhaleProblem, posterior) =
-    backtrack(p.model, p.data, posterior, p.rates)
+    backtrack(p.model, p.data, posterior, p.model.rates)
 
 function backtrack(wm, ccd, posterior, rates)
     function bt(x)
-        wmm = wm(rates(x))
+        wmm = wm(x)
         logpdf!(wmm, ccd)
         Array(backtrack(wmm, ccd))
     end
@@ -102,11 +87,11 @@ function sumtrees(p::WhaleProblem, posterior)
     # NOTE: this will do the whole backtracking + sumarizing routine in the
     # inner (parallel) loop. This avoids storing a huge array (N × n) of
     # reconciled trees
-    @unpack rates, model, data = p
+    @unpack model, data = p
     function track_and_sum(ccd)
         trees = Array{RecNode,1}(undef, length(posterior))
         for (i,x) in enumerate(posterior)
-            wmm = model(rates(x))
+            wmm = model(x)
             logpdf!(wmm, ccd)
             trees[i] = backtrack(wmm, ccd)
         end

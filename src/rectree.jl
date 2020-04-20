@@ -54,9 +54,8 @@ function RecTree(tree::RecNode, clades, N, leafnames, wm)
     for n in postwalk(tree)
         cred = clades[cladehash(n)]/N
         label = getlabel(n, wm)
-        name = isleaf(n) && label != "loss" ? leafnames[n.γ] : ""
-        e[label][n.e]+= 1
-        d[cladehash(n)] = (cred=cred, label=label, name=name)
+        e[label][gete(n)]+= 1
+        d[cladehash(n)] = (cred=cred, label=label, name=name(n))
     end
     (rtree=RecTree(tree, d), df=DataFrame(e))
 end
@@ -66,11 +65,11 @@ end
 const Labels = ["loss", "wgd", "wgdloss", "duplication", "sploss", "speciation"]
 
 function getlabel(n::RecNode, wm::WhaleModel)
-    childrec = [c.e for c in children(n)]
-    dup = all(n.e .== childrec) && length(childrec) == 2
-    wgd = iswgd(wm[n.e])
-    loss = any(x->x==0, [c.γ for c in children(n)])
-    return if n.γ == 0
+    childrec = [gete(c) for c in children(n)]
+    dup = all(gete(n) .== childrec) && length(childrec) == 2
+    wgd = iswgd(wm[gete(n)])
+    loss = any(x->x==0, [getγ(c) for c in children(n)])
+    return if getγ(n) == 0
         Labels[1]
     elseif !dup && !loss && wgd
         Labels[2]

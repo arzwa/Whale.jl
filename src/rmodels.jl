@@ -1,4 +1,5 @@
-module RatesModels
+# module RatesModels
+# using Parameters, TransformVariables
 
 # The RatesModel provides an interface between parameter values and a general
 # phylogenetic model, so that we can use the same algorithm routines
@@ -76,6 +77,8 @@ function (::ConstantDLGWGD)(θ)
     ConstantDLGWGD(;λ=T(θ.λ), μ=T(θ.μ), q=θ.q, κ=T(θ.κ), η=T(θ.η))
 end
 
+ConstantDLWGD(;θ...) = RatesModel(ConstantDLGWGD(; θ...), fixed=(:κ,))
+
 @with_kw struct DLG{T} <: Params{T}
     λ::Vector{T}
     μ::Vector{T}
@@ -115,4 +118,4 @@ trans(m::DLGWGD) = (
 (::DLGWGD)(θ) = DLGWGD(;
     λ=θ.λ, μ=θ.μ, q=θ.q, κ=eltype(θ.λ)(θ.κ), η=eltype(θ.λ)(θ.η))
 
-end
+# end

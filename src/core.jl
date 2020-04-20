@@ -1,21 +1,21 @@
 # ALE agorithm for DLWGD model
 # utilities
 # NOTE: in these utils λ and μ should be on 'rate' scale
-iscompatible(γ::Clade, n::WhaleNode) = γ.species ⊆ n.clade
-getϵ(n::WhaleNode) = n.slices[end,2]
-getϕ(n::WhaleNode) = n.slices[end,3]
-getϵ(n::WhaleNode, i::Int) = n.slices[i,2]
-getϕ(n::WhaleNode, i::Int) = n.slices[i,3]
-getα(λ, μ, t) = isapprox(λ, μ) ?
-    λ*t/(1. + λ*t) : μ*(exp(t*(λ-μ)) - 1.)/(λ*exp(t*(λ-μ)) - μ)
+iscompatible(γ::Clade, n::ModelNode) = γ.species ⊆ n.data.clade
+getϵ(n::ModelNode) = n[end,2]
+getϕ(n::ModelNode) = n[end,3]
+getϵ(n::ModelNode, i::Int) = n[i,2]
+getϕ(n::ModelNode, i::Int) = n[i,3]
+getα(λ, μ, t) = isapprox(λ, μ, atol=ΛMATOL) ?
+    λ*t/(one(t) + λ*t) : μ*(exp(t*(λ-μ)) - one(t))/(λ*exp(t*(λ-μ)) - μ)
 ℓhood(ℓ) = isfinite(ℓ) ? ℓ : -Inf
-integratedϵ(ϵ, η) = η * ϵ / (1. - (1. - η)*ϵ)
+integratedϵ(ϵ, η) = η * ϵ / (one(η) - (one(η) - η)*ϵ)
 
 # transition probability under the linear BDP 1 → 2
 function pdup(λ, μ, t)
     α = getα(λ, μ, t)
     β = (λ/μ)*α
-    return (1. - α)*(1. - β)*β
+    return (one(α) - α)*(one(α) - β)*β
 end
 
 """
@@ -30,123 +30,129 @@ The third argument is a conditioning function, where currently `pbothsides`
 Default is `pbothsides`.
 """
 logpdf!(wm::WhaleModel, x::CCD, condition::Function=pbothsides) =
-    logpdf!(wm, x.ℓtmp, x, condition)
+    logpdf!(wm, x.ℓ, x, condition)
 
 @inline function logpdf!(wm::WhaleModel{T}, ℓ::Array, x::CCD{I,V},
         condition::Function=pbothsides) where {T,I,V}
-    for n in wm.order
-        whale!(wm[n], ℓ, x, wm)
-    end
+    for n in wm.order whale!(n, ℓ, x, wm) end
     nf = condition(wm)
     L = ℓ[1][end,1]
     L = L > zero(L) ? log(L) : -Inf
     ℓhood(L - nf)
 end
 
-function logpdf(wm::WhaleModel{T}, x::CCD, condition::Function=pbothsides) where T
+function logpdf(wm::WhaleModel{T}, x::CCD,
+        condition::Function=pbothsides) where T
     # using `similar` did not give a speedup?
-    ℓ = [zeros(T, length(x.clades), length(wm[i])) for i in 1:length(wm)]
+    ℓ = [zeros(T, size(xᵢ)) for xᵢ in x.ℓ]
     logpdf!(wm, ℓ, x, condition)
 end
 
 # mapreduce implementations of logpdf
-logpdf(wm::WhaleModel{T}, X::AbstractVector, condition::Function=pbothsides) where T =
-    mapreduce((x)->logpdf(wm, x, condition), +, X)
+logpdf(wm::WhaleModel{T}, X::AbstractVector,
+    condition::Function=pbothsides) where T =
+        mapreduce((x)->logpdf(wm, x, condition), +, X)
 
-logpdf!(wm::WhaleModel{T}, X::AbstractVector, condition::Function=pbothsides) where T =
-    mapreduce((x)->logpdf!(wm, x, condition), +, X)::T
+logpdf!(wm::WhaleModel{T}, X::AbstractVector,
+    condition::Function=pbothsides) where T =
+        mapreduce((x)->logpdf!(wm, x, condition), +, X)::T
 
 # log probability of non-extinction
-pnonextinct(wm::WhaleModel) = log(1. - integratedϵ(getϵ(wm[1]), wm[1].event.η))
+function pnonextinct(wm::WhaleModel)
+    @unpack η = getθ(wm.rates, root(wm))
+    log(1. -integratedϵ(getϵ(root(wm)), η))
+end
 
 # log probability of non extinction in both clades stemming from the root
 function pbothsides(wm::WhaleModel)
-    f, g = children(wm[1])
-    ϵr = integratedϵ(getϵ(wm[1]), wm[1].event.η)
-    ϵf = integratedϵ(getϵ(wm[f]), wm[1].event.η)
-    ϵg = integratedϵ(getϵ(wm[g]), wm[1].event.η)
-    p = 1. - ϵf - ϵg + ϵr
+    @unpack η = getθ(wm.rates, root(wm))
+    f, g = children(root(wm))
+    ϵr = integratedϵ(getϵ(root(wm)), η)
+    ϵf = integratedϵ(getϵ(f), η)
+    ϵg = integratedϵ(getϵ(g), η)
+    p = one(η) - ϵf - ϵg + ϵr
     p > zero(p) ? log(p) : -Inf
 end
 
 # log probability of non-extinction everywhere? seems a bit tricky
 
-function whale!(n::WhaleNode{T,Speciation{T}}, ℓ, x, wm) where T
-    e = n.id
-    ℓ[e] .= 0.
+function whale!(n::ModelNode{T}, ℓ, x, wm) where T
+    iswgd(n)  && return whalewgd!(n, ℓ, x, wm)
+    isroot(n) && return whaleroot!(n, ℓ, x, wm)
+    e = id(n)
+    θ = getθ(wm.rates, n)
+    ℓ[e] .= zero(T)
     for γ in x.clades
+        !iscompatible(γ, n) && continue
         leaf = isleaf(γ)
-        if !iscompatible(γ, n)
-            continue
-        elseif leaf && isleaf(n)
-            ℓ[e][γ.id,1] = 1.0
+        if leaf && isleaf(n)
+            ℓ[e][γ.id,1] = one(T)
         elseif !isleaf(n)
-            p = Πspeciation(γ, ℓ, n) + Πloss(γ, ℓ, n, wm)
+            p = Πspeciation(γ, ℓ, n) + Πloss(γ, ℓ, n)
             ℓ[e][γ.id,1] += p
         end
         for i=2:length(n)  # iterate over slices
             ℓ[e][γ.id,i] += getϕ(n, i)*ℓ[e][γ.id,i-1]
             if !leaf
-                ℓ[e][γ.id,i] += Πduplication(γ, ℓ, n, i)
+                ℓ[e][γ.id,i] += Πduplication(γ, ℓ, n, i, θ.λ, θ.μ)
             end
         end
     end
 end
 
-function whale!(n::WhaleNode{T,WGD{T}}, ℓ, x, wm) where T
-    e = n.id
-    nextsp = nonwgdchild(n, wm)
-    ℓ[e] .= 0.
-    λ = exp(nextsp.event.λ)
-    μ = exp(nextsp.event.μ)
+function whalewgd!(n::ModelNode{T}, ℓ, x, wm) where T
+    e = id(n)
+    ℓ[e] .= zero(T)
+    @unpack q, λ, μ = getθ(wm.rates, n)
     for γ in x.clades
+        !iscompatible(γ, n) && continue
+        p = zero(T)
         leaf = isleaf(γ)
-        p = 0.
-        if !iscompatible(γ, n)
-            continue
-        else
+        if !leaf
+            p += Πwgdretention(γ, ℓ, n, q)
+        end
+        p += Πwgdloss(γ, ℓ, n, q)
+        ℓ[e][γ.id,1] = p
+        for i=2:length(n)  # iterate over slices
+            ℓ[e][γ.id,i] += getϕ(n, i)*ℓ[e][γ.id,i-1]
             if !leaf
-                p += Πwgdretention(γ, ℓ, n)
-            end
-            p += Πwgdloss(γ, ℓ, n, wm)
-            ℓ[e][γ.id,1] = p
-            for i=2:length(n)  # iterate over slices
-                ℓ[e][γ.id,i] += getϕ(n, i)*ℓ[e][γ.id,i-1]
-                if !leaf
-                    ℓ[e][γ.id,i] += Πduplication(γ, ℓ, n, i, λ, μ)
-                end
+                ℓ[e][γ.id,i] += Πduplication(γ, ℓ, n, i, λ, μ)
             end
         end
     end
 end
 
-function whale!(n::WhaleNode{T,Root{T}}, ℓ, x, wm) where T
-    ℓ[1] .= 0.
-    η_ = 1.0/(1. - (1. - n.event.η) * getϵ(n))^2
+function whaleroot!(n::ModelNode{T}, ℓ, x, wm) where T
+    @unpack η = getθ(wm.rates, n)
+    e = id(n)
+    ℓ[e] .= zero(T)
+    η_ = one(η)/(one(η) - (one(η) - η) * getϵ(n))^2
     for γ in x.clades
         leaf = isleaf(γ)
-        p1 = Πloss(γ, ℓ, n, wm)
-        p2 = 0.
+        p1 = Πloss(γ, ℓ, n)
+        p2 = zero(p1)
         if !leaf
             p1 += Πspeciation(γ, ℓ, n)
-            p2 += Πroot(γ, ℓ, n, wm)
+            p2 += Πroot(γ, ℓ, n, η)
         end
         ℓ[1][γ.id,1] = p1 * η_ + p2
     end
-    ℓ[1][end,1] *= n.event.η
+    ℓ[1][end,1] *= η
 end
 
-@inline function Πroot(γ, ℓ, n, wm)
-    p = 0.0
+@inline function Πroot(γ, ℓ, n, η)
+    e = id(n)
+    p = zero(eltype(ℓ[e]))
     for t in γ.splits  # speciation
-        @inbounds p += t.p * ℓ[1][t.γ1,1] * ℓ[1][t.γ2,1]
+        @inbounds p += t.p * ℓ[e][t.γ1,1] * ℓ[e][t.γ2,1]
     end
-    return p*(1. -n.event.η)*(1. -(1. -n.event.η) * getϵ(n))
+    return p*(one(p) -η)*(one(p) -(one(p) -η) * getϵ(n))
 end
 
 @inline function Πspeciation(γ, ℓ, n)
-    f, g = children(n)
-    p = 0.0
+    f = id(n[1])
+    g = id(n[2])
+    p = zero(eltype(ℓ[f]))
     for t in γ.splits
         @inbounds p += t.p * (
             ℓ[f][t.γ1,end] * ℓ[g][t.γ2,end] +
@@ -155,32 +161,33 @@ end
     return p
 end
 
-@inline function Πwgdretention(γ, ℓ, n)
-    f = first(children(n))
-    p = 0.0
-    for t in γ.splits
-        @inbounds p += t.p * ℓ[f][t.γ1,end] * ℓ[f][t.γ2,end]
-    end
-    return p * n.event.q
-end
-
-@inline function Πwgdloss(γ, ℓ, n, wm)
-    f = first(children(n))
-    q = n.event.q
-    @inbounds (1.0 - q)*ℓ[f][γ.id,end] + 2*q*getϵ(wm[f])*ℓ[f][γ.id,end]
-end
-
-@inline function Πloss(γ, ℓ, n, wm)
-    f, g = children(n)
-    @inbounds ℓ[f][γ.id,end]*getϵ(wm[g]) + ℓ[g][γ.id,end]*getϵ(wm[f])
+@inline function Πloss(γ, ℓ, n)
+    f = id(n[1])
+    g = id(n[2])
+    @inbounds ℓ[f][γ.id,end]*getϵ(n[2]) + ℓ[g][γ.id,end]*getϵ(n[1])
 end
 
 # NOTE: λ and μ on 'rate' scale
-@inline function Πduplication(γ, ℓ, n, i, λ=exp(n.event.λ), μ=exp(n.event.μ))
-    p = 0.
+@inline function Πduplication(γ, ℓ, n, i, λ, μ)
+    e = id(n)
+    p = zero(eltype(ℓ[e]))
     for t in γ.splits
-        @inbounds p += t.p * ℓ[n.id][t.γ1,i-1] * ℓ[n.id][t.γ2,i-1]
+        @inbounds p += t.p * ℓ[e][t.γ1,i-1] * ℓ[e][t.γ2,i-1]
     end
     # return p * n.event.λ * n.slices[i,1]
-    @inbounds return p * pdup(λ, μ, n.slices[i,1])
+    @inbounds return p * pdup(λ, μ, n[i,1])
+end
+
+@inline function Πwgdretention(γ, ℓ, n, q)
+    f = id(n[1])
+    p = zero(eltype(ℓ[f]))
+    for t in γ.splits
+        @inbounds p += t.p * ℓ[f][t.γ1,end] * ℓ[f][t.γ2,end]
+    end
+    return p * q
+end
+
+@inline function Πwgdloss(γ, ℓ, n, q)
+    f = first(children(n))
+    @inbounds (one(q) - q)*ℓ[id(f)][γ.id,end] + 2q*getϵ(f)*ℓ[id(f)][γ.id,end]
 end

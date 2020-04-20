@@ -36,10 +36,10 @@ end
 """
 mutable struct CCD{T<:Integer,V<:Real}
     total  ::Int               # number of trees on which the CCD is based
-    clades ::Vector{Clade{T}}  # ordered by size (small to large)! (no reason for dict!)
-    leaves ::Vector{String}    # NOTE leaves always have the first bunch of clade IDs {1, ...} so we can use a vector
-    ℓmat   ::Vector{Matrix{V}}
-    ℓtmp   ::Vector{Matrix{V}}
+    clades ::Vector{Clade{T}}  # ordered by size (small to large)!
+    leaves ::Vector{String}
+    ℓ      ::Vector{Matrix{V}}
+    # NOTE leaves have the first clade IDs {1, ...} so we can use a vector
 end
 
 Base.length(ccd::CCD) = length(ccd.clades)
@@ -48,13 +48,11 @@ Base.getindex(ccd::CCD, i::Integer) = ccd.clades[i]
 Base.show(io::IO, ccd::CCD{T,V}) where {T,V} =
     write(io, "CCD{$T,$V}(Γ=$(length(ccd)), 𝓛=$(length(ccd.leaves)))")
 
-CCD(s::String, wm::WhaleModel) = CCD(parse_aleobserve(s), wm)
+CCD(s::String, wm::WhaleModel, spmap) = CCD(parse_aleobserve(s), wm, spmap)
 
-function CCD(ale::NamedTuple, wm::WhaleModel)
+function CCD(ale::NamedTuple, wm::WhaleModel{T,M,I}, spmap) where {T,M,I}
     @unpack Bip_counts, Dip_counts, set_id, Bip_bls, leaf_id, observations = ale
-    T = eltype(keys(wm.nodes))
-    clades = Clade{T}[]
-    spmap  = invert(wm.leaves)
+    clades = Clade{I}[]
     # get a new order, from small to large, keep leaf order intact. we don't use
     # the IDs from the ALE file, but asign new ones based on this order.
     order = sort([(length(v), k) for (k,v) in set_id])  # sort clades by size
@@ -62,32 +60,35 @@ function CCD(ale::NamedTuple, wm::WhaleModel)
     for (i, (_, k)) in enumerate(order)
         v = Bip_counts[k]
         t = [(idmap[t[1]], idmap[t[2]], t[3]) for t in Dip_counts[k]]
-        p = Triple{T}.(t, v)
+        p = Triple{I}.(t, v)
         s = getspecies(leaf_id, set_id[k], spmap)
-        c = Clade(T(idmap[k]), v, p, Set(T.(set_id[k])), s, Float64(Bip_bls[k]))
+        c = Clade(I(idmap[k]), v, p, Set(I.(set_id[k])), s, Float64(Bip_bls[k]))
         push!(clades, c)
     end
     leaves = collect(values(sort(leaf_id)))
-    ℓmat = [zeros(length(clades), length(wm[i])) for i in 1:length(wm)]
-    CCD(observations, clades, leaves, ℓmat, deepcopy(ℓmat))
+    ℓ = Vector{Matrix{T}}(undef, length(wm))
+    for n in wm.order ℓ[id(n)] = zeros(T, length(clades), length(n)) end
+    CCD(observations, clades, leaves, ℓ)
 end
 
 """
     read_ale(path, wm::WhaleModel)
 """
 function read_ale(s::String, wm::WhaleModel)
-    @assert ispath(s) "Not a file nor directory"
+    @assert ispath(s) "Not a file nor directory `$s`"
+    spmap = Dict(name(l)=>id(l) for l in Leaves(root(wm)))
     return if isfile(s) && endswith(s, ".ale")
-        CCD(s, wm)
+        CCD(s, wm, spmap)
     elseif isfile(s)
-        distribute([read_ale(l, wm) for l in readlines(s) if !startswith(s, "#")])
+        distribute([read_ale(l, wm, spmap)
+            for l in readlines(s) if !startswith(s, "#")])
     else
-        distribute([CCD(joinpath(s,x), wm) for x in readdir(s) if endswith(x, ".ale")])
+        distribute([CCD(joinpath(s,x), wm, spmap)
+            for x in readdir(s) if endswith(x, ".ale")])
     end
 end
 
-getspecies(leaves, ids, spmap) =
-    Set([spmap[split(leaves[id], "_")[1]] for id in ids])
+getspecies(l, ids, spmap) = Set([spmap[split(l[id], "_")[1]] for id in ids])
 
 """
     CCDArray{I,T}
