@@ -82,8 +82,7 @@ function read_ale(s::String, wm::WhaleModel, darray=true)
     elseif isfile(s)
         [read_ale(l, wm, spmap) for l in readlines(s) if !startswith(s, "#")]
     else
-        [CCD(joinpath(s,x), wm, spmap) for x in readdir(s)
-            if endswith(x, ".ale")])
+        [CCD(joinpath(s,x), wm,spmap) for x in readdir(s) if endswith(x,".ale")]
     end
     darray ? distribute(ccd) : ccd
 end
