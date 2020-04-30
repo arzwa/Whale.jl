@@ -25,6 +25,24 @@ function logpdf(prior::CRPrior, θ::T) where T
 end
 
 """
+    CRPriorMissing
+"""
+@with_kw struct CRPriorMissing <: Prior
+    πr::MvLogNormal = MvLogNormal(ones(2))
+    πq::Beta = Beta()
+    πη::Union{Beta,Normal} = Beta(3,1)
+    πp::Vector{Beta}
+end
+
+function logpdf(prior::CRPriorMissing, θ::T) where T
+    @unpack λ, μ, η, p = θ.params
+    q = hasfield(T, :q) ? θ.q : Float64[]
+    @unpack πr, πη, πq, πp = prior
+    logpdf(πη, η) + logpdf(πr, [λ, μ]) + sum(logpdf.(πq, q)) +
+        sum([logpdf(πp[i], p[i]) for i=1:length(p)])
+end
+
+"""
     IRPrior
 
 Bivariate independent rates prior with fixed covariance matrix.
@@ -58,7 +76,23 @@ the covariance matrix.
     πE::Union{Nothing,Tuple{Normal,Vector{Float64}}} = nothing
 end
 
-function logpdf(prior::IWIRPrior, θ::T) where T
+@with_kw struct IWIRPriorMissing <: Prior
+    Ψ ::Matrix{Float64} = [10. 0.; 0. 10.]
+    πr::MvNormal = MvNormal([10.,10.])
+    πq::Beta = Beta()
+    πη::Union{Beta,Normal} = Beta(3,1)
+    πE::Union{Nothing,Tuple{Normal,Vector{Float64}}} = nothing
+    πp::Vector{Beta}
+end
+
+logpdf(p::IWIRPrior, θ) = logpdf_iw(p, θ)
+
+function logpdf(prior::IWIRPriorMissing, θ)
+    @unpack p = θ.params
+    logpdf_iw(prior, θ) + sum([logpdf(prior.πp[i], p[i]) for i=1:length(p)])
+end
+
+function logpdf_iw(prior, θ::T) where T
     @unpack Ψ, πr, πq, πη, πE = prior
     @unpack λ, μ, η = θ.params
     q = hasfield(T, :q) ? θ.q : Float64[]

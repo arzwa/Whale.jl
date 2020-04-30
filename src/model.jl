@@ -8,23 +8,24 @@ struct Slices{T,I}
     slices ::Matrix{T}    # slice lengths and extinction and propagation Ps
     name   ::String
     clade  ::Set{I}
-    wgdid  ::I    # NOTE: it's up to the node to identify its WGD if it is on
+    wgdid  ::I    # NOTE: it's up to the node to identify its WGD if it is one
+    leafid ::I    # for incomplete sampling
 end
 
 const ModelNode{T,I} = Node{I,Slices{T,I}}
 
-function Slices(node::Node{I,D}, Δt, minn, wgdid=I(0)) where {I,D}
+function Slices(node::Node{I,D}, Δt, minn, wgdid=I(0), leafid=I(0)) where {I,D}
     t = distance(node)
     n = isnan(t) ? 0 : max(minn, ceil(Int, t/Δt))
     slices = [vcat(0.0, repeat([n== 0 ? 0. : t/n], n)) ones(n+1) ones(n+1)]
-    Slices(slices, name(node), getclade(node), wgdid)
+    Slices(slices, name(node), getclade(node), wgdid, leafid)
 end
 
 function copynode(n::ModelNode{T,I}, p, V::Type) where {T,I}
     @unpack data = n
     slices = ones(V, size(data.slices))
     slices[:,1] .= data.slices[:,1]
-    s = Slices(slices, name(n), data.clade, data.wgdid)
+    s = Slices(slices, name(n), data.clade, data.wgdid, data.leafid)
     isroot(n) ? Node(id(n), s) : Node(id(n), s, p)
 end
 
@@ -43,6 +44,7 @@ Base.lastindex(m::ModelNode, d) = Base.axes(m, d)[end]
 Base.length(m::ModelNode) = size(m.data.slices)[1]
 iswgd(n::Node) = startswith(name(n), "wgd")
 wgdid(n::ModelNode) = n.data.wgdid
+leafid(n::ModelNode) = n.data.leafid
 lastslice(m::ModelNode) = lastindex(m, 1)
 
 """
@@ -63,13 +65,16 @@ root(m::WhaleModel) = m[1]
 function WhaleModel(rates::RatesModel{T}, node::Node{I};
         Δt=0.05, minn=5) where {T,I}
     order = ModelNode{T,I}[]
-    wgdid = I(1)
+    wgdid  = I(1)
+    leafid = I(1)
     function walk(x, y)
-        i = iswgd(x) ? wgdid : I(0)
-        iswgd(x) ? wgdid += I(1) : nothing
+        i = iswgd(x)  ? wgdid  : I(0)
+        j = isleaf(x) ? leafid : I(0)
+        iswgd(x)  ? wgdid  += I(1) : nothing
+        isleaf(x) ? leafid += I(1) : nothing
         y′ = isroot(x) ?
-            Node(id(x), Slices(x, Δt, minn, i)) :
-            Node(id(x), Slices(x, Δt, minn, i), y)
+            Node(id(x), Slices(x, Δt, minn, i, j)) :
+            Node(id(x), Slices(x, Δt, minn, i, j), y)
         for c in children(x) walk(c, y′) end
         push!(order, y′)
         return y′
@@ -103,9 +108,11 @@ end
 
 function setnode!(n::ModelNode{T}, rates::M) where {T,M}
     iswgd(n) && return setwgdnode!(n, rates)
-    n[1,2] = isleaf(n) ? zero(T) : prod([c[end,2] for c in children(n)])
-    n[1,3] = one(T)
     θn = getθ(rates, n)
+    n[1,2] = isleaf(n) ?
+        θn.p[leafid(n)] : # XXX
+        prod([c[end,2] for c in children(n)])
+    n[1,3] = one(T)
     setslices!(n.data.slices, θn.λ, θn.μ)
 end
 
@@ -149,3 +156,4 @@ function nonwgdchild(n::ModelNode)
     while iswgd(n) n = first(children(n)) end
     return n
 end
+    

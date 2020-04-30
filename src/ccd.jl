@@ -74,18 +74,18 @@ end
 """
     read_ale(path, wm::WhaleModel)
 """
-function read_ale(s::String, wm::WhaleModel)
+function read_ale(s::String, wm::WhaleModel, darray=true)
     @assert ispath(s) "Not a file nor directory `$s`"
     spmap = Dict(name(l)=>id(l) for l in Leaves(root(wm)))
-    return if isfile(s) && endswith(s, ".ale")
-        CCD(s, wm, spmap)
+    ccd = if isfile(s) && endswith(s, ".ale")
+        [CCD(s, wm, spmap)]
     elseif isfile(s)
-        distribute([read_ale(l, wm, spmap)
-            for l in readlines(s) if !startswith(s, "#")])
+        [read_ale(l, wm, spmap) for l in readlines(s) if !startswith(s, "#")]
     else
-        distribute([CCD(joinpath(s,x), wm, spmap)
-            for x in readdir(s) if endswith(x, ".ale")])
+        [CCD(joinpath(s,x), wm, spmap) for x in readdir(s)
+            if endswith(x, ".ale")])
     end
+    darray ? distribute(ccd) : ccd
 end
 
 getspecies(l, ids, spmap) = Set([spmap[split(l[id], "_")[1]] for id in ids])
@@ -178,15 +178,27 @@ function addubiquitous!(d::Dict)
     l = d[:set_id]
     c = collect(keys(l))
     Γ = length(c)+1
-    N = d[:observations]
-    d[:Bip_counts][Γ] = N
     d[:Dip_counts][Γ] = Tuple{Int,Int,Int}[]
+    # each observed clade is a potential subclade of the root, with a sister
+    # clade that is also observed and uniquely determined by the set of leaves
+    # and the first subclade. If there are 2n non-root clades in the sample, the
+    # root (ubiquitous) clade has n possible splits, each with conditional
+    # clade probability equal to the observed frequency of either subclade
+    # (which are identical, cfr. assertion below). Note that the total count of
+    # observations for the root clade differs from the number of samples because
+    # each unrooted tree i associted with multiple (a priori equally likely)
+    # rootings (`N` below, although this is a known function of the number of
+    # the number of leaves and number of trees in the sample).
+    N = 0
     for i=1:length(c), j=i+1:length(c)
         if length(l[i] ∩ l[j]) == 0 && length(l[i] ∪ l[j]) == n
-            push!(d[:Dip_counts][Γ], (i, j, N))
+            @assert d[:Bip_counts][i] == d[:Bip_counts][j]
+            N += d[:Bip_counts][i]
+            push!(d[:Dip_counts][Γ], (i, j, d[:Bip_counts][j]))
         end
     end
     triple = last(d[:Dip_counts][Γ])
+    d[:Bip_counts][Γ] = N
     d[:set_id][Γ] = l[triple[1]] ∪ l[triple[2]]
     d[:Bip_bls][Γ] = 0.
 end

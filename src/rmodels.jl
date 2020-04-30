@@ -1,6 +1,3 @@
-# module RatesModels
-# using Parameters, TransformVariables
-
 abstract type Params{T} end
 
 struct RatesModel{T,M<:Params{T},V}
@@ -30,97 +27,51 @@ end
 
 Base.rand(m::M) where M<:RatesModel = m(m.trans(randn(dimension(m.trans))))
 
-"""
-    ConstantDLG{T}
+mergetup(t1, t2) = tuple(union(t1, t2)...)
 
-Simple constant rates duplication-loss and gain model. All nodes of
-the tree are associated with the same parameters (duplication rate λ,
-loss rate μ, gain rate κ). This assumes a shifted geometric distribution
-on the family size at the root with mean 1/η.
-"""
-@with_kw struct ConstantDLG{T} <: Params{T}
-    λ::T
-    μ::T
-    κ::T = 0.
-    η::T = 0.66
-end
-
-getθ(m::ConstantDLG, node) = m
-trans(::ConstantDLG) = (λ=asℝ₊, μ=asℝ₊, κ=asℝ₊, η=as𝕀)
-# the zip is a bit slow...
-(::ConstantDLG)(θ) = ConstantDLG(; zip(keys(θ), promote(θ...))...)
-
-@with_kw struct ConstantDLGWGD{T} <: Params{T}
+# ------------------------------------------------------------------------------
+@with_kw struct ConstantDLWGD{T,V} <: Params{T}
     λ::T
     μ::T
     q::Vector{T}
-    κ::T = 0.
+    p::Vector{V}
     η::T = 0.66
 end
 
-getθ(m::ConstantDLGWGD, node) = iswgd(node) ?
-    (λ=m.λ, μ=m.μ, q=m.q[wgdid(node)], κ=m.κ) : (λ=m.λ, μ=m.μ, κ=m.κ, η=m.η)
-trans(m::ConstantDLGWGD) = (
-    λ=asℝ₊, μ=asℝ₊,
+getθ(m::ConstantDLWGD, node) = iswgd(node) ?
+    (λ=m.λ, μ=m.μ, q=m.q[wgdid(node)]) : m
+trans(m::ConstantDLWGD) = (
+    λ=asℝ₊, μ=asℝ₊, η=as𝕀,
     q=as(Array, as𝕀, length(m.q)),
-    κ=asℝ₊, η=as𝕀)
-function (::ConstantDLGWGD)(θ)
+    p=as(Array, as𝕀, length(m.p)))
+function (::ConstantDLWGD)(θ)
     T = eltype(θ.q)
-    ConstantDLGWGD(;λ=T(θ.λ), μ=T(θ.μ), q=θ.q, κ=T(θ.κ), η=T(θ.η))
+    ConstantDLWGD(; λ=T(θ.λ), μ=T(θ.μ), q=θ.q, η=T(θ.η), p=θ.p)
 end
 
-"""
-    DLG{T}
-
-Simple branch-wise rates duplication-loss and gain model. Gain (κ) is
-assumed to be tree-wide. This assumes a shifted geometric distribution
-on the family size at the root with mean 1/η.
-"""
-@with_kw struct DLG{T} <: Params{T}
-    λ::Vector{T}
-    μ::Vector{T}
-    κ::T = 0.
-    η::T = 0.66
-end
-
-getθ(m::DLG, node) = (λ=exp(m.λ[id(node)]), μ=exp(m.μ[id(node)]), κ=m.κ, η=m.η)
-trans(m::DLG) = (
-    λ=as(Array, asℝ, length(m.λ)),
-    μ=as(Array, asℝ, length(m.λ)),
-    κ=asℝ₊, η=as𝕀)
-(::DLG)(θ) = DLG(; λ=θ.λ, μ=θ.μ, κ=eltype(θ.λ)(θ.κ), η=eltype(θ.λ)(θ.η))
-
-@with_kw struct DLGWGD{T} <: Params{T}
+# ------------------------------------------------------------------------------
+@with_kw struct DLWGD{T,V} <: Params{T}
     λ::Vector{T}
     μ::Vector{T}
     q::Vector{T}
-    κ::T = 0.
+    p::Vector{V}
     η::T = 0.66
 end
 
-function getθ(m::DLGWGD, node)
+function getθ(m::DLWGD, node)
     return if iswgd(node)
         c = nonwgdchild(node)
-        (λ=exp(m.λ[id(c)]), μ=exp(m.μ[id(c)]), q=m.q[wgdid(node)], κ=m.κ)
+        (λ=exp(m.λ[id(c)]), μ=exp(m.μ[id(c)]), q=m.q[wgdid(node)])
     else
-        (λ=exp(m.λ[id(node)]), μ=exp(m.μ[id(node)]), κ=m.κ, η=m.η)
+        (λ=exp(m.λ[id(node)]), μ=exp(m.μ[id(node)]), p=m.p, η=m.η)
     end
 end
 
-trans(m::DLGWGD) = (
+trans(m::DLWGD) = (
     λ=as(Array, asℝ, length(m.λ)),
     μ=as(Array, asℝ, length(m.λ)),
     q=as(Array, as𝕀, length(m.q)),
-    κ=asℝ₊, η=as𝕀)
+    p=as(Array, as𝕀, length(m.p)),
+    η=as𝕀)
 
-(::DLGWGD)(θ) = DLGWGD(;
-    λ=θ.λ, μ=θ.μ, q=θ.q, κ=eltype(θ.λ)(θ.κ), η=eltype(θ.λ)(θ.η))
-
-# short hands
-ConstantDLWGD(; fixed=(:κ,), θ...) =
-    RatesModel(ConstantDLGWGD(;θ...), fixed=mergetup(fixed, (:κ,)))
-DLWGD(; fixed=(:κ,), θ...) =
-    RatesModel(DLGWGD(;θ...), fixed=mergetup(fixed, (:κ,)))
-mergetup(t1, t2) = tuple(union(t1, t2)...)
-
-# end
+(::DLWGD)(θ) = DLWGD(;λ=θ.λ, μ=θ.μ, q=θ.q, η=eltype(θ.λ)(θ.η), p=θ.p)
