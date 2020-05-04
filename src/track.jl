@@ -1,4 +1,41 @@
 """
+    TreeTracker(model, data, df, fun)
+
+A helper struct for backtracking trees from a posterior distribution.
+This should be fairly generally applicable, with the `fun` field
+holding a function that parses out a named tuple with the parameters 
+for a `WhaleModel` from an entry of the DataFrame in the `df` field.
+"""
+struct TreeTracker{T,X,D}
+    model::WhaleModel{T}
+    data ::AbstractVector{X}
+    df   ::DataFrame
+    fun  ::Function
+end
+
+function track!(tt::TreeTracker)
+    # NOTE: this does the backtracking for each ccd separately, and 
+    # summarizes the results on-the-go to prevent bloating memory.
+    result = Vector{RecSummary}(undef, length(tt.data))
+    @threads for i=1:length(result)
+        result[i] = track_and_sum(tt, i)
+    end
+    return result
+end
+
+function track_and_sum(tt::TreeTracker, i)
+    @unpack model, data, df, fun = tt
+    ccd = data[i]
+    trees = Array{RecNode,1}(undef, size(df)[1])
+    for (i,x) in enumerate(eachrow(df))
+        wmm = fun(model, x)
+        logpdf!(wmm, ccd)
+        trees[i] = backtrack(wmm, ccd)
+    end
+    sumtrees(trees, ccd, model)
+end
+
+"""
     RecNode{I}
 
 Reconciled tree node, holds a reference to its corresponding clade (`γ`)
@@ -6,7 +43,7 @@ and species tree node. The reference to the species tree node together
 with the number of leaves should give sufficient information. Loss nodes
 are identified by having `γ == 0`.
 """
-@with_kw mutable struct RecData{I}
+@with_kw_noshow mutable struct RecData{I}
     γ::I                # clade in CCD
     e::I = UInt16(1)    # edge (in species tree)
     t::Int = 1          # slice index along edge `e`

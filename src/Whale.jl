@@ -13,6 +13,7 @@ module Whale
     using AbstractTrees
     using TransformVariables
     using DataFrames
+    using Base.Threads
     import TransformVariables: TransformTuple, transform_and_logjac, transform
     import LogDensityProblems: logdensity_and_gradient
     import NewickTree: id, name, distance
@@ -29,8 +30,7 @@ module Whale
     include("post.jl")
 
     # an example tree
-    const extree1 = readnw("((MPOL:4.752,PPAT:4.752):0.292,(SMOE:4.457,(((OSAT:1.555,(ATHA:0.5548,CPAP:0.5548):1.0002):0.738,ATRI:2.293):1.225,(GBIL:3.178,PABI:3.178):0.34):0.939):0.587);")
-    const extree2 = readnw("((MPOL:4.752,(PPAT:2.752)wgd_1:2.0):0.292,(SMOE:4.457,((((OSAT:1.555,(ATHA:0.5548,CPAP:0.5548):1.0002):0.738,ATRI:2.293):1.0)wgd_2:0.225,(GBIL:3.178,PABI:3.178):0.34):0.939):0.587);")
+    const extree = readnw("((MPOL:4.752,PPAT:4.752):0.292,(SMOE:4.457,(((OSAT:1.555,(ATHA:0.5548,CPAP:0.5548):1.0002):0.738,ATRI:2.293):1.225,(GBIL:3.178,PABI:3.178):0.34):0.939):0.587);")
 
     export WhaleModel, CCD, CCDArray, read_ale, logpdf, logpdf!
     export WhaleProblem, CRPrior, IRPrior, IWIRPrior, DLWGD, ConstantDLWGD

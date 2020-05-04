@@ -18,44 +18,63 @@ function pdup(λ, μ, t)
     return (one(α) - α)*(one(α) - β)*β
 end
 
+# NOTE conditioning should be done outside the inner loop. If the normalizing
+# factor is expensive we don't want to compute it `n` times. The difference is
+# really minor when the conditioning factor is cheap (e.g. pbothsides)
 """
-    logpdf!(model, ccd [, condition::Function])
+    logpdf!(model, ccd)
 
 Compute the log-likelihood of the data (a single CCD or vector of CCDs) given
-the parameterized model `model`.
-
-The third argument is a conditioning function, where currently `pbothsides`
-(i.e. condition on non-extinction in both clades stemming fom the root) and
-`pnonextinct` (i.e. condition on the family being non-extinct) are implemented.
-Default is `pbothsides`.
+the parameterized model `model`. Note that this computes the unconditional
+likelihood (i.e. not conditional on for instance non-extinction).
 """
-logpdf!(wm::WhaleModel, x::CCD, condition::Function=pbothsides) =
-    logpdf!(wm, x.ℓ, x, condition)
+logpdf!(wm::WhaleModel, x::CCD) = logpdf!(wm, x.ℓ, x)
 
-@inline function logpdf!(wm::WhaleModel{T}, ℓ::Array, x::CCD{I,V},
-        condition::Function=pbothsides) where {T,I,V}
+@inline function logpdf!(wm::WhaleModel{T}, ℓ::Array, x::CCD{I,V}) where {T,I,V}
     for n in wm.order whale!(n, ℓ, x, wm) end
-    nf = condition(wm)
     L = ℓ[1][end,1]
-    L = L > zero(L) ? log(L) : -Inf
-    ℓhood(L - nf)
+    L > zero(L) ? log(L) : -Inf
 end
 
-function logpdf(wm::WhaleModel{T}, x::CCD,
-        condition::Function=pbothsides) where T
+function logpdf(wm::WhaleModel{T}, x::CCD) where T
     # using `similar` did not give a speedup?
     ℓ = [zeros(T, size(xᵢ)) for xᵢ in x.ℓ]
-    logpdf!(wm, ℓ, x, condition)
+    logpdf!(wm, ℓ, x)
 end
 
-# mapreduce implementations of logpdf
-logpdf(wm::WhaleModel{T}, X::AbstractVector,
-    condition::Function=pbothsides) where T =
-        mapreduce((x)->logpdf(wm, x, condition), +, X)
+# threaded implementation with ordinary vectors
+function logpdf!(wm::WhaleModel{T}, xs::Vector{<:CCD},
+        c::Function=pbothsides) where T
+    #acc = Atomic{T}(0)
+    ℓ = Vector{T}(undef, length(xs)) 
+    Threads.@threads for i in 1:length(xs)
+        ℓ[i] = logpdf!(wm, xs[i])
+        #atomic_add!(acc, ℓ)
+    end
+    # ℓhood(acc[] - length(xs)*c(wm))
+    ℓhood(sum(ℓ) - length(xs) *c(wm))
+    # the atomic thing does not work with Dual types
+end
 
-logpdf!(wm::WhaleModel{T}, X::AbstractVector,
-    condition::Function=pbothsides) where T =
-        mapreduce((x)->logpdf!(wm, x, condition), +, X)::T
+function logpdf(wm::WhaleModel{T}, xs::Vector{<:CCD},
+        c::Function=pbothsides) where T
+    ℓ = Vector{T}(undef, length(xs)) 
+    Threads.@threads for i in 1:length(xs)
+        ℓ[i] = logpdf(wm, xs[i])
+    end
+    ℓhood(sum(ℓ) - length(xs) *c(wm))
+end
+
+# mapreduce implementations of logpdf for use with DArrays
+function logpdf!(wm::WhaleModel{T}, X::CCDArray, c::Function=pbothsides) where T
+    ℓ = mapreduce((x)->logpdf!(wm, x.ℓ, x), +, X)
+    ℓhood(ℓ - (length(X))*c(wm))
+end
+
+function logpdf(wm::WhaleModel{T}, X::CCDArray, c::Function=pbothsides) where T
+    ℓ = mapreduce((x)->logpdf(wm, x), +, X)::T
+    ℓhood(ℓ - length(X)*c(wm))
+end
 
 # log probability of non-extinction
 function pnonextinct(wm::WhaleModel)

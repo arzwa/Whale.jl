@@ -1,5 +1,7 @@
-# Yet another reimplementation, now with NewickTree and RatesModel interfaces, this has no drawbacks as far as I can see compared to the previous implementation
-# NOTE: best to access the odel through functions, so that we can adapt the API
+# Yet another reimplementation, now with NewickTree and RatesModel interfaces,
+# this has no drawbacks as far as I can see compared to the previous
+# implementation
+# NOTE: best to access the model through functions, so that we can adapt the API
 # without too much work
 """
     Slices
@@ -50,7 +52,7 @@ lastslice(m::ModelNode) = lastindex(m, 1)
 """
     WhaleModel
 """
-struct WhaleModel{T,M,I}
+struct WhaleModel{T,M,I} <:DiscreteMultivariateDistribution
     rates::M
     order::Vector{ModelNode{T,I}}
     nodes::Vector{I}
@@ -156,4 +158,5 @@ function nonwgdchild(n::ModelNode)
     while iswgd(n) n = first(children(n)) end
     return n
 end
-    
+
+getwgds(m::WhaleModel) = [n for n in m.order if iswgd(n)]
