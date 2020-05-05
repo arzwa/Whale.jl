@@ -3,7 +3,7 @@ using Whale, NewickTree
 using Test
 using Random
 
-@testset "logpdf!" begin
+@testset "likelihood" begin
     t = deepcopy(Whale.extree)
     n = length(postwalk(t))
     insertnode!(getlca(t, "ATHA", "ATHA"), name="wgd_1")
@@ -19,5 +19,4 @@ using Random
     @test logpdf!(w, ccd) ≈ -588.0647568294178
     @test logpdf(w, ccd) ≈ -588.0647568294178
 end
-
-# include("dhmc.jl")
+ 

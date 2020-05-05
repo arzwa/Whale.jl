@@ -2,7 +2,8 @@
 # - save intermediate chains (so that we can run a chain indefinitely, and stop
 #   it when we're happy)
 
-# We could have a separate RatesModel interface for hyperparameters of a prior, and define a struct that combines RatesModels into one
+# We could have a separate RatesModel interface for hyperparameters of a prior,
+# and define a struct that combines RatesModels into one
 
 """
     WhaleProblem

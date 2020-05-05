@@ -14,7 +14,8 @@ end
 
 unpack(x::Vector) = unpack(DataFrame(x))
 unpack(x::T, sym::Symbol) where T<:Real = (; sym=>x)
-unpack(x::AbstractMatrix, sym::Symbol) = (; [Symbol("$(sym)_$(i)_$(j)")=>x[i,j] for i=1:size(x)[1], j=1:size(x)[2]]...)
+unpack(x::AbstractMatrix, sym::Symbol) = (; 
+    [Symbol("$(sym)_$(i)_$(j)")=>x[i,j] for i=1:size(x)[1], j=1:size(x)[2]]...)
 unpack(x::Vector, sym::Symbol) = (; [Symbol("$(sym)_$(i)")=>x[i] for i=1:length(x)]...)
 df2vec(df) = [(; [x=>y[x] for x in names(y)]...) for y in eachrow(df)]
 

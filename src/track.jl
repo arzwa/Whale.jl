@@ -6,10 +6,10 @@ This should be fairly generally applicable, with the `fun` field
 holding a function that parses out a named tuple with the parameters 
 for a `WhaleModel` from an entry of the DataFrame in the `df` field.
 """
-struct TreeTracker{T,X,D}
+struct TreeTracker{T,V,X}
     model::WhaleModel{T}
-    data ::AbstractVector{X}
-    df   ::DataFrame
+    data ::AbstractVector{V}
+    df   ::X # should implement `eachrow()`
     fun  ::Function
 end
 
