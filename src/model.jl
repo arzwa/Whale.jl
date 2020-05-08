@@ -1,6 +1,7 @@
 # Yet another reimplementation, now with NewickTree and RatesModel interfaces,
 # this has no drawbacks as far as I can see compared to the previous
-# implementation
+# implementation.
+
 # NOTE: best to access the model through functions, so that we can adapt the API
 # without too much work
 """
@@ -50,7 +51,14 @@ leafid(n::ModelNode) = n.data.leafid
 lastslice(m::ModelNode) = lastindex(m, 1)
 
 """
-    WhaleModel
+    WhaleModel(ratesmodel, tree, Δt, [minn=5])
+
+The main Whale model object. This is defined by a `ratesmodel` specifying the
+prameterization of the phylogenetic model and a tree specifying the structure
+of the model. `Δt` is the size of the slices used in the discretization of the
+branch lengths. `minn` is the minimum number of slices for each branch (which
+would then correspond to the maximum number of duplication/loss events possible
+along a branch.
 """
 struct WhaleModel{T,M,I} <:DiscreteMultivariateDistribution
     rates::M
@@ -64,8 +72,8 @@ Base.getindex(m::WhaleModel, i) = m.order[m.nodes[i]]
 Base.lastindex(m::WhaleModel) = lastindex(m.order)
 root(m::WhaleModel) = m[1]
 
-function WhaleModel(rates::RatesModel{T}, node::Node{I};
-        Δt=0.05, minn=5) where {T,I}
+# NOTE: I don't think its good to have a default Δt
+function WhaleModel(rates::RatesModel{T}, Ψ::Node{I}, Δt, minn=5) where {T,I}
     order = ModelNode{T,I}[]
     wgdid  = I(1)
     leafid = I(1)
@@ -81,7 +89,7 @@ function WhaleModel(rates::RatesModel{T}, node::Node{I};
         push!(order, y′)
         return y′
     end
-    n = walk(node, nothing)
+    n = walk(Ψ, nothing)
     nodes = Vector{I}(undef, length(order))
     for (i,n) in enumerate(order) nodes[id(n)] = I(i) end
     model = WhaleModel(rates, order, nodes)
@@ -112,7 +120,8 @@ function setnode!(n::ModelNode{T}, rates::M) where {T,M}
     iswgd(n) && return setwgdnode!(n, rates)
     θn = getθ(rates, n)
     n[1,2] = isleaf(n) ?
-        θn.p[leafid(n)] : # XXX
+        # XXX this is where the probability for missing genes come in
+        θn.p[leafid(n)] :
         prod([c[end,2] for c in children(n)])
     n[1,3] = one(T)
     setslices!(n.data.slices, θn.λ, θn.μ)

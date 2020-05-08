@@ -1,4 +1,13 @@
 
+function summarize(xs::Vector{RecSummary}) # no joke
+    dfs = []
+    for (i, rs) in enumerate(xs)
+        rs.events[!,:family] .= i
+        push!(dfs, rs.events)
+    end
+    vcat(dfs...)
+end
+
 struct RecSummary
     trees ::Vector{NamedTuple}
     events::DataFrame
@@ -29,6 +38,7 @@ function sumtrees(trees::AbstractVector, ccd::CCD, wm::WhaleModel)
         push!(summary, (freq=freq, tree=rtree))
         events = isnothing(events) ? df .* freq : events .+ (df .* freq)
     end
+    events[!,:node] = [getnodelabel(wm[i]) for i=1:length(wm)]
     RecSummary(summary, events)
 end
 
@@ -71,6 +81,12 @@ function getlabel(n::RecNode, wm::WhaleModel)
     else
         Labels[6]
     end
+end
+
+# get a human readable node label
+function getnodelabel(n)
+    name(n) != "" && return name(n)
+    !isleaf(n) && return join([name(getleaves(c)[1]) for c in children(n)], ",")
 end
 
 # function pruneloss!(tree::RecTree)
