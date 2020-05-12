@@ -1,4 +1,3 @@
-
 # ## Inference for the constant rates model
 # Required libraries
 using Whale, NewickTree, Distributions, Turing
@@ -19,7 +18,7 @@ insertnode!(getlca(t, "ATHA", "ATRI"), name="wgd")
 r = Whale.RatesModel(
     ConstantDLWGD(λ=0.1, μ=0.2, q=[0.2, 0.1], η=0.9, p=zeros(l)),
     fixed=(:p,))
-w = WhaleModel(r, t)
+w = WhaleModel(r, t, .1)
 
 # next we get the data (we need a model object for that)
 ccd = read_ale(joinpath(@__DIR__, "../../example/example-1/ale"), w)

@@ -1,3 +1,13 @@
+"""
+    RecSummary
+"""
+struct RecSummary
+    trees ::Vector{NamedTuple}
+    events::DataFrame
+end
+
+Base.show(io::IO, rsum::RecSummary) =
+    write(io, "RecSummary(# unique trees = $(length(rsum.trees)))")
 
 function summarize(xs::Vector{RecSummary}) # no joke
     dfs = []
@@ -7,14 +17,6 @@ function summarize(xs::Vector{RecSummary}) # no joke
     end
     vcat(dfs...)
 end
-
-struct RecSummary
-    trees ::Vector{NamedTuple}
-    events::DataFrame
-end
-
-Base.show(io::IO, rsum::RecSummary) =
-    write(io, "RecSummary(# unique trees = $(length(rsum.trees)))")
 
 """
     sumtrees(trees, ccd, wm)
