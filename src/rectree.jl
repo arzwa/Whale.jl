@@ -50,13 +50,17 @@ sumevents(r::AbstractVector{RecSummary}) =
 cladecounts(trees) = countmap(vcat(map((t)->cladehash.(postwalk(t)), trees)...))
 
 function label_and_summarize!(tree::RecNode, clades, N, leafnames, wm)
+    I = typeof(id(tree))
     d = Dict{typeof(cladehash(tree)),NamedTuple}()
     e = Dict{String,Vector{Int}}(l=>zeros(Int, length(wm)) for l in Labels)
-    for n in postwalk(tree)
+    for (i,n) in enumerate(postwalk(tree))
+        n.id = I(i)
         label = getlabel(n, wm)
         e[label][gete(n)]+= 1
         n.data.label = label
         n.data.cred = clades[cladehash(n)]/N
+        startswith(label, "wgd") ?
+            n.data.name = name(wm[gete(n)]) : nothing
     end
     (rtree=tree, df=DataFrame(e))
 end
@@ -89,6 +93,44 @@ end
 function getnodelabel(n)
     name(n) != "" && return name(n)
     !isleaf(n) && return join([name(getleaves(c)[1]) for c in children(n)], ",")
+end
+
+# WGD-reated summarization
+iswgddup(n::RecNode) = n.data.label=="wgd"
+getwgds(tree::RecNode) = filter(iswgddup, postwalk(tree))
+getwgds(tree::RecNode, wgds) = filter(
+    x->iswgddup(x) && name(x) ∈ wgds, postwalk(tree))
+
+"""
+    getwgdtables(recs::Vector{RecSummary}, ccd, model::WhaleModel)
+    getwgdtables(recs::Vector{RecSummary}, ccd, wgds::Vector{String})
+"""
+getwgdtables(recs::Vector{RecSummary}, ccd, wm::WhaleModel) =
+    getwgdtables(recs, ccd, name.(getwgds(wm)))
+function getwgdtables(recs::Vector{RecSummary}, ccd, wgds::Vector)
+    data = [getwgddups(r, wgds) for r in recs]
+    [wgd=>wgdtable(data, ccd, wgd) for wgd in wgds]
+end
+
+function getwgddups(recs::RecSummary, wgds)
+    d = Dict(wgd=>Dict() for wgd in wgds)
+    for (f, tree) in recs.trees, n in getwgds(tree, wgds)
+        triple = (getγ(n), getγ(n[1]), getγ(n[2]))
+        haskey(d[name(n)], triple) ?
+            d[name(n)][triple] += f : d[name(n)][triple] = f
+    end
+    d
+end
+
+function wgdtable(data, ccd, wgd)
+    X = []
+    for (i, (d, c)) in enumerate(zip(data, ccd)), (t, f) in d[wgd]
+        push!(X, (family=i, frequency=round(f, digits=4),
+            clade=t[1], left=t[2], right=t[3],
+            lleaves=join(getleaves(c, t[2]), ";"),
+            rleaves=join(getleaves(c, t[3]), ";")))
+    end
+    DataFrame(X)
 end
 
 # function pruneloss!(tree::RecTree)

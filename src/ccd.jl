@@ -1,3 +1,18 @@
+# Synteny amounts in Whale with a binary random varible associated with any
+# internal node indicating whether or not the node is synteny-preserving.
+#
+# In the simplest approach to include synteny in Whale, we associate with each
+# triple a binary observation indicating whether a syntenic relation is
+# observed between the left and right subclade. In such a model everything is
+# straightforwardly observed, and we don't have to deal with the evolution of
+# synteny relationships along the species tree. In such an approach it would be
+# best to only use synteny information as evidence against small-scale
+# duplication, and don't use an absence of syntenic relation as evidence
+# against a speciation or WGD node. This is necessary because synteny breaks
+# down over time, and we would have no model for that in this case (since that
+# would require full model that enables to compute the probability of loss
+# of synteny down the tree, which is exactly the thing we want to avoid in
+# this simple approach).
 """
     Triple
 """
@@ -47,6 +62,8 @@ Base.lastindex(ccd::CCD) = length(ccd)
 Base.getindex(ccd::CCD, i::Integer) = ccd.clades[i]
 Base.show(io::IO, ccd::CCD{T,V}) where {T,V} =
     write(io, "CCD{$T,$V}(Γ=$(length(ccd)), 𝓛=$(length(ccd.leaves)))")
+
+NewickTree.getleaves(ccd::CCD, γ) = [ccd.leaves[l] for l in ccd[γ].leaves]
 
 CCD(s::String, wm::WhaleModel, spmap) = CCD(parse_aleobserve(s), wm, spmap)
 
@@ -185,7 +202,7 @@ function addubiquitous!(d::Dict)
     # clade probability equal to the observed frequency of either subclade
     # (which are identical, cfr. assertion below). Note that the total count of
     # observations for the root clade differs from the number of samples because
-    # each unrooted tree i associted with multiple (a priori equally likely)
+    # each unrooted tree is associated with multiple (a priori equally likely)
     # rootings (`N` below, although this is a known function of the number of
     # the number of leaves and number of trees in the sample).
     N = 0
