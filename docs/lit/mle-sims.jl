@@ -8,16 +8,21 @@
 using Whale, Optim, ForwardDiff
 
 # Get species tree and data
-wm = WhaleModel(readline(joinpath(@__DIR__, "../../example/example-2/tree.nw")))
-ccd = read_ale(joinpath(@__DIR__, "../../example/example-2/ale"), wm)
+t = readnw(readline(joinpath(@__DIR__, "../../example/example-2/tree.nw")))
+l = length(getleaves(t))
+
+params = ConstantDLWGD(λ=0.1, μ=0.2, q=Float64[], η=0.9, p=zeros(l))
+r = Whale.RatesModel(params, fixed=(:p,))
+model = WhaleModel(r, t, .1)
+ccd = read_ale(joinpath(@__DIR__, "../../example/example-2/ale"), model)
 
 # Define objective and gradient (note that Optim looks for minima, so we use
 # -ℓ as objective)
-function objective(x)
-    rates = ConstantRates((λ=x[1], μ=x[2], q=x[3:2], η=x[3]))
-    -logpdf(wm(ConstantRates(rates)), ccd)
+function objective(x::Vector{T}, η=0.9) where T
+    rates = (λ=exp(x[1]), μ=exp(x[2]), q=T[], η=T(η), p=zeros(T,l))
+    -logpdf(model(rates), ccd)
 end
-f = (x) -> objective(vcat(promote(x..., 0.8)...))  # we fix η = 0.8
+f = (x) -> objective(x, 0.9)  # we fix η = 0.8
 g = (x) -> ForwardDiff.gradient(f, x)
 g!(G, x) = G .= g(x)
 
@@ -32,9 +37,3 @@ results = optimize(f, g!, lower, upper, init, Fminbox(LBFGS()))
 
 # Note that we can already retrieve the true values quite nicely for this rather
 # small data set (100 families)
-
-# We can obtain standard error estimates from the inverse of the observed Fisher
-# information matrix (i.e. the negative Hessian matrix at the MLE, recall that
-# the Fisher information matrix is an estimator of the asymptotic covariance
-# matrix).
-.√ ForwardDiff.hessian(f, results.minimizer)^(-1)

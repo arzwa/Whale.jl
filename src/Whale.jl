@@ -1,7 +1,9 @@
 module Whale
+    # TODO put DynamicHMC stuff in submodule
     using Distributed
     using Parameters
     using NewickTree
+    using FakeFamily
     using DistributedArrays
     using Distributions
     using ForwardDiff
@@ -18,8 +20,8 @@ module Whale
     import LogDensityProblems: logdensity_and_gradient
     import NewickTree: id, name, distance
     import Distributions: logpdf, logpdf!
+    import FakeFamily: iswgd, nonwgdchild, wgdid, getθ
 
-    include("rmodels.jl")
     include("model.jl")
     include("ccd.jl")
     include("core.jl")

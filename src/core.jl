@@ -4,19 +4,20 @@
 iscompatible(γ::Clade, n::ModelNode) = γ.species ⊆ n.data.clade
 getϵ(n::ModelNode) = n[end,2]
 getϕ(n::ModelNode) = n[end,3]
+getΔ(n::ModelNode, i::Int) = n[i,1]
 getϵ(n::ModelNode, i::Int) = n[i,2]
 getϕ(n::ModelNode, i::Int) = n[i,3]
-getα(λ, μ, t) = isapprox(λ, μ, atol=ΛMATOL) ?
-    λ*t/(one(t) + λ*t) : μ*(exp(t*(λ-μ)) - one(t))/(λ*exp(t*(λ-μ)) - μ)
+getψ(n::ModelNode, i::Int) = n[i,4]
 ℓhood(ℓ) = isfinite(ℓ) ? ℓ : -Inf
 integratedϵ(ϵ, η) = η * ϵ / (one(η) - (one(η) - η)*ϵ)
 
-# transition probability under the linear BDP 1 → 2
-function pdup(λ, μ, t)
-    α = getα(λ, μ, t)
-    β = (λ/μ)*α
-    return (one(α) - α)*(one(α) - β)*β
-end
+# # transition probability under the linear BDP 1 → 2
+# # NOTE: this should account for extinction down the tree no??
+# function pdup(λ, μ, t)
+#     α = getα(λ, μ, t)
+#     β = (λ/μ)*α
+#     return (one(α) - α)*(one(α) - β)*β
+# end
 
 # NOTE conditioning should be done outside the inner loop. If the normalizing
 # factor is expensive we don't want to compute it `n` times. The difference is
@@ -46,7 +47,7 @@ end
 function logpdf!(wm::WhaleModel{T}, xs::Vector{<:CCD},
         c::Function=pbothsides) where T
     #acc = Atomic{T}(0)
-    ℓ = Vector{T}(undef, length(xs)) 
+    ℓ = Vector{T}(undef, length(xs))
     Threads.@threads for i in 1:length(xs)
         ℓ[i] = logpdf!(wm, xs[i])
         #atomic_add!(acc, ℓ)
@@ -58,7 +59,7 @@ end
 
 function logpdf(wm::WhaleModel{T}, xs::Vector{<:CCD},
         c::Function=pbothsides) where T
-    ℓ = Vector{T}(undef, length(xs)) 
+    ℓ = Vector{T}(undef, length(xs))
     Threads.@threads for i in 1:length(xs)
         ℓ[i] = logpdf(wm, xs[i])
     end
@@ -193,8 +194,9 @@ end
     for t in γ.splits
         @inbounds p += t.p * ℓ[e][t.γ1,i-1] * ℓ[e][t.γ2,i-1]
     end
-    # return p * n.event.λ * n.slices[i,1]
-    @inbounds return p * pdup(λ, μ, n[i,1])
+    # return p * pdup(λ, μ, n[i,1])
+    # return λ*getΔ(n, i)*p
+    return getψ(n, i) * p
 end
 
 @inline function Πwgdretention(γ, ℓ, n, q)

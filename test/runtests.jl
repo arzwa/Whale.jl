@@ -11,7 +11,7 @@ using Random
     r = Whale.RatesModel(
         DLWGD(λ=ones(n), μ=ones(n), q=[0.2, 0.1], η=0.9, p=zeros((n+1)÷2)),
         fixed=(:p,))
-    w = WhaleModel(r, t)
+    w = WhaleModel(r, t, 0.05)
     ccd = read_ale("example/example-1/ale", w)
     @test logpdf!(w, ccd) ≈ -588.0647568294178
     @test logpdf(w, ccd) ≈ -588.0647568294178
@@ -19,4 +19,3 @@ using Random
     @test logpdf!(w, ccd) ≈ -588.0647568294178
     @test logpdf(w, ccd) ≈ -588.0647568294178
 end
- 

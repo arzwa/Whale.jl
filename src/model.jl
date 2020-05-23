@@ -20,7 +20,8 @@ const ModelNode{T,I} = Node{I,Slices{T,I}}
 function Slices(node::Node{I,D}, Δt, minn, wgdid=I(0), leafid=I(0)) where {I,D}
     t = distance(node)
     n = isnan(t) ? 0 : max(minn, ceil(Int, t/Δt))
-    slices = [vcat(0.0, repeat([n== 0 ? 0. : t/n], n)) ones(n+1) ones(n+1)]
+    slices = ones(n+1, 4)
+    slices[:,1] = vcat(0.0, repeat([n== 0 ? 0. : t/n], n))
     Slices(slices, name(node), getclade(node), wgdid, leafid)
 end
 
@@ -37,6 +38,7 @@ getclade(n::Node) = isleaf(n) ? Set([id(n)]) :
     Set(union([getclade(c) for c in children(n)]...))
 
 NewickTree.name(s::Slices) = s.name
+NewickTree.distance(s::Slices) = sum(s.slices[:,1])
 Base.show(io::IO, s::Slices) = write(io::IO,
     "Slices($(name(s)), $(s.slices[end,1]), $(size(s.slices)[1]))")
 
@@ -45,8 +47,8 @@ Base.setindex!(m::ModelNode, x, i, j) = m.data.slices[i, j] = x
 Base.axes(m::ModelNode, d) = Base.axes(m.data.slices, d)
 Base.lastindex(m::ModelNode, d) = Base.axes(m, d)[end]
 Base.length(m::ModelNode) = size(m.data.slices)[1]
-iswgd(n::Node) = startswith(name(n), "wgd")
-wgdid(n::ModelNode) = n.data.wgdid
+FakeFamily.iswgd(n::Node) = startswith(name(n), "wgd")
+FakeFamily.wgdid(n::ModelNode) = n.data.wgdid
 leafid(n::ModelNode) = n.data.leafid
 lastslice(m::ModelNode) = lastindex(m, 1)
 
@@ -136,36 +138,53 @@ end
 
 function setslices!(A::Matrix, λ, μ)
     for i=2:size(A)[1]
-        A[i,2] = ϵ_slice(λ, μ, A[i,1], A[i-1,2])
-        A[i,3] = ϕ_slice(λ, μ, A[i,1], A[i-1,2])
+        α = getα(λ, μ, A[i,1])
+        β = (λ/μ)*α
+        ϵ = A[i-1,2]
+        A[i,2] = _ϵ(α, β, ϵ)
+        A[i,3] = _ϕ(α, β, ϵ)
+        A[i,4] = _ψ(α, β, ϵ)
     end
 end
 
+# define all in terms of α and β!
 const ΛMATOL = 1e-6
+getα(λ, μ, t) = isapprox(λ, μ, atol=ΛMATOL) ?
+    λ*t/(one(t) + λ*t) : μ*(exp(t*(λ-μ)) - one(t))/(λ*exp(t*(λ-μ)) - μ)
+_ϵ(α, β, ϵ) = (α + (one(α)-α-β)*ϵ)/(one(α)-β*ϵ)
+_ϕ(α, β, ϵ) = (one(α)-α)*(one(α)-β)/(one(α)-β*ϵ)^2
+_ψ(α, β, ϵ) = (one(α)-α)*(one(α)-β)*β/(one(α)-β*ϵ)^3
 
-function ϵ_slice(λ, μ, t, ε)
-    if isapprox(λ, μ, atol=ΛMATOL)
-        return one(λ) + (one(λ) - ε)/(μ * (ε - one(λ)) * t - one(λ))
-    else
-        return (μ + (λ-μ)/(one(λ) + exp((λ-μ)*t)*λ*(ε - one(λ))/(μ - λ*ε)))/λ
-    end
+# for testing
+function getslice(λ, μ, t, ϵ)
+    α = getα(λ, μ, t)
+    β = (λ/μ)*α
+    (ϵ=_ϵ(α, β, ϵ), ϕ=_ϕ(α, β, ϵ), ψ=_ψ(α, β, ϵ))
 end
 
-function ϕ_slice(λ, μ, t, ε)
-    if isapprox(λ, μ, atol=ΛMATOL)
-        return one(λ) / (μ * (ε - one(λ)) * t - one(λ))^2
-    else
-        x = exp((μ - λ)*t)
-        a = x * (λ - μ)^2
-        b = λ - (x * μ)
-        c = (x - one(x)) * λ * ε
-        return a / (b + c)^2
-    end
-end
-
-function nonwgdchild(n::ModelNode)
+function FakeFamily.nonwgdchild(n::ModelNode)
     while iswgd(n) n = first(children(n)) end
     return n
 end
 
 getwgds(m::WhaleModel) = [n for n in m.order if iswgd(n)]
+
+# function ϕ_slice(λ, μ, t, ε)
+#     if isapprox(λ, μ, atol=ΛMATOL)
+#         return one(λ) / (μ * (ε - one(λ)) * t - one(λ))^2
+#     else
+#         x = exp((μ - λ)*t)
+#         a = x * (λ - μ)^2
+#         b = λ - (x * μ)
+#         c = (x - one(x)) * λ * ε
+#         return a / (b + c)^2
+#     end
+# end
+
+# function ϵ_slice(λ, μ, t, ε)
+#     if isapprox(λ, μ, atol=ΛMATOL)
+#         return one(λ) + (one(λ) - ε)/(μ * (ε - one(λ)) * t - one(λ))
+#     else
+#         return (μ + (λ-μ)/(one(λ) + exp((λ-μ)*t)*λ*(ε - one(λ))/(μ - λ*ε)))/λ
+#     end
+# end
