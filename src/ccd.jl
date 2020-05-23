@@ -93,7 +93,7 @@ end
 """
 function read_ale(s::String, wm::WhaleModel, darray=false)
     @assert ispath(s) "Not a file nor directory `$s`"
-    spmap = Dict(name(l)=>id(l) for l in Leaves(root(wm)))
+    spmap = Dict(name(l)=>id(l) for l in getleaves(root(wm)))
     ccd = if isfile(s) && endswith(s, ".ale")
         [CCD(s, wm, spmap)]
     elseif isfile(s)

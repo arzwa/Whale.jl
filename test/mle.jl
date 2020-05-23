@@ -19,7 +19,7 @@ end
     Random.seed!(105)
     t = Whale.extree
     l = length(getleaves(t))
-    θ = ConstantDLWGD(λ=.5, μ=.4, η=0.66, q=Float64[], p=zeros(l))
+    θ = ConstantDLWGD(λ=.5, μ=.4, η=0.66)
     r = Whale.RatesModel(θ, fixed=(:η, :p))
     w = WhaleModel(r, t, 0.05)
     ts, ps = dlsimbunch(Whale.root(w), w.rates, 200)
@@ -35,15 +35,13 @@ end
 end
 
 @testset "ML a bunch" begin
-    i = rand(1:10000)
-    @show i
-    Random.seed!(i)
+    Random.seed!(179)
     t = Whale.extree
     l = length(getleaves(t))
-    n = 50
+    n = 10
     η = 0.75
     for λ = -3:1:0
-        θ = ConstantDLWGD(λ=exp(λ), μ=exp(λ), η=η, q=Float64[], p=zeros(l))
+        θ = ConstantDLWGD(λ=exp(λ), μ=exp(λ), η=η)
         r = Whale.RatesModel(θ, fixed=(:η, :p))
         w = WhaleModel(r, t, 0.05)
         x = []
@@ -63,7 +61,7 @@ end
             m = round(mean(v), digits=3)
             se = round(std(v)/√n, digits=3)
             @info "$m ($λ) ± $se"
-            # @test abs(m - λ) < 0.01
+            @test abs(m - λ) < 2*se
         end
     end
 end

@@ -32,8 +32,10 @@ likelihood (i.e. not conditional on for instance non-extinction).
 logpdf!(wm::WhaleModel, x::CCD) = logpdf!(wm, x.ℓ, x)
 
 @inline function logpdf!(wm::WhaleModel{T}, ℓ::Array, x::CCD{I,V}) where {T,I,V}
-    for n in wm.order whale!(n, ℓ, x, wm) end
-    L = ℓ[1][end,1]
+    for n in wm.order
+        whale!(n, ℓ, x, wm)
+    end
+    L = ℓ[id(root(wm))][end,1]
     L > zero(L) ? log(L) : -Inf
 end
 
@@ -155,9 +157,9 @@ function whaleroot!(n::ModelNode{T}, ℓ, x, wm) where T
             p1 += Πspeciation(γ, ℓ, n)
             p2 += Πroot(γ, ℓ, n, η)
         end
-        ℓ[1][γ.id,1] = p1 * η_ + p2
+        ℓ[e][γ.id,1] = p1 * η_ + p2
     end
-    ℓ[1][end,1] *= η
+    ℓ[e][end,1] *= η
 end
 
 @inline function Πroot(γ, ℓ, n, η)
