@@ -398,6 +398,12 @@ git-tree-sha1 = "6c975cd606128d45d1df432fb812d6eb10fee00b"
 uuid = "f5851436-0d7a-5f13-b9de-f02708fd171a"
 version = "3.3.9+5"
 
+[[FakeFamily]]
+deps = ["NewickTree"]
+path = "../../FakeFamily"
+uuid = "0577ea09-897c-4e06-b0d4-a2e3d1c9af03"
+version = "0.1.0"
+
 [[FileIO]]
 deps = ["Pkg"]
 git-tree-sha1 = "3d7cb2c4c850439f19c4d6d3fbe1dce6481cddb1"
@@ -681,7 +687,7 @@ uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 version = "0.21.0"
 
 [[Juno]]
-deps = ["Base64", "Logging", "Media", "Profile", "Test"]
+deps = ["Base64", "Logging", "Media", "Profile"]
 git-tree-sha1 = "30d94657a422d09cb97b6f86f04f750fa9c50df8"
 uuid = "e5e0dc1b-0480-54bc-9374-aad01c23163d"
 version = "0.7.2"
@@ -1328,7 +1334,7 @@ uuid = "ea10d353-3f73-51f8-a26c-33c1cb351aa5"
 version = "0.6.2"
 
 [[Whale]]
-deps = ["AbstractTrees", "CSV", "DataFrames", "DiffResults", "Distributed", "DistributedArrays", "Distributions", "ForwardDiff", "LinearAlgebra", "Literate", "LogDensityProblems", "NewickTree", "Parameters", "ProgressMeter", "Random", "StatsBase", "Test", "TransformVariables"]
+deps = ["AbstractTrees", "CSV", "DataFrames", "DiffResults", "Distributed", "DistributedArrays", "Distributions", "FakeFamily", "ForwardDiff", "LinearAlgebra", "LogDensityProblems", "NewickTree", "Parameters", "Random", "StatsBase", "Test", "TransformVariables"]
 path = "/home/arzwa/dev/Whale.jl/"
 uuid = "eab5b8f2-ac71-4eb1-ac2b-64791b8dae63"
 version = "1.0.0"
@@ -1443,9 +1449,9 @@ version = "1.4.0+1"
 
 [[Zlib_jll]]
 deps = ["Libdl", "Pkg"]
-git-tree-sha1 = "2f6c3e15e20e036ee0a0965879b31442b7ec50fa"
+git-tree-sha1 = "a2e0d558f6031002e380a90613b199e37a8565bf"
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
-version = "1.2.11+9"
+version = "1.2.11+10"
 
 [[Zygote]]
 deps = ["AbstractFFTs", "ArrayLayouts", "DiffRules", "FillArrays", "ForwardDiff", "Future", "IRTools", "InteractiveUtils", "LinearAlgebra", "MacroTools", "NNlib", "NaNMath", "Random", "Requires", "SpecialFunctions", "Statistics", "ZygoteRules"]

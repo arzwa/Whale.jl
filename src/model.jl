@@ -63,13 +63,15 @@ along a branch.
 struct WhaleModel{T,M,I} <:DiscreteMultivariateDistribution
     rates::M
     order::Vector{ModelNode{T,I}}
+    index::Vector{I}
 end
 
 Base.show(io::IO, m::WhaleModel) = write(io::IO, "WhaleModel(\n$(m.rates))")
 Base.length(m::WhaleModel) = length(m.order)
-Base.getindex(m::WhaleModel, i) = m.order[i]
+Base.getindex(m::WhaleModel, i) = m.order[m.index[i]]
 Base.lastindex(m::WhaleModel) = lastindex(m.order)
-root(m::WhaleModel) = m[end]
+root(m::WhaleModel) = m.order[end]
+NewickTree.getroot(m::WhaleModel) = root(m)
 
 # XXX this is insanely ugly. The ain hassle is that we want node IDs in
 # order such that the leaves come first, than the internal nodes, and
@@ -99,7 +101,8 @@ function WhaleModel(rates::RatesModel{T}, Ψ::Node{I}, Δt, minn=5) where {T,I}
     i = nonwgd+1
     j = 1
     order = union(getleaves(order[end]), order)
-    for n in order
+    index = zeros(I, length(order))
+    for (k,n) in enumerate(order)
         if iswgd(n)
             n.id = I(i)
             i += 1
@@ -107,9 +110,10 @@ function WhaleModel(rates::RatesModel{T}, Ψ::Node{I}, Δt, minn=5) where {T,I}
             n.id = I(j)
             j += 1
         end
+        index[id(n)] = k
     end
     setclade!.(order)
-    model = WhaleModel(rates, order)
+    model = WhaleModel(rates, order, index)
     setmodel!(model)  # assume the model should be initialized
     return model
 end
@@ -123,7 +127,7 @@ function (m::WhaleModel)(rates::RatesModel{T}) where T
         push!(o, y′)
     end
     walk(root(m), nothing)
-    model = WhaleModel(rates, o)
+    model = WhaleModel(rates, o, m.index)
     setmodel!(model)
     return model
 end

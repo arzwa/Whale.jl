@@ -3,7 +3,7 @@
 
 A helper struct for backtracking trees from a posterior distribution.
 This should be fairly generally applicable, with the `fun` field
-holding a function that parses out a named tuple with the parameters 
+holding a function that parses out a named tuple with the parameters
 for a `WhaleModel` from an entry of the DataFrame in the `df` field.
 """
 struct TreeTracker{T,V,X}
@@ -14,7 +14,7 @@ struct TreeTracker{T,V,X}
 end
 
 function track!(tt::TreeTracker)
-    # NOTE: this does the backtracking for each ccd separately, and 
+    # NOTE: this does the backtracking for each ccd separately, and
     # summarizes the results on-the-go to prevent bloating memory.
     result = Vector{RecSummary}(undef, length(tt.data))
     @threads for i=1:length(result)
@@ -103,7 +103,7 @@ struct BackTracker{I}
     ccd  ::CCD
 end
 
-Base.error(b::BackTracker, r) = error("Backtracking failed, r=$r at Y=$b.state")
+Base.error(b::BackTracker, r) = error("Backtracking failed, r=$r at Y=$b")
 
 function Base.:-(b::BackTracker)
     @unpack e, γ, t = b.state
@@ -111,9 +111,9 @@ function Base.:-(b::BackTracker)
 end
 
 BackTracker(model::WhaleModel, ccd::CCD) = BackTracker(
-    SliceState(id(root(model)), ccd[end].id, 1),
-    Node(ccd[end].id, RecData(γ=ccd[end].id, e=id(root(model)))),
-    model, ccd)
+    SliceState(id(root(model)), ccd[end].id, 1), Node(ccd[end].id,
+        RecData(γ=ccd[end].id, e=id(root(model)))),
+        model, ccd)
 
 function (b::BackTracker)(newstate::SliceState)
     @unpack γ, e, t = newstate
@@ -248,7 +248,7 @@ function duplication(r, b)
     Δt = model[e][t,1]
     for triple in ccd[γ].splits
         @unpack p, γ1, γ2 = triple
-        r -= p * ℓ[e][γ1,t-1] * ℓ[e][γ2,t-1] * pdup(exp(λ), exp(μ), Δt)
+        r -= p * ℓ[e][γ1,t-1] * ℓ[e][γ2,t-1] * getψ(model[e], t)
         if r < 0.
             return (r=r, next=[SliceState(e, γ1, t-1), SliceState(e, γ2, t-1)])
         end

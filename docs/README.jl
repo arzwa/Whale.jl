@@ -55,14 +55,14 @@ l = (n+1)÷2  # number of leaf nodes
 
 # Now we add two WGD nodes to the tree. We do this by specifying
 # the last common ancestor node for the lineages that share the
-# hypothetical WGD. By default, the added node is halfway between 
+# hypothetical WGD. By default, the added node is halfway between
 # the specified node and its parent.
 insertnode!(getlca(t, "ATHA", "ATHA"), name="wgd")
 insertnode!(getlca(t, "ATHA", "ATRI"), name="wgd")
 
 # and we obtain a reference model object, here we will use a constant-rates
 # model
-params = ConstantDLWGD(λ=0.1, μ=0.2, q=[0.2, 0.1], η=0.9, p=zeros(l))
+params = ConstantDLWGD(λ=0.1, μ=0.2, q=[0.2, 0.1], η=0.9)
 r = Whale.RatesModel(params, fixed=(:p,))
 w = WhaleModel(r, t, .1)
 
@@ -85,9 +85,9 @@ chain = sample(model, NUTS(0.65), 100)
 # We'll use the same tree as above. The relevant model now is
 # the DLWGD model:
 
-params = DLWGD(λ=randn(n), μ=randn(n), q=rand(2), η=rand(), p=zeros(l)),
+params = DLWGD(λ=randn(n), μ=randn(n), q=rand(2), η=rand())
 r = Whale.RatesModel(params, fixed=(:p,))
-w = WhaleModel(r, t)
+w = WhaleModel(r, t, 0.5)
 ccd = read_ale(joinpath("example/example-1/ale"), w)
 
 # Note that the duplication and loss rates should here be specified on a
