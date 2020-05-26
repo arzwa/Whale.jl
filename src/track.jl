@@ -19,7 +19,7 @@ function track!(tt::TreeTracker; progress=true)
     result = Vector{RecSummary}(undef, length(tt.data))
     @threads for i=1:length(result)
         # for i=1:length(result)
-        progress && (@info "Tracking family $i")
+        progress && (@info "Tracking family $i" ; flush(stdout); flush(stderr))
         result[i] = track_and_sum(tt, i)
     end
     return result

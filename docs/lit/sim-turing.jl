@@ -1,10 +1,10 @@
 # The most basic analysis with Turing, for simulated data
 using Pkg; Pkg.activate("docs")
 using Whale, NewickTree, Distributions, Turing, DataFrames, FakeFamily, Random
-Random.seed!(34)
+Random.seed!(31)
 
 t = deepcopy(Whale.extree)
-θ = ConstantDLWGD(λ=0.35, μ=0.2, q=Float64[], η=0.9)
+θ = ConstantDLWGD(λ=0.1, μ=0.1, q=Float64[], η=0.66)
 r = Whale.RatesModel(θ, fixed=(:p,:η))
 w = WhaleModel(r, t, .1)
 
