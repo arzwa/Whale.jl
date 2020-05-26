@@ -399,7 +399,7 @@ uuid = "f5851436-0d7a-5f13-b9de-f02708fd171a"
 version = "3.3.9+5"
 
 [[FakeFamily]]
-deps = ["NewickTree"]
+deps = ["Distributions", "NewickTree", "Parameters", "StatsBase", "TransformVariables"]
 path = "../../FakeFamily"
 uuid = "0577ea09-897c-4e06-b0d4-a2e3d1c9af03"
 version = "0.1.0"
@@ -1337,7 +1337,7 @@ version = "0.6.2"
 deps = ["AbstractTrees", "CSV", "DataFrames", "DiffResults", "Distributed", "DistributedArrays", "Distributions", "FakeFamily", "ForwardDiff", "LinearAlgebra", "LogDensityProblems", "NewickTree", "Parameters", "Random", "StatsBase", "Test", "TransformVariables"]
 path = "/home/arzwa/dev/Whale.jl/"
 uuid = "eab5b8f2-ac71-4eb1-ac2b-64791b8dae63"
-version = "1.0.0"
+version = "2.0.0"
 
 [[Widgets]]
 deps = ["Colors", "Dates", "Observables", "OrderedCollections"]

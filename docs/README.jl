@@ -45,13 +45,12 @@
 # data for Whale analyses.
 
 # ## Example using Turing
-using Whale, NewickTree, Distributions, Turing
+using Whale, NewickTree, Distributions, Turing, DataFrames
 
 # ### Using a constant-rates model
 # Get the tree
 t = deepcopy(Whale.extree)
 n = length(postwalk(t))  # number of internal nodes
-l = (n+1)÷2  # number of leaf nodes
 
 # Now we add two WGD nodes to the tree. We do this by specifying
 # the last common ancestor node for the lineages that share the
@@ -62,8 +61,8 @@ insertnode!(getlca(t, "ATHA", "ATRI"), name="wgd")
 
 # and we obtain a reference model object, here we will use a constant-rates
 # model
-params = ConstantDLWGD(λ=0.1, μ=0.2, q=[0.2, 0.1], η=0.9)
-r = Whale.RatesModel(params, fixed=(:p,))
+θ = ConstantDLWGD(λ=0.1, μ=0.2, q=[0.2, 0.1], η=0.9)
+r = Whale.RatesModel(θ, fixed=(:p,))
 w = WhaleModel(r, t, .1)
 
 # next we get the data (we need a model object for that)
@@ -71,15 +70,19 @@ ccd = read_ale(joinpath("example/example-1/ale"), w)
 
 # Now we define the Turing model
 @model constantrates(model, ccd) = begin
-    r ~ MvLogNormal(ones(2))
+    r  ~ MvLogNormal(ones(2))
+    η  ~ Beta(3,1)
     q1 ~ Beta()
     q2 ~ Beta()
-    η ~ Beta(3,1)
     ccd ~ model((λ=r[1], μ=r[2], η=η, q=[q1, q2]))
 end
 
 model = constantrates(w, ccd)
 chain = sample(model, NUTS(0.65), 100)
+pdf = DataFrame(chain)
+fun = (m, x)-> Array(x) |> x->m((λ=x[3], μ=x[4], η=x[5], q=x[1:2]))
+tt = TreeTracker(w, ccd[end-1:end], pdf, fun)
+trees = track!(tt)
 
 # ### Using a branch-specific rates model
 # We'll use the same tree as above. The relevant model now is

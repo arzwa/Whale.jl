@@ -13,11 +13,13 @@ struct TreeTracker{T,V,X}
     fun  ::Function
 end
 
-function track!(tt::TreeTracker)
+function track!(tt::TreeTracker; progress=true)
     # NOTE: this does the backtracking for each ccd separately, and
     # summarizes the results on-the-go to prevent bloating memory.
     result = Vector{RecSummary}(undef, length(tt.data))
     @threads for i=1:length(result)
+        # for i=1:length(result)
+        progress && (@info "Tracking family $i")
         result[i] = track_and_sum(tt, i)
     end
     return result
@@ -29,7 +31,7 @@ function track_and_sum(tt::TreeTracker, i)
     trees = Array{RecNode,1}(undef, size(df)[1])
     for (i,x) in enumerate(eachrow(df))
         wmm = fun(model, x)
-        logpdf!(wmm, ccd)
+        ℓ = logpdf!(wmm, ccd)
         trees[i] = backtrack(wmm, ccd)
     end
     sumtrees(trees, ccd, model)

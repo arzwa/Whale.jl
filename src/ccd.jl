@@ -82,7 +82,7 @@ function CCD(ale::NamedTuple, wm::WhaleModel{T,M,I}, spmap) where {T,M,I}
         c = Clade(I(idmap[k]), v, p, Set(I.(set_id[k])), s, Float64(Bip_bls[k]))
         push!(clades, c)
     end
-    leaves = collect(values(sort(leaf_id)))
+    leaves = last.(sort(collect(leaf_id)))
     ℓ = Vector{Matrix{T}}(undef, length(wm))
     for n in wm.order ℓ[id(n)] = zeros(T, length(clades), length(n)) end
     CCD(observations, clades, leaves, ℓ)

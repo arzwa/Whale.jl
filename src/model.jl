@@ -120,13 +120,14 @@ end
 
 (m::WhaleModel)(θ) = m(m.rates(θ))
 function (m::WhaleModel)(rates::RatesModel{T}) where T
-    o = ModelNode{T,typeof(id(m[1]))}[]
-    function walk(x, y)
-        y′ = copynode(x, y, T)
-        for c in children(x) walk(c, y′) end
-        push!(o, y′)
+    r = root(m)
+    I = typeof(id(r))
+    o = similar(m.order, ModelNode{T,I})
+    for i in reverse(1:length(o))
+        n = m.order[i]
+        o[i] = copynode(n, isroot(n) ?
+            nothing : o[m.index[id(parent(n))]], T)
     end
-    walk(root(m), nothing)
     model = WhaleModel(rates, o, m.index)
     setmodel!(model)
     return model

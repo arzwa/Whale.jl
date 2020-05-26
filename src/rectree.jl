@@ -15,7 +15,10 @@ function summarize(xs::Vector{RecSummary}) # no joke
         rs.events[!,:family] .= i
         push!(dfs, rs.events)
     end
-    vcat(dfs...)
+    events = vcat(dfs...)
+    gdf = groupby(events, :node)
+    sm = combine(gdf, [x=>sum for x in names(gdf[1])[1:6]]...)
+    (full=events, sum=sm)
 end
 
 """
