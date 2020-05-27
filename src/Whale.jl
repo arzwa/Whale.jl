@@ -12,9 +12,10 @@ module Whale
     using LinearAlgebra
     using StatsBase
     using LogDensityProblems
-    using AbstractTrees
+    # using AbstractTrees
     using TransformVariables
     using DataFrames
+    using CSV
     using Base.Threads
     import TransformVariables: TransformTuple, transform_and_logjac, transform
     import LogDensityProblems: logdensity_and_gradient

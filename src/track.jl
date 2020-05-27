@@ -1,4 +1,5 @@
-# XXX: the tracking algorithm is very memory intensive should do some research
+# XXX: the tracking algorithm is very memory intensive and quiet slow...
+# should do some research
 """
     TreeTracker(model, data, df, fun)
 
@@ -27,37 +28,45 @@ function flsh()  # flush streams (on cluster I have troubles with this)
 end
 
 # XXX: allocates too much memory!
-function track_threaded(tt::TreeTracker; progress=true)
+function track_threaded(tt::TreeTracker; progress=true, outdir="")
     @unpack model, data, df, fun = tt
+    outdir != "" && mkpath(outdir)
     result = Vector{RecSummary}(undef, length(data))
     @threads for i=1:length(result)
         # for i=1:length(result)
-        progress && (@info "Tracking family $i" ; flsh())
-        result[i] = track_and_sum(model, df, fun, data[i])
+        progress && (@info "Tracking $(data[i].fname)" ; flsh())
+        result[i] = track_and_sum(model, df, fun, data[i], outdir)
     end
     return result
 end
 
 # Both DArray and pmap based implementation. DArray allocates considerably less
 # memory!
-function track_distributed(tt::TreeTracker; progress=true)
+function track_distributed(tt::TreeTracker;
+        progress=true, outdir::String="")
     @unpack model, data, df, fun = tt
+    outdir != "" && mkpath(outdir)
     f = progress ?
-        x->begin @info "Tracking $x"; flsh();
-           track_and_sum(model, df, fun, x) end :
-        x->track_and_sum(model, df, fun, x)
+        x->begin @info "Tracking $(x.fname)"; flsh();
+           track_and_sum(model, df, fun, x, outdir) end :
+        x->track_and_sum(model, df, fun, x, outdir)
     result = typeof(data)<:DArray ? map(x->f(x), data) : pmap(x->f(x), data)
     return result
 end
 
-function track_and_sum(model, df, fun, ccd)
+function track_and_sum(model, df, fun, ccd, outdir="")
     trees = Array{RecNode,1}(undef, nrow(df))
     for (i,x) in enumerate(eachrow(df))
         wmm = fun(model, x)
         ℓ = logpdf!(wmm, ccd)
         trees[i] = backtrack(wmm, ccd)
     end
-    sumtrees(trees, ccd, model)
+    rs = sumtrees(trees, ccd, model)
+    if outdir != ""
+        CSV.write( joinpath(outdir, "$(ccd.fname).csv"), rs.events)
+        writetrees(joinpath(outdir, "$(ccd.fname).trees"), rs.trees)
+    end
+    return rs
 end
 
 """

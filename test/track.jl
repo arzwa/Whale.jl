@@ -2,7 +2,7 @@
 
 # The backtracking algorithm is recursive and fairly memory-intensive. It seems
 # that using an approach with DArrays is most efficient
-using Distributed; addprocs(2)
+using Distributed; #addprocs(2)
 @everywhere using Pkg; @everywhere Pkg.activate("docs")
 @everywhere using Whale
 using BenchmarkTools, DataFrames
@@ -17,7 +17,7 @@ fun = (m, x)-> Array(x) |> x->m((λ=x[1], μ=x[2], q=Float64[]))
 
 ccd = read_ale("example/example-1/ale/", w, true)
 tt = TreeTracker(w, ccd, pdf, fun)
-trees = track(tt)
+trees = track(tt, outdir="/tmp/testdir2")
 ev, sm = Whale.summarize(trees)
 
 ccd = read_ale("example/example-1/ale/", w, true)

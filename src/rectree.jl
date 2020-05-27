@@ -9,6 +9,15 @@ end
 Base.show(io::IO, rsum::RecSummary) =
     write(io, "RecSummary(# unique trees = $(length(rsum.trees)))")
 
+writetrees(s::String, rsum::Vector{NamedTuple}) = open(s, "w") do io
+    writetrees(io, rsum)
+end
+function writetrees(io::IO, rsum::Vector{NamedTuple}, sep="\t")
+    for (f,t) in rsum
+        write(io, "$f$sep$(nwstr(t))\n")
+    end
+end
+
 function summarize(xs::AbstractVector{RecSummary}) # no joke
     dfs = []
     for (i, rs) in enumerate(xs)

@@ -54,6 +54,7 @@ mutable struct CCD{T<:Integer,V<:Real}
     clades ::Vector{Clade{T}}  # ordered by size (small to large)!
     leaves ::Vector{String}
     ℓ      ::Vector{Matrix{V}}
+    fname  ::String
     # NOTE leaves have the first clade IDs {1, ...} so we can use a vector
 end
 
@@ -85,7 +86,7 @@ function CCD(ale::NamedTuple, wm::WhaleModel{T,M,I}, spmap) where {T,M,I}
     leaves = last.(sort(collect(leaf_id)))
     ℓ = Vector{Matrix{T}}(undef, length(wm))
     for n in wm.order ℓ[id(n)] = zeros(T, length(clades), length(n)) end
-    CCD(observations, clades, leaves, ℓ)
+    CCD(observations, clades, leaves, ℓ, ale.fname)
 end
 
 """
@@ -131,7 +132,7 @@ function parse_aleobserve(fname)
     d[:leaf_id] = invert(d[:leaf_id])
     addleafclades!(d)
     addubiquitous!(d)
-    (; d...)
+    (; fname=basename(fname), d...)
 end
 
 invert(d::Dict) = Dict(v=>k for(k,v) in d)
