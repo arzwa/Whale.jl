@@ -9,7 +9,7 @@ end
 Base.show(io::IO, rsum::RecSummary) =
     write(io, "RecSummary(# unique trees = $(length(rsum.trees)))")
 
-function summarize(xs::Vector{RecSummary}) # no joke
+function summarize(xs::AbstractVector{RecSummary}) # no joke
     dfs = []
     for (i, rs) in enumerate(xs)
         rs.events[!,:family] .= i

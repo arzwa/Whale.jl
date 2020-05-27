@@ -399,7 +399,7 @@ uuid = "f5851436-0d7a-5f13-b9de-f02708fd171a"
 version = "3.3.9+5"
 
 [[FakeFamily]]
-deps = ["Distributions", "NewickTree", "Parameters", "StatsBase", "TransformVariables"]
+deps = ["DataFrames", "Distributions", "NewickTree", "Parameters", "StatsBase", "TransformVariables"]
 path = "../../FakeFamily"
 uuid = "0577ea09-897c-4e06-b0d4-a2e3d1c9af03"
 version = "0.1.0"

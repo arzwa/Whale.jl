@@ -1,6 +1,6 @@
 # The most basic analysis with Turing, for simulated data
 using Pkg; Pkg.activate("docs")
-using Whale, NewickTree, Distributions, Turing, DataFrames, FakeFamily, Random
+using Whale, Distributions, Turing, DataFrames, FakeFamily, Random
 Random.seed!(31)
 
 t = deepcopy(Whale.extree)

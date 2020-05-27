@@ -1,3 +1,4 @@
+# XXX: the tracking algorithm is very memory intensive should do some research
 """
     TreeTracker(model, data, df, fun)
 
@@ -13,22 +14,44 @@ struct TreeTracker{T,V,X}
     fun  ::Function
 end
 
-function track!(tt::TreeTracker; progress=true)
-    # NOTE: this does the backtracking for each ccd separately, and
-    # summarizes the results on-the-go to prevent bloating memory.
-    result = Vector{RecSummary}(undef, length(tt.data))
+# XXX This can be optimized, speed-wise it would be better to sample a tree for
+# all families in each iteration, while now we do it the other way around to
+# prevent having a huge array of trees... If we could summarize trees on the go
+# however, we could interchange the order of the loops.
+track(tt::TreeTracker; kwargs...) = nworkers() > 1 ?
+    track_distributed(tt; kwargs...) : track_threaded(tt; kwargs...)
+
+function flsh()  # flush streams (on cluster I have troubles with this)
+    flush(stderr)
+    flush(stdout)
+end
+
+# XXX: allocates too much memory!
+function track_threaded(tt::TreeTracker; progress=true)
+    @unpack model, data, df, fun = tt
+    result = Vector{RecSummary}(undef, length(data))
     @threads for i=1:length(result)
         # for i=1:length(result)
-        progress && (@info "Tracking family $i" ; flush(stdout); flush(stderr))
-        result[i] = track_and_sum(tt, i)
+        progress && (@info "Tracking family $i" ; flsh())
+        result[i] = track_and_sum(model, df, fun, data[i])
     end
     return result
 end
 
-function track_and_sum(tt::TreeTracker, i)
+# Both DArray and pmap based implementation. DArray allocates considerably less
+# memory!
+function track_distributed(tt::TreeTracker; progress=true)
     @unpack model, data, df, fun = tt
-    ccd = data[i]
-    trees = Array{RecNode,1}(undef, size(df)[1])
+    f = progress ?
+        x->begin @info "Tracking $x"; flsh();
+           track_and_sum(model, df, fun, x) end :
+        x->track_and_sum(model, df, fun, x)
+    result = typeof(data)<:DArray ? map(x->f(x), data) : pmap(x->f(x), data)
+    return result
+end
+
+function track_and_sum(model, df, fun, ccd)
+    trees = Array{RecNode,1}(undef, nrow(df))
     for (i,x) in enumerate(eachrow(df))
         wmm = fun(model, x)
         ℓ = logpdf!(wmm, ccd)
