@@ -35,7 +35,7 @@ struct LinearBDP{T}
     μ::T
     t::T
     ρ::T
-    LinearBDP(λ::T, μ::T, t::T) where T = new{T}(λ, μ, t, exp((λ - μ)*t))
+    LinearBDP(λ::T, μ::T, t::T) where T = new{T}(λ, μ, t, exp((μ - λ)*t))
 end
 
 tp(p::LinearBDP, a, b) = tp(a, b, p.t, p.λ, p.μ)
@@ -53,14 +53,22 @@ d = Geometric(0.66)
 pgf(d, pgf(p, 0.))
 ```
 """
-function pgf(p::LinearBDP, s)
-    @unpack ρ, λ, μ = p
-    ρ′ = (one(ρ)/ρ)
-    (ρ′*(λ*s - μ) - μ*(s-one(s)))/(ρ′*(λ*s - μ) - λ*(s-one(s)))
+function pgf(p::LinearBDP{T}, s) where T
+    @unpack ρ, λ, μ, t = p
+    # what about the critical case?
+    isapprox(λ, μ, atol=ΛMATOL) ?
+        (one(T) - (λ*t - one(T))*(s - one(T)))/(one(T) - λ*t*(s - one(T))) :
+        (ρ*(λ*s - μ) - μ*(s-one(T)))/(ρ*(λ*s - μ) - λ*(s-one(T)))
 end
 
 pgf(d::Geometric, s) = geompgf(d.p, s)
 geompgf(p, s) = p*s/(one(p) - (one(p) - p)*s)
+
+# struct WGDBernouilli{T}
+#     q::T
+# end
+# pgf(d::WGDBernouilli, s) = wgdpgf(d.q, s)
+wgdpgf(q, s) = s*(one(q) - q + s*q)
 
 """
     treepgf(tree, xs::Vector)
@@ -74,38 +82,37 @@ Evaluate the joint pgf for the leaves of a tree structure.
 """
 function treepgf(tree, xs::Vector{T}) where T
     function walk(n)
-        @unpack λ, μ, η = Whale.getθ(tree.rates, n)
-        f = isroot(n) ? Geometric(η) : LinearBDP(λ, μ, distance(n))
+        θ = Whale.getθ(tree.rates, n)
+        f = isroot(n) ? Geometric(θ.η) : LinearBDP(θ.λ, θ.μ, distance(n))
         isleaf(n) && return pgf(f, xs[id(n)])
         x = prod([walk(c) for c in children(n)])
-        return pgf(f, x)
+        return iswgd(n) ? pgf(f, wgdpgf(θ.q, x)) : pgf(f, x)
     end
     walk(getroot(tree))
 end
 
 function extinctionp(tree)  # joint pgf evaluated at 0, 0, 0, ...
     function walk(n)
-        @unpack λ, μ, η = Whale.getθ(tree.rates, n)
-        f = isroot(n) ? Geometric(η) : LinearBDP(λ, μ, distance(n))
+        θ = Whale.getθ(tree.rates, n)
+        f = isroot(n) ? Geometric(θ.η) : LinearBDP(θ.λ, θ.μ, distance(n))
         isleaf(n) && return pgf(f, 0.)
         x = prod([walk(c) for c in children(n)])
-        return pgf(f, x)
+        return iswgd(n) ? pgf(f, wgdpgf(θ.q, x)) : pgf(f, x)
     end
     walk(getroot(tree))
 end
-
-# gradfun(tree) = (x)->ForwardDiff.gradient(y->treepgf(tree, y), x)
 
 # This function evaluates the pgf for all binary arguments, i.e. f(0,0,0,...,0)
 # f(1,0,0,...,0), f(0,1,0,...,0), ... f(1,1,1,...,1).
 function treepgf_allbinary(tree)
     function walk(n)
-        @unpack λ, μ, η = Whale.getθ(tree.rates, n)
-        f = isroot(n) ? Geometric(η) : LinearBDP(λ, μ, distance(n))
+        θ = Whale.getθ(tree.rates, n)
+        f = isroot(n) ? Geometric(θ.η) : LinearBDP(θ.λ, θ.μ, distance(n))
         isleaf(n) && return [pgf(f, 0.), pgf(f, 1.)]
         down = [walk(c) for c in children(n)]
         xs = vec(prod.(Iterators.product(down...)))
-        return [pgf(f, x) for x in xs]
+        wgd = iswgd(n)
+        return [wgd ? pgf(f, wgdpgf(θ.q, x)) : pgf(f, x) for x in xs]
     end
     walk(getroot(tree))
 end
@@ -137,3 +144,5 @@ end
 # Annoyingly, the order is not the one we'd need for inclusion - exclusion... (which would be 0,0,...,0; 1,0,...,0; 0,1,...,0; ... ... ; 1,1,...,1), hence the `treepgf_allbinary_sign` function.
 
 # In principle possible to use pgf for likelihood? https://www.jstor.org/stable/pdf/2245060.pdf?refreqid=excelsior%3A759e9c0a878328f1a759b9f4b7dade56 describes a numerical inversion algorithm that could be used to obtain the probability of a phylogenetic profile from the pgf (if the latter is correct)?
+
+# The pgf methods do not work yet with WGD

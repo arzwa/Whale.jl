@@ -29,7 +29,8 @@ end
 function condition(wm::WhaleModel, e::NowhereExtinctCondition{T}) where T
     p = treepgf_allbinary(wm)
     # probability of at least one count at each leaf
-    log(one(T) - sum((p .* e.s)[1:end-1]))
+    c = one(T) - sum((p .* e.s)[1:end-1])
+    zero(c) < c < one(c) ? log(c) : -Inf
 end
 
 # log probability of non-extinction everywhere? naive implementation
