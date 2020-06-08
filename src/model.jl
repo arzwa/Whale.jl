@@ -50,6 +50,8 @@ FakeFamily.iswgd(n::Node) = startswith(name(n), "wgd")
 FakeFamily.wgdid(n::ModelNode) = n.data.wgdid
 lastslice(m::ModelNode) = lastindex(m, 1)
 
+abstract type SamplingCondition end
+
 """
     WhaleModel(ratesmodel, tree, Δt, [minn=5])
 
@@ -60,10 +62,11 @@ branch lengths. `minn` is the minimum number of slices for each branch (which
 would then correspond to the maximum number of duplication/loss events possible
 along a branch.
 """
-struct WhaleModel{T,M,I} <:DiscreteMultivariateDistribution
+struct WhaleModel{T,M,I,C<:SamplingCondition} <:DiscreteMultivariateDistribution
     rates::M
     order::Vector{ModelNode{T,I}}
     index::Vector{I}
+    condition::C
 end
 
 Base.show(io::IO, m::WhaleModel) = write(io::IO, "WhaleModel(\n$(m.rates))")
@@ -76,7 +79,8 @@ NewickTree.getroot(m::WhaleModel) = root(m)
 # XXX this is insanely ugly. The ain hassle is that we want node IDs in
 # order such that the leaves come first, than the internal nodes, and
 # finally the WGDs (but the iteration order is still a postorder).
-function WhaleModel(rates::RatesModel{T}, Ψ::Node{I}, Δt, minn=5) where {T,I}
+function WhaleModel(rates::RatesModel{T}, Ψ::Node{I}, Δt;
+        minn=5, condition=RootCondition()) where {T,I}
     nonwgd = 0  # count non-wgd nodes
     wgdid = I(0)
     order = ModelNode{T,I}[]
@@ -113,7 +117,7 @@ function WhaleModel(rates::RatesModel{T}, Ψ::Node{I}, Δt, minn=5) where {T,I}
         index[id(n)] = k
     end
     setclade!.(order)
-    model = WhaleModel(rates, order, index)
+    model = WhaleModel(rates, order, index, condition)
     setmodel!(model)  # assume the model should be initialized
     return model
 end
@@ -128,7 +132,7 @@ function (m::WhaleModel)(rates::RatesModel{T}) where T
         o[i] = copynode(n, isroot(n) ?
             nothing : o[m.index[id(parent(n))]], T)
     end
-    model = WhaleModel(rates, o, m.index)
+    model = WhaleModel(rates, o, m.index, m.condition)
     setmodel!(model)
     return model
 end
@@ -163,14 +167,6 @@ function setslices!(A::Matrix, λ, μ)
         A[i,4] = _ψ(α, β, ϵ)
     end
 end
-
-# define all in terms of α and β!
-const ΛMATOL = 1e-6
-getα(λ, μ, t) = isapprox(λ, μ, atol=ΛMATOL) ?
-    λ*t/(one(t) + λ*t) : μ*(exp(t*(λ-μ)) - one(t))/(λ*exp(t*(λ-μ)) - μ)
-_ϵ(α, β, ϵ) = (α + (one(α)-α-β)*ϵ)/(one(α)-β*ϵ)
-_ϕ(α, β, ϵ) = (one(α)-α)*(one(α)-β)/(one(α)-β*ϵ)^2
-_ψ(α, β, ϵ) = (one(α)-α)*(one(α)-β)*β/(one(α)-β*ϵ)^3
 
 # for testing
 function getslice(λ, μ, t, ϵ)

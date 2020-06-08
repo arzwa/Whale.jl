@@ -9,7 +9,6 @@ getϵ(n::ModelNode, i::Int) = n[i,2]
 getϕ(n::ModelNode, i::Int) = n[i,3]
 getψ(n::ModelNode, i::Int) = n[i,4]
 ℓhood(ℓ) = isfinite(ℓ) ? ℓ : -Inf
-integratedϵ(ϵ, η) = η * ϵ / (one(η) - (one(η) - η)*ϵ)
 
 # # transition probability under the linear BDP 1 → 2
 # # NOTE: this should account for extinction down the tree no??
@@ -46,8 +45,7 @@ function logpdf(wm::WhaleModel{T}, x::CCD) where T
 end
 
 # threaded implementation with ordinary vectors
-function logpdf!(wm::WhaleModel{T}, xs::Vector{<:CCD},
-        c::Function=pbothsides) where T
+function logpdf!(wm::WhaleModel{T}, xs::Vector{<:CCD}) where T
     #acc = Atomic{T}(0)
     ℓ = Vector{T}(undef, length(xs))
     Threads.@threads for i in 1:length(xs)
@@ -55,48 +53,28 @@ function logpdf!(wm::WhaleModel{T}, xs::Vector{<:CCD},
         #atomic_add!(acc, ℓ)
     end
     # ℓhood(acc[] - length(xs)*c(wm))
-    ℓhood(sum(ℓ) - length(xs) *c(wm))
+    ℓhood(sum(ℓ) - length(xs)*condition(wm))
     # the atomic thing does not work with Dual types
 end
 
-function logpdf(wm::WhaleModel{T}, xs::Vector{<:CCD},
-        c::Function=pbothsides) where T
+function logpdf(wm::WhaleModel{T}, xs::Vector{<:CCD}) where T
     ℓ = Vector{T}(undef, length(xs))
     Threads.@threads for i in 1:length(xs)
         ℓ[i] = logpdf(wm, xs[i])
     end
-    ℓhood(sum(ℓ) - length(xs) *c(wm))
+    ℓhood(sum(ℓ) - length(xs)*condition(wm))
 end
 
 # mapreduce implementations of logpdf for use with DArrays
-function logpdf!(wm::WhaleModel{T}, X::CCDArray, c::Function=pbothsides) where T
+function logpdf!(wm::WhaleModel{T}, X::CCDArray) where T
     ℓ = mapreduce((x)->logpdf!(wm, x.ℓ, x), +, X)
-    ℓhood(ℓ - (length(X))*c(wm))
+    ℓhood(ℓ - (length(X))*condition(wm))
 end
 
-function logpdf(wm::WhaleModel{T}, X::CCDArray, c::Function=pbothsides) where T
+function logpdf(wm::WhaleModel{T}, X::CCDArray) where T
     ℓ = mapreduce((x)->logpdf(wm, x), +, X)::T
-    ℓhood(ℓ - length(X)*c(wm))
+    ℓhood(ℓ - length(X)*condition(wm))
 end
-
-# log probability of non-extinction
-function pnonextinct(wm::WhaleModel)
-    @unpack η = getθ(wm.rates, root(wm))
-    log(1. -integratedϵ(getϵ(root(wm)), η))
-end
-
-# log probability of non extinction in both clades stemming from the root
-function pbothsides(wm::WhaleModel)
-    @unpack η = getθ(wm.rates, root(wm))
-    f, g = children(root(wm))
-    ϵr = integratedϵ(getϵ(root(wm)), η)
-    ϵf = integratedϵ(getϵ(f), η)
-    ϵg = integratedϵ(getϵ(g), η)
-    p = one(η) - ϵf - ϵg + ϵr
-    p > zero(p) ? log(p) : -Inf
-end
-
-# log probability of non-extinction everywhere? seems a bit tricky
 
 function whale!(n::ModelNode{T}, ℓ, x, wm) where T
     iswgd(n)  && return whalewgd!(n, ℓ, x, wm)

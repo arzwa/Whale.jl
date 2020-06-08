@@ -23,7 +23,9 @@ module Whale
     import Distributions: logpdf, logpdf!
     import FakeFamily: iswgd, nonwgdchild, wgdid, getθ
 
+    include("bdputil.jl")
     include("model.jl")
+    include("condition.jl")
     include("ccd.jl")
     include("core.jl")
     include("prior.jl")

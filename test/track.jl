@@ -17,7 +17,7 @@ fun = (m, x)-> Array(x) |> x->m((λ=x[1], μ=x[2], q=Float64[]))
 
 ccd = read_ale("example/example-1/ale/", w, true)
 tt = TreeTracker(w, ccd, pdf, fun)
-trees = track(tt, outdir="/tmp/testdir2")
+trees = Whale.track_distributed(tt, outdir="/tmp/testdir3")
 ev, sm = Whale.summarize(trees)
 
 ccd = read_ale("example/example-1/ale/", w, true)
