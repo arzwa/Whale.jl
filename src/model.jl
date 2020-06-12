@@ -69,7 +69,6 @@ struct WhaleModel{T,M,I,C<:SamplingCondition} <:DiscreteMultivariateDistribution
     condition::C
 end
 
-Base.show(io::IO, m::WhaleModel) = write(io::IO, "WhaleModel(\n$(m.rates))")
 Base.length(m::WhaleModel) = length(m.order)
 Base.getindex(m::WhaleModel, i) = m.order[m.index[i]]
 Base.lastindex(m::WhaleModel) = lastindex(m.order)
@@ -181,3 +180,32 @@ function FakeFamily.nonwgdchild(n::ModelNode)
 end
 
 getwgds(m::WhaleModel) = [n for n in m.order if iswgd(n)]
+
+# We want the show method to display all relevant information so that we can
+# always check easily when paranoid. Better be a bit too verbose here!
+function Base.show(io::IO, m::WhaleModel)
+    write(io, "WhaleModel\n$("—"^10)\n⋅Parameterization:\n$(m.rates)\n")
+    write(io, "⋅Condition:\n$(typeof(m.condition))\n\n")
+    write(io, "⋅Model structure:\n$(length(m.order)) nodes (")
+    write(io, "$(length(getleaves(getroot(m)))) leaves, ")
+    write(io, "$(length(getwgds(m))) WGD nodes)\n")
+    write(io, "node_id,wgd_id,subtree,distance,Δt,n\n")
+    for n in m.order
+        line = [Int(id(n)), Int(wgdid(n)),
+            "\"$(nwstr(n, dist=false))\"",
+            round(distance(n), digits=4),
+            round(n[end,1], digits=4), length(n)]
+        write(io, join(line, ","), "\n")
+    end
+end
+
+# I need this quite often; add a WGD on each internal branch
+function addbranchwgds!(tree)
+    nwgd = 0
+    for n in postwalk(tree)
+        (isroot(n) || isleaf(n)) && continue
+        nwgd += 1
+        insertnode!(n, name="wgd_$nwgd")
+    end
+    nwgd
+end

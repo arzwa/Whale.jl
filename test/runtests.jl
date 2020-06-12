@@ -47,5 +47,6 @@ using Random
         end
     end
 
+    # These tests rely on ALEobserve being available and in the $PATH
     include(joinpath(@__DIR__, "mle.jl"))
 end

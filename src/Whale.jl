@@ -3,7 +3,7 @@ module Whale
     using Distributed
     using Parameters
     using NewickTree
-    using FakeFamily
+    using FakeFamily   # we're not using much, not sure if worthwhile
     using DistributedArrays
     using Distributions
     using ForwardDiff
@@ -12,7 +12,6 @@ module Whale
     using LinearAlgebra
     using StatsBase
     using LogDensityProblems
-    # using AbstractTrees
     using TransformVariables
     using DataFrames
     using CSV

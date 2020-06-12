@@ -132,7 +132,6 @@ end
 # Get all binary trees in the order of the above functions
 function allbinarytrees(tree)
     function walk(n)
-        @unpack λ, μ, η = Whale.getθ(tree.rates, n)
         isleaf(n) && return [0., 1.]
         down = [walk(c) for c in children(n)]
         xs = vcat(collect(Iterators.product(down...))...)
