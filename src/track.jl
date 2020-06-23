@@ -54,6 +54,7 @@ function track_distributed(tt::TreeTracker;
     return result
 end
 
+# ccd is an individual family, not the full vector of ccds!
 function track_and_sum(model, df, fun, ccd, outdir="")
     trees = Array{RecNode,1}(undef, nrow(df))
     for (i,x) in enumerate(eachrow(df))
@@ -63,7 +64,7 @@ function track_and_sum(model, df, fun, ccd, outdir="")
     end
     rs = sumtrees(trees, ccd, model)
     if outdir != ""
-        CSV.write( joinpath(outdir, "$(ccd.fname).csv"), rs.events)
+        # CSV.write( joinpath(outdir, "$(ccd.fname).csv"), rs.events)
         writetrees(joinpath(outdir, "$(ccd.fname).trees"), rs.trees)
     end
     return rs

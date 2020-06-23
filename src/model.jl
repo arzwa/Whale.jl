@@ -189,23 +189,32 @@ function Base.show(io::IO, m::WhaleModel)
     write(io, "⋅Model structure:\n$(length(m.order)) nodes (")
     write(io, "$(length(getleaves(getroot(m)))) leaves, ")
     write(io, "$(length(getwgds(m))) WGD nodes)\n")
-    write(io, "node_id,wgd_id,subtree,distance,Δt,n\n")
+    write(io, "node_id,wgd_id,distance,Δt,n,subtree\n")
     for n in m.order
         line = [Int(id(n)), Int(wgdid(n)),
-            "\"$(nwstr(n, dist=false))\"",
             round(distance(n), digits=4),
-            round(n[end,1], digits=4), length(n)]
+            round(n[end,1], digits=4), length(n)-1,
+            "\"$(nwstr(n, dist=false))\""]
         write(io, join(line, ","), "\n")
     end
 end
 
 # I need this quite often; add a WGD on each internal branch
-function addbranchwgds!(tree)
+function addbranchwgds!(tree; tips=false)
     nwgd = 0
     for n in postwalk(tree)
-        (isroot(n) || isleaf(n)) && continue
+        (isroot(n) || (!tips && isleaf(n))) && continue
         nwgd += 1
         insertnode!(n, name="wgd_$nwgd")
     end
     nwgd
+end
+
+function setsamplingp!(model, dict::Dict)
+    @unpack params = model.rates
+    leaves = getleaves(getroot(model))
+    length(params.p) == 0 && push!(params.p, zeros(length(leaves))...)
+    for l in leaves
+        params.p[id(l)] = haskey(dict, name(l)) ? dict[name(l)] : 0.
+    end
 end

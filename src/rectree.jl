@@ -4,6 +4,7 @@
 struct RecSummary
     trees ::Vector{NamedTuple}
     events::DataFrame
+    fname ::String   # original file name of the associated CCD
 end
 
 Base.show(io::IO, rsum::RecSummary) =
@@ -30,6 +31,40 @@ function summarize(xs::AbstractVector{RecSummary}) # no joke
     (full=events, sum=sm)
 end
 
+getpairs(rsum::AbstractVector{RecSummary}) = mapreduce(getpairs, vcat, rsum)
+
+# TODO: quite ugly, clean up
+function getpairs(rsum::RecSummary)
+    # goal: for each pair of genes in a family the approximate posterior
+    # reconciliation distribution.
+    # first get all pair IDs
+    leafset = getleaves(rsum.trees[1].tree)
+    pairs = String[]
+    for i=1:length(leafset), j=1:i-1
+        l1 = leafset[i]; l2 = leafset[j]
+        (l1.data.label == "loss" || l2.data.label == "loss") && continue
+        pairid = join(sort([name(l1), name(l2)]), "__")
+        push!(pairs, pairid)
+    end
+    d = Dict(l=>zeros(length(pairs)) for l in Labels)
+    idx = Dict(p=>i for (i,p) in enumerate(pairs))
+    for (f,t) in rsum.trees
+        _getpairs!(d, idx, f, t)
+    end
+    DataFrame(d..., "family"=>rsum.fname, "pair"=>pairs)
+end
+
+function _getpairs!(d, idx, f, tree::Node)
+    for n in postwalk(tree)
+        isleaf(n) && continue
+        for l1 in getleaves(n[1]), l2 in getleaves(n[2])
+            (l1.data.label == "loss" || l2.data.label == "loss") && continue
+            pairid = join(sort([name(l1), name(l2)]), "__")
+            d[n.data.label][idx[pairid]] += f
+        end
+    end
+end
+
 """
     sumtrees(trees, ccd, wm)
 
@@ -53,7 +88,7 @@ function sumtrees(trees::AbstractVector, ccd::CCD, wm::WhaleModel)
         events = isnothing(events) ? df .* freq : events .+ (df .* freq)
     end
     events[!,:node] = [getnodelabel(wm[i]) for i=1:length(wm)]
-    RecSummary(summary, events)
+    RecSummary(summary, events, ccd.fname)
 end
 
 sumevents(r::AbstractVector{RecSummary}) =
@@ -107,7 +142,7 @@ function getnodelabel(n)
     !isleaf(n) && return join([name(getleaves(c)[1]) for c in children(n)], ",")
 end
 
-# WGD-reated summarization
+# WGD-related summarization
 iswgddup(n::RecNode) = n.data.label=="wgd"
 getwgds(tree::RecNode) = filter(iswgddup, postwalk(tree))
 getwgds(tree::RecNode, wgds) = filter(
