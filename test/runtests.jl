@@ -91,7 +91,9 @@ using Random
         logpdf!(w, ccd)
         out = [Whale.backtrack(w, ccd[1]) for i=1:100]
         rsum = sumtrees(out, ccd[1], w)
-        df = Whale.getpairs([rsum1])
+        df = Whale.getpairs([rsum], w)
         @test all(isapprox.(map(sum, eachrow(df[!,1:end-2])), Ref(1.)))
     end
 end
+
+writedlm("/tmp/test.csv", eachrow(df), ",")

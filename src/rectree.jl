@@ -31,10 +31,20 @@ function summarize(xs::AbstractVector{RecSummary}) # no joke
     (full=events, sum=sm)
 end
 
-getpairs(rsum::AbstractVector{RecSummary}) = mapreduce(getpairs, vcat, rsum)
+function getpairs(rsum::AbstractVector{RecSummary}, model)
+    labels = String[]
+    for n in model.order
+        e = id(n)
+        push!(labels, "$(e)_duplication")
+        iswgd(n) ?
+            push!(labels, "$(e)_wgd", "$(e)_wgdloss") :
+            push!(labels, "$(e)_speciation")
+    end
+    mapreduce(x->getpairs(x, labels), vcat, rsum)
+end
 
 # TODO: quite ugly, clean up
-function getpairs(rsum::RecSummary)
+function getpairs(rsum::RecSummary, labels)
     # goal: for each pair of genes in a family the approximate posterior
     # reconciliation distribution.
     # first get all pair IDs
@@ -46,12 +56,19 @@ function getpairs(rsum::RecSummary)
         pairid = join(sort([name(l1), name(l2)]), "__")
         push!(pairs, pairid)
     end
-    d = Dict(l=>zeros(length(pairs)) for l in Labels)
+    d = Dict(l=>zeros(length(pairs)) for l in labels)
     idx = Dict(p=>i for (i,p) in enumerate(pairs))
     for (f,t) in rsum.trees
         _getpairs!(d, idx, f, t)
     end
+    roundvals!(d)
     DataFrame(d..., "family"=>rsum.fname, "pair"=>pairs)
+end
+
+function roundvals!(d, digits=3)
+    for k in keys(d)
+        d[k] = round.(d[k], digits=digits)
+    end
 end
 
 function _getpairs!(d, idx, f, tree::Node)
@@ -60,7 +77,8 @@ function _getpairs!(d, idx, f, tree::Node)
         for l1 in getleaves(n[1]), l2 in getleaves(n[2])
             (l1.data.label == "loss" || l2.data.label == "loss") && continue
             pairid = join(sort([name(l1), name(l2)]), "__")
-            d[n.data.label][idx[pairid]] += f
+            label = "$(n.data.e)_$(n.data.label)"
+            d[label][idx[pairid]] += f
         end
     end
 end
