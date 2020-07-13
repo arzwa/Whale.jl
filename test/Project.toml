@@ -2,7 +2,6 @@
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 DynamicHMC = "bbc10e6e-7c05-544b-b16e-64fede858acb"
-FakeFamily = "0577ea09-897c-4e06-b0d4-a2e3d1c9af03"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 NewickTree = "b0a14db8-6308-4ebc-8917-f72cd81f5094"
 Optim = "429524aa-4258-5aef-a3af-852621145aeb"
