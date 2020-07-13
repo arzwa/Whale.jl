@@ -3,6 +3,7 @@
 # Ignatieva et al. 2020, i.e. considering the BDP backward in time with
 # n sampled lineages we can obtain distribution on node ages for the
 # ancestral duplication tree
+Random.randexp(λ) = -log(rand())/λ
 
 mutable struct Rec{I,T}
     e::I

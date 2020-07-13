@@ -344,6 +344,12 @@ git-tree-sha1 = "20abc3b0b00c54e952bea32f63dd292acf03d589"
 uuid = "497a8b3b-efae-58df-a0af-a86822472b78"
 version = "1.1.10"
 
+[[DynamicHMC]]
+deps = ["ArgCheck", "DocStringExtensions", "LinearAlgebra", "LogDensityProblems", "NLSolversBase", "Optim", "Parameters", "Random", "Statistics"]
+git-tree-sha1 = "970309540e8e8c30831c191f7967d2b64b050e2c"
+uuid = "bbc10e6e-7c05-544b-b16e-64fede858acb"
+version = "2.1.5"
+
 [[DynamicPPL]]
 deps = ["AbstractMCMC", "Bijectors", "Distributions", "MacroTools", "Random", "ZygoteRules"]
 git-tree-sha1 = "653884bb5fe328060eda26a536366637ee8f076c"
@@ -363,9 +369,9 @@ version = "0.2.2"
 
 [[Expat_jll]]
 deps = ["Libdl", "Pkg"]
-git-tree-sha1 = "9cdd4b1523086c9d93604599e3a389e8941e52b0"
+git-tree-sha1 = "def36fdc72dc7a9953673cf5492588ef3d79139c"
 uuid = "2e619515-83b5-522b-bb60-26c02a35a201"
-version = "2.2.7+1"
+version = "2.2.7+3"
 
 [[ExprTools]]
 git-tree-sha1 = "6f0517056812fd6aa3af23d4b70d5325a2ae4e95"
@@ -448,9 +454,9 @@ version = "0.8.0"
 
 [[Fontconfig_jll]]
 deps = ["Bzip2_jll", "Expat_jll", "FreeType2_jll", "Libdl", "Libuuid_jll", "Pkg", "Zlib_jll"]
-git-tree-sha1 = "141fe5f6d4013304d2ca5af0ac20ef4855bcc4e5"
+git-tree-sha1 = "73267a13eabf7506cbc205358139e399a365ab4a"
 uuid = "a3f928ae-7b40-5064-980b-68af3947d34b"
-version = "2.13.1+11"
+version = "2.13.1+12"
 
 [[Formatting]]
 deps = ["Printf"]
@@ -506,9 +512,9 @@ version = "0.8.3"
 
 [[Gettext_jll]]
 deps = ["Libdl", "Libiconv_jll", "Pkg", "XML2_jll"]
-git-tree-sha1 = "e43d686df1f45cab7a2570ff63642a3ea618ca5f"
+git-tree-sha1 = "731622006369631e1d0c180a61d2dd5fe9e4dfd4"
 uuid = "78b55507-aeef-58d4-861c-77aaff3498b1"
-version = "0.20.1+2"
+version = "0.20.1+4"
 
 [[Glib_jll]]
 deps = ["Gettext_jll", "Libdl", "Libffi_jll", "Libiconv_jll", "Libmount_jll", "PCRE_jll", "Pkg", "Zlib_jll"]
@@ -770,9 +776,9 @@ version = "1.36.0+1"
 
 [[Libiconv_jll]]
 deps = ["Libdl", "Pkg"]
-git-tree-sha1 = "e5256a3b0ebc710dbd6da0c0b212164a3681037f"
+git-tree-sha1 = "c9d4035d7481bcdff2babf5a55525a818ef8ed8f"
 uuid = "94ce4f54-9a6c-5748-9c1c-f9c7231a4531"
-version = "1.16.0+2"
+version = "1.16.0+5"
 
 [[Libmount_jll]]
 deps = ["Libdl", "Pkg"]
@@ -981,15 +987,15 @@ version = "1.3.4+0"
 
 [[OpenBLAS_jll]]
 deps = ["CompilerSupportLibraries_jll", "Libdl", "Pkg"]
-git-tree-sha1 = "1887096f6897306a4662f7c5af936da7d5d1a062"
+git-tree-sha1 = "0c922fd9634e358622e333fc58de61f05a048492"
 uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
-version = "0.3.9+4"
+version = "0.3.9+5"
 
 [[OpenSSL_jll]]
 deps = ["Libdl", "Pkg"]
-git-tree-sha1 = "d2a6f25262d568b5a7e454cf7ff5066a79d16c7d"
+git-tree-sha1 = "7aaaded15bf393b5f34c2aad5b765c18d26cb495"
 uuid = "458c3c95-2e84-50aa-8efc-19380b2a3a95"
-version = "1.1.1+2"
+version = "1.1.1+4"
 
 [[OpenSpecFun_jll]]
 deps = ["CompilerSupportLibraries_jll", "Libdl", "Pkg"]
@@ -1433,9 +1439,9 @@ version = "0.5.2"
 
 [[XML2_jll]]
 deps = ["Libdl", "Libiconv_jll", "Pkg", "Zlib_jll"]
-git-tree-sha1 = "987c02a43fa10a491a5f0f7c46a6d3559ed6a8e2"
+git-tree-sha1 = "6b2ffe6728bdba991da4fc1aa5980a53db46a23f"
 uuid = "02c8fc9c-b97f-50b9-bbe4-9be30ff0a78a"
-version = "2.9.9+4"
+version = "2.9.9+5"
 
 [[XSLT_jll]]
 deps = ["Libdl", "Libgcrypt_jll", "Pkg", "XML2_jll"]
@@ -1493,9 +1499,9 @@ version = "1.4.0+1"
 
 [[Zlib_jll]]
 deps = ["Libdl", "Pkg"]
-git-tree-sha1 = "a2e0d558f6031002e380a90613b199e37a8565bf"
+git-tree-sha1 = "622d8b6dc0c7e8029f17127703de9819134d1b71"
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
-version = "1.2.11+10"
+version = "1.2.11+14"
 
 [[ZygoteRules]]
 deps = ["MacroTools"]

@@ -70,33 +70,11 @@ LogDensityProblems.dimension(p::WhaleProblem) = dimension(p.model.rates.trans)
 TransformVariables.transform(p::WhaleProblem, x) =
     transform(p.model.rates.trans, x)
 
-# NOTE: consider removing these functions, as there is no information that is
-# not contained in the summarized trees
-# backtrack(p::WhaleProblem, posterior) =
-#     backtrack(p.model, p.data, posterior, p.model.rates)
-#
-# function backtrack(wm, ccd, posterior, rates)
-#     function bt(x)
-#         wmm = wm(x)
-#         logpdf!(wmm, ccd)
-#         Array(backtrack(wmm, ccd))
-#     end
-#     permutedims(hcat(map(bt, posterior)...))
-# end
-#
-# function sumtrees(p::WhaleProblem, posterior)
-#     # NOTE: this will do the whole backtracking + sumarizing routine in the
-#     # inner (parallel) loop. This avoids storing a huge array (N × n) of
-#     # reconciled trees
-#     @unpack model, data = p
-#     function track_and_sum(ccd)
-#         trees = Array{RecNode,1}(undef, length(posterior))
-#         for (i,x) in enumerate(posterior)
-#             wmm = model(x)
-#             logpdf!(wmm, ccd)
-#             trees[i] = backtrack(wmm, ccd)
-#         end
-#         sumtrees(trees, ccd, model)
-#     end
-#     map(track_and_sum, data)
-# end
+function track(p::WhaleProblem, post;
+        progress=true, outdir::String="")
+    @unpack model, data = p
+    # NOTE eachrow on vector of namedtuples produces for each element (i.e.
+    # namedtuple) a subarray with that element.
+    tt = TreeTracker(model, data, post, (model, x)->model(x[1]))
+    track_distributed(tt, progress=progress, outdir=outdir)
+end

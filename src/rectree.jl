@@ -170,9 +170,9 @@ getwgds(tree::RecNode, wgds) = filter(
     getwgdtables(recs::Vector{RecSummary}, ccd, model::WhaleModel)
     getwgdtables(recs::Vector{RecSummary}, ccd, wgds::Vector{String})
 """
-getwgdtables(recs::Vector{RecSummary}, ccd, wm::WhaleModel) =
+getwgdtables(recs::AbstractVector{RecSummary}, ccd, wm::WhaleModel) =
     getwgdtables(recs, ccd, name.(getwgds(wm)))
-function getwgdtables(recs::Vector{RecSummary}, ccd, wgds::Vector)
+function getwgdtables(recs::AbstractVector{RecSummary}, ccd, wgds::Vector)
     data = [getwgddups(r, wgds) for r in recs]
     [wgd=>wgdtable(data, ccd, wgd) for wgd in wgds]
 end

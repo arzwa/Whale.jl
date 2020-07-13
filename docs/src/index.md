@@ -41,9 +41,7 @@ To perform analyses with Whale, you will need
 
 ## References
 
-`Whale.jl` is developed by Arthur Zwaenepoel at the VIB-UGent center for plant
-systems biology (bioinformatics & evolutionary genomics group). If you use
-Whale, please cite:
+`Whale.jl` is developed by Arthur Zwaenepoel at the VIB-UGent center for plant systems biology (bioinformatics & evolutionary genomics group). If you use Whale, please cite:
 
 >Zwaenepoel, A. and Van de Peer, Y., 2019. Inference of Ancient Whole-Genome Duplications and the Evolution of Gene Duplication and Loss Rates. *Molecular biology and evolution*, 36(7), pp.1384-1404.
 

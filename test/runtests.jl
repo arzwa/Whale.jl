@@ -16,13 +16,9 @@ const DHMC = true         # do DynamicHMC related tests
                 DLWGD(λ=ones(n), μ=ones(n), q=[0.2, 0.1], η=0.9), fixed=(:p,))
         w = WhaleModel(r, t, 0.05)
         ccd = read_ale(data, w)
-        # @test logpdf!(w, ccd) ≈ -588.0647568294178
-        # @test logpdf(w, ccd) ≈ -588.0647568294178
         @test logpdf!(w, ccd) ≈ -570.9667405899105
         @test logpdf(w, ccd) ≈ -570.9667405899105
         ccd = read_ale(data, w, true)
-        # @test logpdf!(w, ccd) ≈ -588.0647568294178
-        # @test logpdf(w, ccd) ≈ -588.0647568294178
         @test logpdf!(w, ccd) ≈ -570.9667405899105
         @test logpdf(w, ccd) ≈ -570.9667405899105
 

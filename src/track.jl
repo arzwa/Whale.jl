@@ -19,7 +19,7 @@ end
 # all families in each iteration, while now we do it the other way around to
 # prevent having a huge array of trees... If we could summarize trees on the go
 # however, we could interchange the order of the loops.
-track(tt::TreeTracker; kwargs...) = nworkers() > 1 ?
+track(tt::TreeTracker; kwargs...) = typeof(tt.data)<:DArray ?
     track_distributed(tt; kwargs...) : track_threaded(tt; kwargs...)
 
 function flsh()  # flush streams (on cluster I have troubles with this)
@@ -56,7 +56,7 @@ end
 
 # ccd is an individual family, not the full vector of ccds!
 function track_and_sum(model, df, fun, ccd, outdir="")
-    trees = Array{RecNode,1}(undef, nrow(df))
+    trees = Array{RecNode,1}(undef, size(df)[1])
     for (i,x) in enumerate(eachrow(df))
         wmm = fun(model, x)
         ℓ = logpdf!(wmm, ccd)

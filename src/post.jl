@@ -6,7 +6,7 @@ Unpack a data frame so that all columns contain scalars. Can be repacked using
 """
 function unpack(df::DataFrame)
     cols = []
-    for (col, x) in eachcol(df, true)
+    for (col, x) in pairs(eachcol(df))
         push!(cols, unpack.(x, col))
     end
     DataFrame(merge.(cols...))
@@ -14,7 +14,7 @@ end
 
 unpack(x::Vector) = unpack(DataFrame(x))
 unpack(x::T, sym::Symbol) where T<:Real = (; sym=>x)
-unpack(x::AbstractMatrix, sym::Symbol) = (; 
+unpack(x::AbstractMatrix, sym::Symbol) = (;
     [Symbol("$(sym)_$(i)_$(j)")=>x[i,j] for i=1:size(x)[1], j=1:size(x)[2]]...)
 unpack(x::Vector, sym::Symbol) = (; [Symbol("$(sym)_$(i)")=>x[i] for i=1:length(x)]...)
 df2vec(df) = [(; [x=>y[x] for x in names(y)]...) for y in eachrow(df)]
