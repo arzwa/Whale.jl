@@ -33,7 +33,7 @@ function fand∇f(trans::TransformTuple, x)
 end
 
 # for sampling from the prior alone
-fand∇f(wm::WhaleModel, r, data::Nothing, t, x) = 0., zeros(dimension(t))
+fand∇f(wm::WhaleModel, data::Nothing, x) = 0., zeros(dimension(wm.rates.trans))
 
 # parallel computation of ℓ and ∇ℓ, all derivation is within parallel processes
 # and the partial values are accumulated on the main process

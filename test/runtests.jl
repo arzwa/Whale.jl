@@ -1,7 +1,9 @@
 using Pkg; Pkg.activate(@__DIR__)
-using Whale, NewickTree, Parameters
-using Test
-using Random
+using Whale, NewickTree, Parameters, FakeFamily
+using Test, Random
+
+const ALEOBSERVE = false  # do tests requiring `ALEobserve` in the path
+const DHMC = true         # do DynamicHMC related tests
 
 @testset "Whale tests" begin
     @testset "likelihood" begin
@@ -24,7 +26,7 @@ using Random
         @test logpdf!(w, ccd) ≈ -570.9667405899105
         @test logpdf(w, ccd) ≈ -570.9667405899105
 
-        # root rates do not have an effect
+        # root rates should not have an effect
         r.params.λ[id(getroot(w))] = NaN
         r.params.μ[id(getroot(w))] = NaN
         w = WhaleModel(r, t, 0.05)
@@ -53,7 +55,7 @@ using Random
             θ = DLWGD(λ=randn(n) .- 3, μ=randn(n) .- 3, q=rand(2), η=0.67)
             r = Whale.RatesModel(θ, fixed=(:p,))
             w = WhaleModel(r, t, 0.05,
-                    condition=NowhereExtinctCondition(t))
+                    condition=Whale.NowhereExtinctCondition(t))
             p1 = exp(Whale.condition(w))
             ts, ps = FakeFamily.dlsimbunch(w, 1000, condition=:none);
             c = map(x->all(Array(x) .> 0), eachrow(ps))
@@ -61,9 +63,6 @@ using Random
             @test isapprox(p1, p2, rtol=0.1)
         end
     end
-
-    # These tests rely on ALEobserve being available and in the $PATH
-    include(joinpath(@__DIR__, "mle.jl"))
 
     @testset "set sampling probabilities" begin
         data = joinpath(@__DIR__, "../example/example-1/ale")
@@ -94,6 +93,7 @@ using Random
         df = Whale.getpairs([rsum], w)
         @test all(isapprox.(map(sum, eachrow(df[!,1:end-2])), Ref(1.)))
     end
-end
 
-writedlm("/tmp/test.csv", eachrow(df), ",")
+    ALEOBSERVE && include(joinpath(@__DIR__, "mle.jl"))
+    DHMC && include(joinpath(@__DIR__, "dhmc.jl"))
+end
