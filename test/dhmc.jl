@@ -37,7 +37,7 @@ using Distributions, Test, DynamicHMC
         results = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 500,
             reporter=NoProgressReport(),
             warmup_stages=DynamicHMC.default_warmup_stages(doubling_stages=2))
-        post = transform.(Ref(problem), results.chain)
+        post = Whale.transform.(Ref(problem), results.chain)
         @test isapprox((map(x->x.λ, post) |> mean), mean(prior.πr)[1], atol=0.2)
         @test isapprox((map(x->x.η, post) |> mean), mean(prior.πη), atol=0.1)
     end
@@ -51,7 +51,7 @@ using Distributions, Test, DynamicHMC
         results = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 100,
             reporter=NoProgressReport(),
             warmup_stages=DynamicHMC.default_warmup_stages(doubling_stages=2))
-        posterior = transform.(Ref(problem), results.chain)
+        posterior = Whale.transform.(Ref(problem), results.chain)
         @test isapprox((map(x->x.λ, posterior) |> mean), 0.13, atol=0.05)
         @test isapprox((map(x->x.η, posterior) |> mean), 0.7, atol=0.1)
     end

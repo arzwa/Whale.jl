@@ -960,7 +960,7 @@ version = "0.4.4"
 
 [[NewickTree]]
 deps = ["AbstractTrees", "Test"]
-path = "../../NewickTree"
+git-tree-sha1 = "ee88ab77181cdf6288d90f96574e8b4f81584a4e"
 uuid = "b0a14db8-6308-4ebc-8917-f72cd81f5094"
 version = "0.2.0"
 

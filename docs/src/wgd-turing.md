@@ -1,5 +1,5 @@
 
-# Example using Turing
+# Bayesian inference using Turing
 
 ```@example wgd-turing
 using Whale, NewickTree, Distributions, Turing, DataFrames, LinearAlgebra

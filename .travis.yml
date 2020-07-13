@@ -1,5 +1,12 @@
 language: julia
-
+os:
+  - linux
+julia:
+  - 1.4
+  - nightly
+notifications:
+  email: false
+  
 jobs:
   include:
     - stage: "Documentation"
