@@ -46,8 +46,8 @@ Base.setindex!(m::ModelNode, x, i, j) = m.data.slices[i, j] = x
 Base.axes(m::ModelNode, d) = Base.axes(m.data.slices, d)
 Base.lastindex(m::ModelNode, d) = Base.axes(m, d)[end]
 Base.length(m::ModelNode) = size(m.data.slices)[1]
-FakeFamily.iswgd(n::Node) = startswith(name(n), "wgd")
-FakeFamily.wgdid(n::ModelNode) = n.data.wgdid
+iswgd(n::Node) = startswith(name(n), "wgd")
+wgdid(n::ModelNode) = n.data.wgdid
 lastslice(m::ModelNode) = lastindex(m, 1)
 
 abstract type SamplingCondition end
@@ -174,7 +174,7 @@ function getslice(λ, μ, t, ϵ)
     (ϵ=_ϵ(α, β, ϵ), ϕ=_ϕ(α, β, ϵ), ψ=_ψ(α, β, ϵ))
 end
 
-function FakeFamily.nonwgdchild(n::ModelNode)
+function nonwgdchild(n::ModelNode)
     while iswgd(n) n = first(children(n)) end
     return n
 end
