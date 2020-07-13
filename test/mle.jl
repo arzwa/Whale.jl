@@ -1,10 +1,10 @@
 # A test suite for maximum likelihood estimation, which is at the same time
 # a simulation 'study' for the core algorithm.
 using Pkg; Pkg.activate(@__DIR__)
-using Whale, NewickTree, FakeFamily
+using Whale, NewickTree
 using Optim, ForwardDiff
 using Test, Random, Distributions
-import FakeFamily: dlsimbunch, aleobserve
+import Whale: dlsimbunch, aleobserve
 
 function mlfuns(model, ccd, η, nwgd=0)
     function f(x::Vector{T}) where T

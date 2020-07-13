@@ -4,7 +4,7 @@
 !!! warning
     The latest Whale version is a thorough rewrite of the Whale library, and is still work in progress. For the version as used in Zwaenepoel & Van de Peer (2019), refer to [this release (v0.2)](https://github.com/arzwa/Whale.jl/releases/tag/v0.2). Nevertheless, the current version should be safe to use and is more efficient and convenient (if you know a bit of julia).
 
-Whale provides tools for genome-wide **amalgamated likelihood estimation (ALE) under a DL+WGD model**, which is an approach to infer reconciled gene trees and parameters of a model of gene family evolution given a known species tree.
+Whale provides tools for (genome-wide) **amalgamated likelihood estimation (ALE) under a DL+WGD model**, which is an approach to infer reconciled gene trees and parameters of a model of gene family evolution given a known species tree.
 
 The ALE approach takes into account uncertainty in the gene tree topology by marginalizing over all tree topologies that can be amalgamated from the so-called *conditional clade distribution* (CCD). This CCD can be constructed from a sample of the posterior distribution of tree topologies (which can be obtained using any standard software for Bayesian phylogenetics).
 
@@ -20,13 +20,7 @@ More specifically, this library can be used to
 
 ## Installation
 
-You will need julia-1.x. Fire up a julia REPL by typing `julia` at the command line enter the package manager interface by typing `]`, and run the command
-
-```julia-repl
-(v1.1) pkg> add https://github.com/arzwa/PhyloTrees.jl
-(v1.1) pkg> add https://github.com/arzwa/ConsensusTrees.jl
-(v1.1) pkg> add https://github.com/arzwa/Whale.jl
-```
+You will need julia-1.x. Fire up a julia REPL by typing `julia` at the command line enter the package manager interface by typing `]`, and execute `add Whale`.
 
 ## Data preparation
 

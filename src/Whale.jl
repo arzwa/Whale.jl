@@ -3,7 +3,6 @@ module Whale
     using Distributed
     using Parameters
     using NewickTree
-    using FakeFamily   # we're not using much, not sure if worthwhile
     using DistributedArrays
     using Distributions
     using ForwardDiff
@@ -20,8 +19,9 @@ module Whale
     import LogDensityProblems: logdensity_and_gradient
     import NewickTree: id, name, distance
     import Distributions: logpdf, logpdf!
-    import FakeFamily: iswgd, nonwgdchild, wgdid, getθ
 
+    include("rmodels.jl")
+    include("dlsim.jl")
     include("bdputil.jl")
     include("model.jl")
     include("condition.jl")

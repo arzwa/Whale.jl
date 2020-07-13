@@ -1,5 +1,5 @@
 using Pkg; Pkg.activate(@__DIR__)
-using Whale, NewickTree, Parameters, FakeFamily
+using Whale, NewickTree, Parameters
 using Test, Random
 
 const ALEOBSERVE = false  # do tests requiring `ALEobserve` in the path
@@ -57,7 +57,7 @@ const DHMC = true         # do DynamicHMC related tests
             w = WhaleModel(r, t, 0.05,
                     condition=Whale.NowhereExtinctCondition(t))
             p1 = exp(Whale.condition(w))
-            ts, ps = FakeFamily.dlsimbunch(w, 1000, condition=:none);
+            ts, ps = Whale.dlsimbunch(w, 1000, condition=:none);
             c = map(x->all(Array(x) .> 0), eachrow(ps))
             p2 = sum(c)/1000
             @test isapprox(p1, p2, rtol=0.1)
