@@ -1,6 +1,6 @@
 # # Reconciled tree inference example
 using Whale, DynamicHMC, DynamicHMC.Diagnostics, Random, NewickTree, DataFrames
-Random.seed!(624)
+Random.seed!(624);
 
 # In this case study, we will perform Bayesian gene tree reconciliation for a single (large) gene family. The data can be found in the `example4` directory in the `Whale` git repository. We first load the data:
 base  = joinpath(@__DIR__, "../../example/example-4")
@@ -51,4 +51,4 @@ tl = TreeLayout(rectree, cladogram=true, dims=(400,800))
         (n, p) -> n.data.label == "duplication" && box(p, 4, 4, :fill))
 end 500 850 outpath
 
-# Squares show duplication events and internal node labels show the posterior probability of observing the relevant node in the reconciled tree. 
+# Squares show duplication events and internal node labels show the posterior probability of observing the relevant node in the reconciled tree.
