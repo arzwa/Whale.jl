@@ -1,14 +1,7 @@
-whaleamb*
-whalebay*
-whalebay*/
-test/whaleamb-gbm*
-test/whalebay-gbm*
-test/wmi*
-test/coffee*
-src_old/
-docs/build/
-src/_*
-
+assets/
+assets
+luxor*
+benchmark/
 
 # Created by https://www.gitignore.io/api/julia
 # Edit at https://www.gitignore.io/?templates=julia

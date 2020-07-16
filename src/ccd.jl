@@ -1,302 +1,237 @@
-# CCD etc.
-const DPMat{T} = Dict{Int64,Array{T,2}} where T<:Real
-const TripleDict = Dict{Int64,Array{Tuple{Int64,Int64,Int64}}}
+# Synteny amounts in Whale with a binary random varible associated with any
+# internal node indicating whether or not the node is synteny-preserving.
+#
+# In the simplest approach to include synteny in Whale, we associate with each
+# triple a binary observation indicating whether a syntenic relation is
+# observed between the left and right subclade. In such a model everything is
+# straightforwardly observed, and we don't have to deal with the evolution of
+# synteny relationships along the species tree. In such an approach it would be
+# best to only use synteny information as evidence against small-scale
+# duplication, and don't use an absence of syntenic relation as evidence
+# against a speciation or WGD node. This is necessary because synteny breaks
+# down over time, and we would have no model for that in this case (since that
+# would require full model that enables to compute the probability of loss
+# of synteny down the tree, which is exactly the thing we want to avoid in
+# this simple approach).
+"""
+    Triple
+"""
+struct Triple{T<:Integer}
+    γ1::T
+    γ2::T
+    p ::Float64
+end
 
-Base.getindex(d::DPMat{T}, e::Int64, γ::Int64) where T<:Real = d[e][γ, :]
-Base.getindex(d::DPMat{T}, e::Int64, γ::Int64, i::Int64) where T<:Real =
-    d[e][γ, i]
-Base.setindex!(d::DPMat{T}, x::T, e::Int64, γ::Int64, i::Int64) where T<:Real =
-    d[e][γ, i] = x
+Triple{T}(x::Tuple) where T = Triple(T(x[1]), T(x[2]), x[3])
+Triple{T}(x::Tuple, count) where T = Triple(T(x[1]), T(x[2]), x[3]/count)
 
 """
-    CCD{<:Real,RecTree}
-
-Conditional clade distribution with many helper fields. See [`read_ale`](@ref)
-for details on IO.
-
-```julia-repl
-julia> x
-CCD{Float64,PhyloTrees.RecTree}(13 taxa, 83 clades, 5001 samples)
-
-julia> x.ccp
-Dict{Tuple,Float64} with 203 entries:
-  (83, 65, 66) => 0.014797
-  (46, 6, 60)  => 0.0185963
-  (25, 16, 23) => 1.0
-  (43, 7, 38)  => 0.995601
-  ⋮            => ⋮
-
-julia> Whale.get_triples(x, 68)
-3-element Array{Tuple{Int64,Int64,Int64},1}:
- (24, 75, 1)
- (2, 74, 22)
- (6, 36, 103)
-```
+    Clade
 """
-mutable struct CCD{T<:Real,RecTree}
-    Γ::Int64                                        # ubiquitous clade
-    total::Int64                                    # total # of samples
-    m1::Dict{Int64,Int64}                           # counts for every clade
-    m2::TripleDict                                  # counts for every triple
-    m3::Dict{Int64,Int64}                           # leaf to species node map
-    ccp::Dict{Tuple,Float64}                        # conditional clade p's
-    leaves::Dict{Int64,String}                      # leaf names
-    blens::Dict{Int64,Float64}                      # branch lengths for γ's'
-    clades::Array{Int64,1}                          # clades ordered by size
-    species::Dict{Int64,Set{Int64}}                 # clade to species nodes
-    tmpmat::DPMat{T}                                # tmp reconciliation matrix
-    recmat::DPMat{T}                                # the reconciliation matrix
-    rectrs::Array{RecTree}                          # backtracked rectrees
-    fname::String
+struct Clade{T<:Integer}
+    id     ::T
+    count  ::Int
+    splits ::Vector{Triple{T}}
+    leaves ::Set{T}
+    species::Set{T}
+    blens  ::Float64
+end
 
-    function CCD{T}(N, m1, m2, m3, l, blens,
-            clades, species, Γ, ccp, fname) where T<:Real
-        m  = DPMat{T}()
-        m_ = DPMat{T}()
-        r  = RecTree[]
-        new{T,RecTree}(Γ, N, m1, m2, m3, ccp, l, blens, clades,
-            species, m, m_, r, fname)
+Base.length(c::Clade) = length(c.leaves)
+Base.isless(c1::Clade, c2::Clade) = length(c1) < length(c2)
+NewickTree.isleaf(c::Clade) = length(c.leaves) == 1
+
+function Base.show(io::IO, c::Clade{T}) where T
+    @unpack id, count = c
+    write(io, "Clade{$T}(γ$id, $count, $(length(c)))")
+end
+
+"""
+    CCD
+"""
+mutable struct CCD{T<:Integer,V<:Real}
+    total  ::Int               # number of trees on which the CCD is based
+    clades ::Vector{Clade{T}}  # ordered by size (small to large)!
+    leaves ::Vector{String}
+    ℓ      ::Vector{Matrix{V}}
+    fname  ::String
+    # NOTE leaves have the first clade IDs {1, ...} so we can use a vector
+end
+
+Base.length(ccd::CCD) = length(ccd.clades)
+Base.lastindex(ccd::CCD) = length(ccd)
+Base.getindex(ccd::CCD, i::Integer) = ccd.clades[i]
+Base.show(io::IO, ccd::CCD{T,V}) where {T,V} =
+    write(io, "CCD{$T,$V}(Γ=$(length(ccd)), 𝓛=$(length(ccd.leaves)))")
+
+NewickTree.getleaves(ccd::CCD, γ) = [ccd.leaves[l] for l in ccd[γ].leaves]
+
+CCD(s::String, wm::WhaleModel, spmap) = CCD(parse_aleobserve(s), wm, spmap)
+
+function CCD(ale::NamedTuple, wm::WhaleModel{T,M,I}, spmap) where {T,M,I}
+    @unpack Bip_counts, Dip_counts, set_id, Bip_bls, leaf_id, observations = ale
+    clades = Clade{I}[]
+    # get a new order, from small to large, keep leaf order intact. we don't use
+    # the IDs from the ALE file, but asign new ones based on this order.
+    order = sort([(length(v), k) for (k,v) in set_id])  # sort clades by size
+    idmap = Dict(k => i for (i, (_, k)) in enumerate(order))  # γ => new ID map
+    for (i, (_, k)) in enumerate(order)
+        v = Bip_counts[k]
+        t = [(idmap[t[1]], idmap[t[2]], t[3]) for t in Dip_counts[k]]
+        p = Triple{I}.(t, v)
+        s = getspecies(leaf_id, set_id[k], spmap)
+        c = Clade(I(idmap[k]), v, p, Set(I.(set_id[k])), s, Float64(Bip_bls[k]))
+        push!(clades, c)
     end
-end
-
-# display method
-function Base.display(io::IO, ccd::CCD)
-    print("$(typeof(ccd))($(length(ccd.leaves)) taxa, $(length(ccd.clades))")
-    print(" clades, $(ccd.total) samples)")
-end
-
-function Base.show(io::IO, ccd::CCD)
-    write(io,"$(typeof(ccd))($(length(ccd.leaves)) taxa, $(length(ccd.clades))")
-    write(io, " clades, $(ccd.total) samples)")
+    leaves = last.(sort(collect(leaf_id)))
+    ℓ = Vector{Matrix{T}}(undef, length(wm))
+    for n in wm.order ℓ[id(n)] = zeros(T, length(clades), length(n)) end
+    CCD(observations, clades, leaves, ℓ, ale.fname)
 end
 
 """
-    read_ale(fname::String, s::SlicedTree)
-
-Read in a bunch of conditional clade distributions (CCD) from ALEobserve
-(`.ale`) files. Either provide
-
-- a file with a filename on each line
-- a directory with `.ale` files
-- a single `.ale` file
-- an empty file, for running MCMC under the prior alone
-
-```julia-repl
-julia> st = Whale.example_tree()
-SlicedTree(9, 17, 7)
-
-julia> ccd = read_ale("example/example-ale/", st)
-[ Info:  .. read 12 ALE files
-12-element DistributedArrays.DArray{CCD,1,Array{CCD,1}}:
- CCD{Float64,PhyloTrees.RecTree}(13 taxa, 83 clades, 5001 samples)
- CCD{Float64,PhyloTrees.RecTree}(13 taxa, 55 clades, 5001 samples)
- CCD{Float64,PhyloTrees.RecTree}(13 taxa, 89 clades, 5001 samples)
- CCD{Float64,PhyloTrees.RecTree}(13 taxa, 131 clades, 5001 samples)
- CCD{Float64,PhyloTrees.RecTree}(13 taxa, 107 clades, 5001 samples)
- CCD{Float64,PhyloTrees.RecTree}(13 taxa, 59 clades, 5001 samples)
- CCD{Float64,PhyloTrees.RecTree}(13 taxa, 53 clades, 5001 samples)
- CCD{Float64,PhyloTrees.RecTree}(13 taxa, 83 clades, 5001 samples)
- CCD{Float64,PhyloTrees.RecTree}(13 taxa, 59 clades, 5001 samples)
- CCD{Float64,PhyloTrees.RecTree}(13 taxa, 95 clades, 5001 samples)
- CCD{Float64,PhyloTrees.RecTree}(13 taxa, 67 clades, 5001 samples)
- CCD{Float64,PhyloTrees.RecTree}(13 taxa, 65 clades, 5001 samples)
-```
+    read_ale(path, wm::WhaleModel)
 """
-function read_ale(fname::String, s::SlicedTree; d=true)
-    if isfile(fname) && endswith(fname, ".ale")
-        D = [read_ale_observe(fname, s)]
-        @show D
-    elseif isfile(fname)
-        if filesize(fname) == 0
-            @warn "$fname is an empty file, will create a dummy CCD"
-            D = [get_dummy_ccd()]
-        else
-            lines = open(fname, "r") do f
-                readlines(f)
-            end
-            lines = [x for x in lines if !startswith(x, "#")]
-            D = read_ale(lines, s)
-        end
-    elseif isdir(fname)
-        fnames = [joinpath(fname, x) for x in readdir(fname)]
-        D = read_ale(fnames, s)
+function read_ale(s::String, wm::WhaleModel, darray=false)
+    @assert ispath(s) "Not a file nor directory `$s`"
+    spmap = Dict(name(l)=>id(l) for l in getleaves(root(wm)))
+    ccd = if isfile(s) && endswith(s, ".ale")
+        [CCD(s, wm, spmap)]
+    elseif isfile(s)
+        [CCD(l, wm, spmap) for l in readlines(s) if !startswith(s, "#")]
     else
-        @error "Could not read ale files"
-        return
+        [CCD(joinpath(s,x),wm,spmap) for x in readdir(s) if endswith(x,".ale")]
     end
-    return d ? distribute(D) : D
+    darray ? distribute(ccd) : ccd
 end
 
-# Read a bunch of ALE files
-function read_ale(fnames::Array{String,1}, s::Arboreal)
-    ccds = CCD[]
-    @showprogress 1 "Reading ALE files " for f in fnames
-        try
-            push!(ccds, read_ale_observe(f, s))
-        catch x
-            @warn "Failed reading ALE file $f ($x)"
-        end
+getspecies(l, ids, spmap) = Set([spmap[split(l[id], "_")[1]] for id in ids])
+
+"""
+    CCDArray{I,T}
+"""
+const CCDArray{I,T} = DArray{CCD{I,T},1,Array{CCD{I,T},1}} where {T,I}
+
+# ALEobserve parser
+"""
+    parse_aleobserve(fname)
+
+Parses a `.ale` file (from ALE v0.4) in a reasonable format.
+"""
+function parse_aleobserve(fname)
+    alestring = join(readlines(fname), "\n")
+    sections = split(alestring, "#")[2:end-1]
+    @assert length(sections) == 8 "Not a valid .ale file $fname"
+    d = Dict{Symbol,Any}()
+    for section in sections
+        section = replace(section, ":\t"=>"")
+        x = split(section, "\n")
+        header = Symbol(replace(x[1], '-'=>'_'))
+        d[header] = parse_body(x[2:end], header)
     end
-    n = length(ccds)
-    @info " .. read $n ALE files"
-    return ccds
+    d[:leaf_id] = invert(d[:leaf_id])
+    addleafclades!(d)
+    addubiquitous!(d)
+    (; fname=basename(fname), d...)
 end
 
-# Note that the branch lengths field is the total sum of branchlengths for that
-# clade in the sample!
-function read_ale_observe(fname::String, S::Arboreal)
-    s = open(fname) do file
-        join(readlines(file), "\n", )
-    end
-    s = split(s, "#")
-    if length(s) != 10
-        throw(ArgumentError("Not a a valid `.ale` file $fname"))
-    end
+invert(d::Dict) = Dict(v=>k for(k,v) in d)
 
-    # total count
-    total = parse(Int64, String(split(s[3], "\n")[2]))
-
-    # bipartition counts
-    ss = split(s[4], "\n")
-    ss = ss[2:end-1]
-    m1 = Dict(parse(Int64, String(split(x, "\t")[1])) =>
-        parse(Int64, String(split(x, "\t")[2])) for x in ss)
-
-    # branch lengths
-    ss = split(s[5], "\n")
-    ss = ss[2:end-1]
-    blens = Dict{Int64,Float64}()
-    for γ_branch_len_sum in ss
-        γbl = split(γ_branch_len_sum, "\t")
-        γ = parse(Int64, String(γbl[1]))
-        count = haskey(m1, γ) ?  m1[γ] : total
-        bl = parse(Float64, String(γbl[2])) / count
-        blens[γ] = bl
-    end
-
-    # triple counts
-    # not sure if dictionary of variably sized arrays is the best solution
-    ss = split(s[6], "\n")
-    ss = ss[2:end-1]
-    m2 = TripleDict()
-    for triple in ss
-        t = [parse(Int64, String(x)) for x in split(triple, "\t")]
-        if !(haskey(m2, t[1]))
-            m2[t[1]] = Tuple[]
+# yuck
+function parse_body(xs::Array, header::Symbol)
+    xs = [x for x in xs if x != ""]
+    return if length(xs) == 1
+        _tryparse(xs[1])
+    elseif header == :Dip_counts
+        d = Dict()
+        for x in xs
+            y = split(x)
+            y1 = _tryparse(y[1])
+            y2 = Tuple(_tryparse(y[2:end]))
+            haskey(d, y1) ? push!(d[y1], y2) : d[y1] = [y2]
         end
-        push!(m2[t[1]],(t[2], t[3], t[4]))
+        d
+    elseif header == :set_id
+        Dict(_tryparse(split(x)[1])=>_tryparse.(split(x)[2:end]) for x in xs)
+    else
+        Dict(_tryparse(split(x)[1])=>_tryparse(split(x)[2:end]) for x in xs)
     end
-
-    # leaf mapping, NOTE the ID assigned to the leaf NAMES, is not the same as
-    # the ID assigned to the leaf CLADES, which leads to horrible confusion!
-    ss = split(s[8], "\n")
-    ss = ss[2:length(ss)-1]
-    m3_ =  Dict(parse(Int64, String(split(x, "\t")[2])) =>
-        String(split(x, "\t")[1]) for x in ss)
-    # m3_ now contains the IDs for gene tree leaf NAMES
-
-    sp = Dict(v=>k for (k,v) in S.leaves)
-    g2s = gene_to_species(collect(values(m3_)))
-    leaf_to_spnode = Dict{Int64,Int64}()
-    for (k, v) in m3_
-        leaf_to_spnode[k] = sp[g2s[v]]
-    end
-    # leaf_to_spnode now contains leaf NAME IDs to NODES in the species tree
-
-    # set_ids & m3
-    # Set IDs contain for every clade ID the leaf NAME IDs it contains
-    # So, often a single gene clade may have an ID, say 5, which refers to
-    # gene 4, which is very confusing.
-    m3 = Dict{Int64,Int64}()
-    ss = split(s[9], "\n")
-    ss = ss[2:length(ss)-1]
-    set_ids = Dict{Int64,Set{Int64}}()
-    species = Dict{Int64,Set{Int64}}()
-    leaves = Dict{Int64,String}()
-    clades_ = Tuple{Int64,Int64}[]
-    for set_id in ss
-        set_line = split(set_id, "\t")
-        t = [parse(Int64, String(x)) for x in set_line[3:end]]
-        s = [leaf_to_spnode[x] for x in t]
-        clade_id = parse(Int64, set_line[1])
-        if length(t) == 1 # leaf
-            leaves[clade_id] = m3_[t[1]]
-        end
-        set_ids[clade_id] = Set(t)
-        species[clade_id] = Set(s)
-        push!(clades_, (length(t), clade_id))
-
-        if length(s) == 1
-            m3[clade_id] = s[1]
-            m1[clade_id] = total
-        end
-    end
-    sort!(clades_)
-    clades = [x[2] for x in clades_]
-
-    Γ = ubiquitous_clade!(m1, m2, clades, total, set_ids,
-            Set(keys(leaf_to_spnode)))
-    blens[Γ] = minimum(values(blens))
-    species[Γ] = Set(values(m3))
-    ccp = compute_ccps(m1, m2)
-    ccd = CCD{Float64}(total, m1, m2, m3, leaves,
-        blens, clades, species, Γ, ccp, fname)
-    return ccd
 end
 
-# dummy CCD (for running MCMC under the prior alone)
-function get_dummy_ccd()
-    m1 = Dict{Int64,Int64}()
-    m2 = TripleDict()
-    m3 = Dict{Int64,Int64}()
-    ccp = Dict{Tuple,Float64}()
-    blens = Dict{Int64,Float64}()
-    leaves = Dict{Int64,String}()
-    clades = Array{Int64,1}()
-    species = Dict{Int64,Set{Int64}}()
-    return CCD{Float64}(-1, m1, m2, m3, leaves, blens, clades,
-        species, -1, ccp, "dummy")
+_tryparse(x::Array) = length(x) == 1 ? _tryparse(x[1]) : _tryparse.(x)
+
+function _tryparse(x)
+    y = tryparse(Int, x)
+    y = isnothing(y) ? tryparse(Float64, x) : y
+    isnothing(y) ? x : y
 end
 
-# get the ubiquitous clade, private to read_ale
-function ubiquitous_clade!(m1, m2, clades, total, set_ids, alleaves::Set{Int64})
-    # In the unrooted case, any pair of non-overlapping clades that cover all
-    # leaves is a gamma' gamma'' pair for the ubiquitous clade
-    Γ = maximum(collect(keys(m1))) + 1
-    push!(clades, Γ)
-    m1[Γ] = total
-    Γset = Set{Tuple}()
-    for (clade, leaves) in set_ids
-        for (sister, s_leaves) in set_ids
-            if length(intersect(s_leaves, leaves)) == 0 &&
-                    union(s_leaves, leaves) == alleaves
-                γ1, γ2 = sort([clade, sister])
-                push!(Γset, (γ1, γ2, m1[clade]))
-            end
+# NOTE this does all the confusing stuff; it replaces 'leaf ids' with their
+# corresponding 'set ids', because there is no reason these should be different
+# it changes the 'set ids' of non leaf clades accordingly and it adds the leaf
+# clades to the Dip and Bip counts
+function addleafclades!(d::Dict)
+    leafclades = Dict{Int,String}()
+    themap = Dict()  # 'leaf id' to 'set id'
+    for (k, v) in sort(d[:set_id])
+        if length(v) == 1
+            d[:Bip_counts][k] = d[:observations]
+            d[:Dip_counts][k] = Tuple{Int,Int,Int}[]
+            leafclades[k] = d[:leaf_id][v[1]]
+            themap[v[1]] = k
+        else
+            d[:set_id][k] = [themap[i] for i in v]
         end
     end
-    m2[Γ] = [x for x in Γset]
-    return Γ
+    for (k, v) in themap
+        d[:set_id][v] = [v]
+    end
+    d[:leaf_id] = leafclades
 end
 
-# compute conditional clade probabilities
-function compute_ccps(m1::Dict{Int64,Int64}, m2::TripleDict)
-    ccps = Dict{Tuple,Float64}()
-    for (γ, triples) in m2
-        for (γ1, γ2, count) in triples
-            ccps[(γ, γ1, γ2)] = count / m1[γ]
+# adds the ubiquitous clade to the parsed ale file
+function addubiquitous!(d::Dict)
+    n = length(d[:leaf_id])
+    l = d[:set_id]
+    c = collect(keys(l))
+    Γ = length(c)+1
+    d[:Dip_counts][Γ] = Tuple{Int,Int,Int}[]
+    # each observed clade is a potential subclade of the root, with a sister
+    # clade that is also observed and uniquely determined by the set of leaves
+    # and the first subclade. If there are 2n non-root clades in the sample, the
+    # root (ubiquitous) clade has n possible splits, each with conditional
+    # clade probability equal to the observed frequency of either subclade
+    # (which are identical, cfr. assertion below). Note that the total count of
+    # observations for the root clade differs from the number of samples because
+    # each unrooted tree is associated with multiple (a priori equally likely)
+    # rootings (`N` below, although this is a known function of the number of
+    # the number of leaves and number of trees in the sample).
+    N = 0
+    for i=1:length(c), j=i+1:length(c)
+        if length(l[i] ∩ l[j]) == 0 && length(l[i] ∪ l[j]) == n
+            @assert d[:Bip_counts][i] == d[:Bip_counts][j]
+            N += d[:Bip_counts][i]
+            push!(d[:Dip_counts][Γ], (i, j, d[:Bip_counts][j]))
         end
     end
-    return ccps
+    triple = last(d[:Dip_counts][Γ])
+    d[:Bip_counts][Γ] = N
+    d[:set_id][Γ] = l[triple[1]] ∪ l[triple[2]]
+    d[:Bip_bls][Γ] = 0.
 end
 
-gene_to_species(genes::Array{String}) = Dict(
-    x => String(split(x, ['|', '_'])[1]) for x in genes)
-
-getp(x::CCD, e::Int64, γ::Int64, i::Int64) = x.tmpmat[e][γ, i]
-setp!(x::CCD, e::Int64, γ::Int64, i::Int64, p::Float64) = x.tmpmat[e][γ, i] = p
-addp!(x::CCD, e::Int64, γ::Int64, i::Int64, p::Float64) = x.tmpmat[e][γ, i] += p
-
-get_triples(x::CCD, γ::Int64) = x.m2[γ]
-get_species(x::CCD, γ::Int64) = x.species[γ]
-PhyloTrees.isleaf(x::CCD, γ::Int64) = haskey(x.m3, γ)
+# Something like this should be possible
+# function getccd(trees::Vector{String})
+#     ccd = getccd(tree)
+#     for i in 2:length(trees)
+#         tree = readnw(trees[i])
+#         update!(ccd, tree)
+#     end
+#     ccd
+# end
+#
+# function getccd(tree)
+#     function walk(n)
+#
+#     end
+# end
