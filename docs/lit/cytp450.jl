@@ -10,8 +10,7 @@ tree  = readnw(readline(joinpath(base, "tree.nw")))
 model = WhaleModel(RatesModel(ConstantDLWGD(λ=0.1, μ=0.2, η=0.9)), tree, .1)
 data  = read_ale(joinpath(base, "cytp450.ale"), model, true)
 
-# Reading in the single CCD is already a very heavy operation. The CCD has about
-# 5000 unique clades.
+# Reading in the single CCD is already a very heavy operation. The CCD has about 5000 unique clades.
 
 # We will use the DynamicHMC interface, using a constant-rates model (i.e. a single
 # duplication and loss rate for the entire tree).
@@ -19,7 +18,7 @@ prior = Whale.CRPrior()
 problem = WhaleProblem(data, model, prior)
 
 # Now run the actual HMC sampler
-results = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 500,
+results = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 100,
     warmup_stages=DynamicHMC.default_warmup_stages(doubling_stages=2))
 posterior = Whale.transform(problem, results.chain)
 @info summarize_tree_statistics(results.tree_statistics)

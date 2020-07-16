@@ -32,7 +32,10 @@ ccd = read_ale(joinpath(@__DIR__, "../../example/example-1/ale"), w)
 end
 
 model = constantrates(w, ccd)
-chain = sample(model, NUTS(0.65), 500)
+chain = sample(model, NUTS(0.65), 100)
+
+# !!! warning
+#     Of course such a chain should be run much longer than in this example! Here a very short chain is presented to ensure reasonable build times for this documentation.
 
 # ## Using a branch-specific rates model
 # We'll use the same tree as above. The relevant model now is
@@ -65,7 +68,7 @@ ccd = read_ale(joinpath(@__DIR__, "../../example/example-1/ale"), w)
 end
 
 model = branchrates(w, ccd)
-chain = sample(model, NUTS(0.65), 100)
+chain = sample(model, NUTS(0.65), 100) 
 
 # !!! warning
 #     Of course such a chain should be run much longer than in this example! Here a very short chain is presented to ensure reasonable build times for this documentation.
