@@ -67,14 +67,17 @@ LogDensityProblems.capabilities(::Type{<:WhaleProblem}) =
 
 LogDensityProblems.dimension(p::WhaleProblem) = dimension(p.model.rates.trans)
 
-TransformVariables.transform(p::WhaleProblem, x) =
-    transform(p.model.rates.trans, x)
+TransformVariables.transform(p::WhaleProblem,
+    x::AbstractVector{Array{T,1}}) where T =
+        transform.(Ref(p.model.rates.trans), x)
 
-function track(p::WhaleProblem, post;
-        progress=true, outdir::String="")
+TreeTracker(p::WhaleProblem, post) =
+    TreeTracker(p.model, p.data, post, (model, x)->model(x[1]))
+
+function track(p::WhaleProblem, post; kwargs...)
     @unpack model, data = p
     # NOTE eachrow on vector of namedtuples produces for each element (i.e.
     # namedtuple) a subarray with that element.
     tt = TreeTracker(model, data, post, (model, x)->model(x[1]))
-    track_distributed(tt, progress=progress, outdir=outdir)
+    track_distributed(tt; kwargs...)
 end

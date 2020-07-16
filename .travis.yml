@@ -14,6 +14,7 @@ jobs:
       os: linux
       script:
         - julia --project=docs/ -e 'using Pkg;
+            Pkg.add("https://github.com/arzwa/PalmTree.jl.git");
             Pkg.instantiate();
             Pkg.develop(PackageSpec(path=pwd()));'
         - julia --project=docs --color=yes docs/make.jl

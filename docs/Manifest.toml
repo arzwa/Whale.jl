@@ -110,6 +110,18 @@ git-tree-sha1 = "96e5ca744988563da0b4dac199287e2790fdb5dd"
 uuid = "5d742f6a-9f54-50ce-8119-2520741973ca"
 version = "1.0.0"
 
+[[Cairo]]
+deps = ["Cairo_jll", "Colors", "Fontconfig_jll", "Glib_jll", "Graphics", "Libdl", "Pango_jll"]
+git-tree-sha1 = "f9db9e9814f71799e1b9c849055f0adae8bdc158"
+uuid = "159f3aea-2a34-519c-b102-8c37f9878175"
+version = "1.0.3"
+
+[[Cairo_jll]]
+deps = ["Bzip2_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "LZO_jll", "Libdl", "Pixman_jll", "Pkg", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Zlib_jll", "libpng_jll"]
+git-tree-sha1 = "d296f5e975306844de3e57118c3cf4a7cf2a8762"
+uuid = "83423d85-b0ee-5818-9007-b63ccbeb887a"
+version = "1.16.0+4"
+
 [[CategoricalArrays]]
 deps = ["DataAPI", "Future", "JSON", "Missings", "Printf", "Statistics", "Unicode"]
 git-tree-sha1 = "a6c17353ee38ddab30e73dcfaa1107752de724ec"
@@ -139,6 +151,12 @@ deps = ["FixedPointNumbers", "Random"]
 git-tree-sha1 = "6e7aa35d0294f647bb9c985ccc34d4f5d371a533"
 uuid = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
 version = "0.10.6"
+
+[[ColorVectorSpace]]
+deps = ["ColorTypes", "Colors", "FixedPointNumbers", "LinearAlgebra", "SpecialFunctions", "Statistics", "StatsBase"]
+git-tree-sha1 = "bd0c0c81a39923bc03f9c3b61d89ad816e741002"
+uuid = "c3611d14-8923-5661-9e6a-0046d554d3a4"
+version = "0.8.5"
 
 [[Colors]]
 deps = ["ColorTypes", "FixedPointNumbers", "InteractiveUtils", "Reexport"]
@@ -298,6 +316,12 @@ git-tree-sha1 = "38227940de7a53f62da3d288876b96cd6892c239"
 uuid = "cad2338a-1db2-11e9-3401-43bc07c9ede2"
 version = "0.2.2"
 
+[[Expat_jll]]
+deps = ["Libdl", "Pkg"]
+git-tree-sha1 = "def36fdc72dc7a9953673cf5492588ef3d79139c"
+uuid = "2e619515-83b5-522b-bb60-26c02a35a201"
+version = "2.2.7+3"
+
 [[ExprTools]]
 git-tree-sha1 = "6f0517056812fd6aa3af23d4b70d5325a2ae4e95"
 uuid = "e2ba6199-217a-4e67-a87a-7c52f15ade04"
@@ -357,6 +381,12 @@ git-tree-sha1 = "266baee2e9d875cb7a3bfdcc6cab553c543ff8ab"
 uuid = "53c48c17-4a7d-5ca2-90c5-79b7896eea93"
 version = "0.8.2"
 
+[[Fontconfig_jll]]
+deps = ["Bzip2_jll", "Expat_jll", "FreeType2_jll", "Libdl", "Libuuid_jll", "Pkg", "Zlib_jll"]
+git-tree-sha1 = "73267a13eabf7506cbc205358139e399a365ab4a"
+uuid = "a3f928ae-7b40-5064-980b-68af3947d34b"
+version = "2.13.1+12"
+
 [[Formatting]]
 deps = ["Printf"]
 git-tree-sha1 = "a0c901c29c0e7c763342751c0a94211d56c0de5c"
@@ -415,11 +445,59 @@ git-tree-sha1 = "34bfa994967e893ab2f17b864eec221b3521ba4d"
 uuid = "4d00f742-c7ba-57c2-abde-4428a4b178cb"
 version = "0.8.3"
 
+[[Gettext_jll]]
+deps = ["Libdl", "Libiconv_jll", "Pkg", "XML2_jll"]
+git-tree-sha1 = "731622006369631e1d0c180a61d2dd5fe9e4dfd4"
+uuid = "78b55507-aeef-58d4-861c-77aaff3498b1"
+version = "0.20.1+4"
+
+[[Glib_jll]]
+deps = ["Gettext_jll", "Libdl", "Libffi_jll", "Libiconv_jll", "Libmount_jll", "PCRE_jll", "Pkg", "Zlib_jll"]
+git-tree-sha1 = "09ea3797c586eedbb383eb8f1c950a12923f1541"
+uuid = "7746bdde-850d-59dc-9ae8-88ece973131d"
+version = "2.59.0+2"
+
+[[Graphics]]
+deps = ["Colors", "LinearAlgebra", "NaNMath"]
+git-tree-sha1 = "45d684ead5b65c043ad46bd5be750d61c39d7ef8"
+uuid = "a2bd30eb-e257-5431-a919-1863eab51364"
+version = "1.0.2"
+
+[[Graphite2_jll]]
+deps = ["Libdl", "Pkg"]
+git-tree-sha1 = "6fad1258f2c9eacb86e8726d38c2ad6549f9d91e"
+uuid = "3b182d85-2403-5c21-9c21-1e1f0cc25472"
+version = "1.3.13+1"
+
 [[HTTP]]
 deps = ["Base64", "Dates", "IniFile", "MbedTLS", "Sockets"]
 git-tree-sha1 = "eca61b35cdd8cd2fcc5eec1eda766424a995b02f"
 uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 version = "0.8.16"
+
+[[HarfBuzz_jll]]
+deps = ["Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "Gettext_jll", "Glib_jll", "Graphite2_jll", "Libdl", "Libffi_jll", "Pkg"]
+git-tree-sha1 = "7a206ed46082e986179586a4ed60cbc740313ea6"
+uuid = "2e76f6c2-a576-52d4-95c1-20adfe4de566"
+version = "2.6.1+5"
+
+[[ImageCore]]
+deps = ["Colors", "FixedPointNumbers", "Graphics", "MappedArrays", "MosaicViews", "OffsetArrays", "PaddedViews", "Reexport", "Requires"]
+git-tree-sha1 = "a652c05f8f374861580d420b420fddf3e2e84312"
+uuid = "a09fc81d-aa75-5fe9-8630-4744c3626534"
+version = "0.8.14"
+
+[[ImageMagick]]
+deps = ["FileIO", "ImageCore", "ImageMagick_jll", "InteractiveUtils", "Libdl", "Pkg", "Random"]
+git-tree-sha1 = "318342a5099a9c952b4de087344a2db831458c87"
+uuid = "6218d12a-5da1-5696-b52f-db25d2ecc6d1"
+version = "1.1.5"
+
+[[ImageMagick_jll]]
+deps = ["JpegTurbo_jll", "Libdl", "Libtiff_jll", "Pkg", "Zlib_jll", "libpng_jll"]
+git-tree-sha1 = "1c0a2295cca535fabaf2029062912591e9b61987"
+uuid = "c73af94c-d91f-53ed-93a7-00f77d67a9d7"
+version = "6.9.10-12+3"
 
 [[IniFile]]
 deps = ["Test"]
@@ -489,6 +567,18 @@ git-tree-sha1 = "b34d7cef7b337321e97d22242c3c2b91f476748e"
 uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 version = "0.21.0"
 
+[[JpegTurbo_jll]]
+deps = ["Libdl", "Pkg"]
+git-tree-sha1 = "a53414ab7217ae6cc34e41c453339e17a873d169"
+uuid = "aacddb02-875f-59d6-b918-886e6ef4fbf8"
+version = "2.0.1+1"
+
+[[Juno]]
+deps = ["Base64", "Logging", "Media", "Profile"]
+git-tree-sha1 = "a686b0cf235fa3e491b79b4783c2d2382292b436"
+uuid = "e5e0dc1b-0480-54bc-9374-aad01c23163d"
+version = "0.8.2"
+
 [[KernelDensity]]
 deps = ["Distributions", "FFTW", "Interpolations", "Optim", "StatsBase", "Test"]
 git-tree-sha1 = "c1048817fe5711f699abc8fabd47b1ac6ba4db04"
@@ -500,6 +590,12 @@ deps = ["Libdl", "Pkg"]
 git-tree-sha1 = "221cc8998b9060677448cbb6375f00032554c4fd"
 uuid = "c1c5ebd0-6772-5130-a774-d5fcae4a789d"
 version = "3.100.0+1"
+
+[[LZO_jll]]
+deps = ["Libdl", "Pkg"]
+git-tree-sha1 = "71119990371c93f027bee80547ee908ddfe7c5ca"
+uuid = "dd4b983a-f0e5-5f8d-a1b7-129d4a5fb1ac"
+version = "2.10.0+1"
 
 [[LeftChildRightSiblingTrees]]
 deps = ["AbstractTrees"]
@@ -520,17 +616,53 @@ version = "1.8.1+1"
 [[Libdl]]
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 
+[[Libffi_jll]]
+deps = ["Libdl", "Pkg"]
+git-tree-sha1 = "68b165c609961207baa3174e03d6d56e7a37124c"
+uuid = "e9f186c6-92d2-5b65-8a66-fee21dc1b490"
+version = "3.2.1+1"
+
+[[Libgcrypt_jll]]
+deps = ["Libdl", "Libgpg_error_jll", "Pkg"]
+git-tree-sha1 = "7efb7f5e75a0f7323cce366d3e44a2d225c5617a"
+uuid = "d4300ac3-e22c-5743-9152-c294e39db1e4"
+version = "1.8.5+1"
+
+[[Libgpg_error_jll]]
+deps = ["Libdl", "Pkg"]
+git-tree-sha1 = "334284a62d6b8592099d28b78c76aefc266c03a2"
+uuid = "7add5ba3-2f88-524e-9cd5-f83b8a55f7b8"
+version = "1.36.0+1"
+
 [[Libiconv_jll]]
 deps = ["Libdl", "Pkg"]
 git-tree-sha1 = "c9d4035d7481bcdff2babf5a55525a818ef8ed8f"
 uuid = "94ce4f54-9a6c-5748-9c1c-f9c7231a4531"
 version = "1.16.0+5"
 
+[[Libmount_jll]]
+deps = ["Libdl", "Pkg"]
+git-tree-sha1 = "621a6d7d527fd8e4812ca1154567bfdb81a3c517"
+uuid = "4b2f31a3-9ecc-558c-b454-b3730dcb73e9"
+version = "2.34.0+1"
+
 [[Libtask]]
 deps = ["BinaryProvider", "Libdl", "Pkg"]
 git-tree-sha1 = "68a658db4792dfc468ea2aabcf06f3f74f153f23"
 uuid = "6f1fad26-d15e-5dc8-ae53-837a1d7b8c9f"
 version = "0.4.1"
+
+[[Libtiff_jll]]
+deps = ["JpegTurbo_jll", "Libdl", "Pkg", "Zlib_jll", "Zstd_jll"]
+git-tree-sha1 = "1fe8c3608dfe7bdec81d018de1cc66e959016e8c"
+uuid = "89763e89-9b03-5906-acba-b20f662cd828"
+version = "4.1.0+0"
+
+[[Libuuid_jll]]
+deps = ["Libdl", "Pkg"]
+git-tree-sha1 = "7ae7eee3a9fe811b656347700c17fc9620ef4ecf"
+uuid = "38a345b3-de98-5d2b-a5d3-14cd9215e700"
+version = "2.34.0+4"
 
 [[LineSearches]]
 deps = ["LinearAlgebra", "NLSolversBase", "NaNMath", "Parameters", "Printf", "Test"]
@@ -561,6 +693,12 @@ uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 git-tree-sha1 = "b60616c70eff0cc2c0831b6aace75940aeb0939d"
 uuid = "e6f89c97-d47a-5376-807f-9c37f3926c36"
 version = "0.4.1"
+
+[[Luxor]]
+deps = ["Cairo", "Colors", "Dates", "FileIO", "ImageMagick", "Juno", "QuartzImageIO", "Random"]
+git-tree-sha1 = "85d498e62010965f905ad6657ed296803aaa705c"
+uuid = "ae8d54c2-7ccd-5906-9d76-62fc9837b5bc"
+version = "2.2.1"
 
 [[MCMCChains]]
 deps = ["AbstractMCMC", "AxisArrays", "Distributions", "Formatting", "LinearAlgebra", "Random", "RecipesBase", "Requires", "Serialization", "SpecialFunctions", "Statistics", "StatsBase"]
@@ -606,6 +744,12 @@ git-tree-sha1 = "e498ddeee6f9fdb4551ce855a46f54dbd900245f"
 uuid = "442fdcdd-2543-5da2-b0f3-8c86c306513e"
 version = "0.3.1"
 
+[[Media]]
+deps = ["MacroTools", "Test"]
+git-tree-sha1 = "75a54abd10709c01f1b86b84ec225d26e840ed58"
+uuid = "e89f7d12-3494-54d1-8411-f7d8b9ae1f27"
+version = "0.5.0"
+
 [[Missings]]
 deps = ["DataAPI"]
 git-tree-sha1 = "de0a5ce9e5289f27df672ffabef4d1e5861247d5"
@@ -620,6 +764,12 @@ deps = ["ExprTools"]
 git-tree-sha1 = "916b850daad0d46b8c71f65f719c49957e9513ed"
 uuid = "78c3b35d-d492-501b-9361-3d52fe80e533"
 version = "0.7.1"
+
+[[MosaicViews]]
+deps = ["OffsetArrays", "PaddedViews"]
+git-tree-sha1 = "b483b88403ac0ac01667778cbb29462b111b1deb"
+uuid = "e94cdb99-869f-56ef-bcf0-1ae2bcbe0389"
+version = "0.2.2"
 
 [[MultivariateStats]]
 deps = ["Arpack", "LinearAlgebra", "SparseArrays", "Statistics", "StatsBase"]
@@ -658,7 +808,9 @@ version = "0.4.4"
 
 [[NewickTree]]
 deps = ["AbstractTrees", "Test"]
-git-tree-sha1 = "ee88ab77181cdf6288d90f96574e8b4f81584a4e"
+git-tree-sha1 = "3e401948b7a6956efa8d65b8ad6d5a3e7bc18c0f"
+repo-rev = "master"
+repo-url = "https://github.com/arzwa/NewickTree.jl.git"
 uuid = "b0a14db8-6308-4ebc-8917-f72cd81f5094"
 version = "0.2.0"
 
@@ -718,11 +870,35 @@ git-tree-sha1 = "293b70ac1780f9584c89268a6e2a560d938a7065"
 uuid = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
 version = "1.3.0"
 
+[[PCRE_jll]]
+deps = ["Libdl", "Pkg"]
+git-tree-sha1 = "2c860a32ae9c421b52b654448bd31a31f437449a"
+uuid = "2f80f16e-611a-54ab-bc61-aa92de5b98fc"
+version = "8.42.0+2"
+
 [[PDMats]]
 deps = ["Arpack", "LinearAlgebra", "SparseArrays", "SuiteSparse", "Test"]
 git-tree-sha1 = "2fc6f50ddd959e462f0a2dbc802ddf2a539c6e35"
 uuid = "90014a1f-27ba-587c-ab20-58faa44d9150"
 version = "0.9.12"
+
+[[PaddedViews]]
+deps = ["OffsetArrays"]
+git-tree-sha1 = "100195a79b577d5747db98bf1732c3686285fa1e"
+uuid = "5432bcbf-9aad-5242-b902-cca2824c8663"
+version = "0.5.5"
+
+[[PalmTree]]
+deps = ["ColorSchemes", "Luxor", "NewickTree", "Parameters", "Printf"]
+path = "../../PalmTree"
+uuid = "103a96ca-e421-11e8-0497-536c6ddde151"
+version = "0.1.0"
+
+[[Pango_jll]]
+deps = ["Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "FriBidi_jll", "Glib_jll", "HarfBuzz_jll", "Libdl", "Pkg"]
+git-tree-sha1 = "cd19789f20bde5d45e96a7e937db9a6a024412e6"
+uuid = "36c8627f-9965-5494-a995-c6b170f724f3"
+version = "1.42.4+8"
 
 [[Parameters]]
 deps = ["OrderedCollections", "UnPack"]
@@ -735,6 +911,12 @@ deps = ["Dates", "Test"]
 git-tree-sha1 = "10134f2ee0b1978ae7752c41306e131a684e1f06"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
 version = "1.0.7"
+
+[[Pixman_jll]]
+deps = ["Libdl", "Pkg"]
+git-tree-sha1 = "ae66367153a89ecb2a5c7acc2df4ba082b729b6a"
+uuid = "30392449-352a-5448-841d-b1acce4e97dc"
+version = "0.38.4+2"
 
 [[Pkg]]
 deps = ["Dates", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "UUIDs"]
@@ -786,6 +968,10 @@ version = "0.4.0"
 deps = ["Unicode"]
 uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 
+[[Profile]]
+deps = ["Printf"]
+uuid = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
+
 [[ProgressLogging]]
 deps = ["Logging", "SHA", "UUIDs"]
 git-tree-sha1 = "59398022b661b6fd569f25de6b18fde39843196a"
@@ -809,6 +995,12 @@ deps = ["Printf", "Random", "Requires"]
 git-tree-sha1 = "cd993c45147a8432bf24358f14bf2cfd4aeb14df"
 uuid = "be4d8f0f-7fa4-5f49-b795-2f01399ab2dd"
 version = "0.5.4"
+
+[[QuartzImageIO]]
+deps = ["ColorTypes", "ColorVectorSpace", "FileIO", "FixedPointNumbers", "ImageCore", "Libdl"]
+git-tree-sha1 = "813432448a8f06a1316943c3456dcf043afacd96"
+uuid = "dca85d43-d64c-5e67-8c65-017450d5d020"
+version = "0.6.0"
 
 [[REPL]]
 deps = ["InteractiveUtils", "Markdown", "Sockets"]
@@ -1066,11 +1258,71 @@ git-tree-sha1 = "432d91f45e950f2f2bda5c0f4e2b938c14493af9"
 uuid = "02c8fc9c-b97f-50b9-bbe4-9be30ff0a78a"
 version = "2.9.10+1"
 
+[[XSLT_jll]]
+deps = ["Libdl", "Libgcrypt_jll", "Pkg", "XML2_jll"]
+git-tree-sha1 = "c287bbc08773474ab1d12849eb46b961a325e149"
+uuid = "aed1982a-8fda-507f-9586-7b0439959a61"
+version = "1.1.33+2"
+
+[[Xorg_libX11_jll]]
+deps = ["Libdl", "Pkg", "Xorg_libxcb_jll", "Xorg_xtrans_jll"]
+git-tree-sha1 = "bbfb646a5a86dc636041c8ee945799b69d37fdba"
+uuid = "4f6342f7-b3d2-589e-9d20-edeb45f2b2bc"
+version = "1.6.9+2"
+
+[[Xorg_libXau_jll]]
+deps = ["Libdl", "Pkg"]
+git-tree-sha1 = "711f2bbdbb0e90b90a71c5ccf835137e2def539a"
+uuid = "0c0b7dd1-d40b-584c-a123-a41640f87eec"
+version = "1.0.9+2"
+
+[[Xorg_libXdmcp_jll]]
+deps = ["Libdl", "Pkg"]
+git-tree-sha1 = "1ffd7bc9c9d8bba6652516f3402ee1ef5f4cac70"
+uuid = "a3789734-cfe1-5b06-b2d0-1dd0d9d62d05"
+version = "1.1.3+2"
+
+[[Xorg_libXext_jll]]
+deps = ["Libdl", "Pkg", "Xorg_libX11_jll"]
+git-tree-sha1 = "079acccb5437761d93c483f2edb5fc3ed21ea7db"
+uuid = "1082639a-0dae-5f34-9b06-72781eeb8cb3"
+version = "1.3.4+2"
+
+[[Xorg_libXrender_jll]]
+deps = ["Libdl", "Pkg", "Xorg_libX11_jll"]
+git-tree-sha1 = "d5492a36d33359cf93ad573ea5e235cd71728649"
+uuid = "ea2f1a96-1ddc-540d-b46f-429655e07cfa"
+version = "0.9.10+2"
+
+[[Xorg_libpthread_stubs_jll]]
+deps = ["Libdl", "Pkg"]
+git-tree-sha1 = "ec1e2973e4e624069be95f806dbd7e225fee26c6"
+uuid = "14d82f49-176c-5ed1-bb49-ad3f5cbd8c74"
+version = "0.1.0+1"
+
+[[Xorg_libxcb_jll]]
+deps = ["Libdl", "Pkg", "XSLT_jll", "Xorg_libXau_jll", "Xorg_libXdmcp_jll", "Xorg_libpthread_stubs_jll"]
+git-tree-sha1 = "c1efb50fb6a8c40c45451611fbf93feabe5f9611"
+uuid = "c7cfdc94-dc32-55de-ac96-5a1b8d977c5b"
+version = "1.13.0+2"
+
+[[Xorg_xtrans_jll]]
+deps = ["Libdl", "Pkg"]
+git-tree-sha1 = "b6e7d70f5fc9e3fde505539194c8caaab3c40ebf"
+uuid = "c5fb5394-a638-5e4d-96e5-b29de1b5cf10"
+version = "1.4.0+1"
+
 [[Zlib_jll]]
 deps = ["Libdl", "Pkg"]
 git-tree-sha1 = "622d8b6dc0c7e8029f17127703de9819134d1b71"
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
 version = "1.2.11+14"
+
+[[Zstd_jll]]
+deps = ["Libdl", "Pkg"]
+git-tree-sha1 = "b25b0fb10176c42e9a5a20e1f40d570ac0288d4e"
+uuid = "3161d3a3-bdf6-5164-811a-617609db77b4"
+version = "1.4.5+0"
 
 [[ZygoteRules]]
 deps = ["MacroTools"]
@@ -1089,6 +1341,12 @@ deps = ["Libdl", "Pkg"]
 git-tree-sha1 = "480c7ed04f68ea3edd4c757f5db5b6a0a4e0bd99"
 uuid = "f638f0a6-7fb0-5443-88ba-1cc74229b280"
 version = "0.1.6+2"
+
+[[libpng_jll]]
+deps = ["Libdl", "Pkg", "Zlib_jll"]
+git-tree-sha1 = "594cb058723c13941cf463fd09e5859499594f50"
+uuid = "b53b4c65-9356-5827-b1ea-8c7a1a84506f"
+version = "1.6.37+3"
 
 [[libvorbis_jll]]
 deps = ["Libdl", "Ogg_jll", "Pkg"]

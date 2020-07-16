@@ -194,7 +194,7 @@ function Base.show(io::IO, m::WhaleModel)
         line = [Int(id(n)), Int(wgdid(n)),
             round(distance(n), digits=4),
             round(n[end,1], digits=4), length(n)-1,
-            "\"$(nwstr(n))\""]
+            "\"$(nwstr(n, dist=false))\""]
         write(io, join(line, ","), "\n")
     end
 end

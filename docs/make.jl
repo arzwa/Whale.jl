@@ -4,7 +4,7 @@ outdir = joinpath(@__DIR__, "src")
 srcdir = joinpath(@__DIR__, "lit")
 mkpath(outdir)
 
-fnames = ["wgd-dhmc.jl", "wgd-turing.jl"]
+fnames = ["wgd-dhmc.jl", "wgd-turing.jl", "cytp450.jl"]
 output = String[]
 
 for f in fnames
@@ -29,9 +29,3 @@ makedocs(
 deploydocs(
     repo = "github.com/arzwa/Whale.jl.git",
     target = "build",)
-
-using Literate
-Literate.markdown(
-    joinpath(@__DIR__, "README.jl"),
-    joinpath(@__DIR__, "../"),
-    documenter=false, execute=true)

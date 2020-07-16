@@ -28,14 +28,14 @@ function flsh()  # flush streams (on cluster I have troubles with this)
 end
 
 # XXX: allocates too much memory!
-function track_threaded(tt::TreeTracker; progress=true, outdir="")
+function track_threaded(tt::TreeTracker; progress=true, outdir="", summary=true)
     @unpack model, data, df, fun = tt
     outdir != "" && mkpath(outdir)
     result = Vector{RecSummary}(undef, length(data))
     @threads for i=1:length(result)
         # for i=1:length(result)
         progress && (@info "Tracking $(data[i].fname)" ; flsh())
-        result[i] = track_and_sum(model, df, fun, data[i], outdir)
+        result[i] = track_and_sum(model, df, fun, data[i], outdir, summary)
     end
     return result
 end
@@ -43,31 +43,34 @@ end
 # Both DArray and pmap based implementation. DArray allocates considerably less
 # memory!
 function track_distributed(tt::TreeTracker;
-        progress=true, outdir::String="")
+        progress=true, outdir::String="", summary=true)
     @unpack model, data, df, fun = tt
     outdir != "" && mkpath(outdir)
     f = progress ?
         x->begin @info "Tracking $(x.fname)"; flsh();
-           track_and_sum(model, df, fun, x, outdir) end :
-        x->track_and_sum(model, df, fun, x, outdir)
-    result = typeof(data)<:DArray ? map(x->f(x), data) : pmap(x->f(x), data)
+           track_and_sum(model, df, fun, x, outdir, summary) end :
+        x->track_and_sum(model, df, fun, x, outdir, summary)
+    # result = typeof(data)<:DArray ? map(x->f(x), data) : pmap(x->f(x), data)
+    result = map(x->f(x), data)
     return result
 end
 
 # ccd is an individual family, not the full vector of ccds!
-function track_and_sum(model, df, fun, ccd, outdir="")
+function track_and_sum(model, df, fun, ccd, outdir="", summary=true)
     trees = Array{RecNode,1}(undef, size(df)[1])
     for (i,x) in enumerate(eachrow(df))
         wmm = fun(model, x)
         ℓ = logpdf!(wmm, ccd)
         trees[i] = backtrack(wmm, ccd)
     end
-    rs = sumtrees(trees, ccd, model)
-    if outdir != ""
-        # CSV.write( joinpath(outdir, "$(ccd.fname).csv"), rs.events)
-        writetrees(joinpath(outdir, "$(ccd.fname).trees"), rs.trees)
+    if summary
+        rs = sumtrees(trees, ccd, model)
+        if outdir != ""
+            # CSV.write( joinpath(outdir, "$(ccd.fname).csv"), rs.events)
+            writetrees(joinpath(outdir, "$(ccd.fname).trees"), rs.trees)
+        end
     end
-    return rs
+    return summary ? rs : trees
 end
 
 """
@@ -89,22 +92,26 @@ end
 
 const RecNode{I} = Node{I,RecData{I}} where I<:Integer
 
-# NOTE `t` is not inhash, because duplications with different `t` should ==
-Base.hash(r::RecNode) = hash((r.data.γ, r.data.e, hash(Set(children(r)))))
 Base.show(io::IO, n::RecData) = write(io, "$(n.e), $(n.name)")
-
 getγ(n::RecNode) = n.data.γ
 gete(n::RecNode) = n.data.e
 gett(n::RecNode) = n.data.t
-sister(n::RecNode) = first(setdiff(children(parent(n)), Set([n])))
 rectuple(r::RecNode) = (r.data.γ, r.data.e)
-cladehash(r::RecNode) = r.data.γ == 0 ?
-    hash((r.data.γ, r.data.e, sister(r).data.γ)) :
-    hash((r.data.γ, r.data.e, Set(rectuple.(children(r)))))
-
+sister(n::RecNode) = first(setdiff(children(parent(n)), Set([n])))
 NewickTree.distance(r::RecNode) = NaN
 NewickTree.support(r::RecData) = r.cred
 NewickTree.name(r::RecData) = r.name
+
+# NOTE `t` is not in hash, because duplications with different `t` should ==
+# NOTE: sets of nodes use hashes (e.g. in `sister`), better not extend Base.hash!
+# `nodehash` below is extremely slow for large trees! The one relying on
+# `cladehash` is much better (but also unique?)
+# nodehash(r::RecNode) = hash((r.data.γ, r.data.e, hash(Set(children(r)))))
+nodehash(r::RecNode) = hash(Set([cladehash(n) for n in postwalk(r)]))
+
+cladehash(r::RecNode) = r.data.γ == 0 ?
+    hash((r.data.γ, r.data.e, sister(r).data.γ)) :
+    hash((r.data.γ, r.data.e, Set(rectuple.(children(r)))))
 
 """
     SliceState{I}

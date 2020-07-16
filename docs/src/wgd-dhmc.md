@@ -31,7 +31,7 @@ summarize_tree_statistics(results.tree_statistics)
 Obtain the posterior distribution
 
 ```@example wgd-dhmc
-posterior = Whale.transform.(Ref(problem), results.chain)
+posterior = Whale.transform(problem, results.chain)
 df = Whale.unpack(posterior)
 describe(df)
 ```

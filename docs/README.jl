@@ -71,3 +71,6 @@ trees = track(tt)
 # If you use Whale, please cite:
 
 # >[Zwaenepoel, A. and Van de Peer, Y., 2019. Inference of Ancient Whole-Genome Duplications and the Evolution of Gene Duplication and Loss Rates. *Molecular biology and evolution*, 36(7), pp.1384-1404.](https://academic.oup.com/mbe/article-abstract/36/7/1384/5475503)
+
+using Literate  #src
+Literate.markdown(joinpath(@__DIR__, "README.jl"), joinpath(@__DIR__, "../"), documenter=false, execute=true)  #src

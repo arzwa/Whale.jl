@@ -93,7 +93,7 @@ sumtrees(trees::AbstractMatrix, ccd::AbstractVector, wm::WhaleModel) =
 
 function sumtrees(trees::AbstractVector, ccd::CCD, wm::WhaleModel)
     N = length(trees)
-    hashes = hash.(trees)
+    hashes = nodehash.(trees)
     counts = countmap(hashes)
     clades = cladecounts(trees)
     summary = NamedTuple[]

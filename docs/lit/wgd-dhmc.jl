@@ -20,7 +20,7 @@ results = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 100,
 summarize_tree_statistics(results.tree_statistics)
 
 # Obtain the posterior distribution
-posterior = Whale.transform.(Ref(problem), results.chain)
+posterior = Whale.transform(problem, results.chain)
 df = Whale.unpack(posterior)
 describe(df)
 
