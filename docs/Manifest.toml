@@ -938,9 +938,9 @@ version = "1.0.5"
 
 [[Plots]]
 deps = ["Base64", "Contour", "Dates", "FFMPEG", "FixedPointNumbers", "GR", "GeometryBasics", "GeometryTypes", "JSON", "LinearAlgebra", "Measures", "NaNMath", "PlotThemes", "PlotUtils", "Printf", "REPL", "Random", "RecipesBase", "RecipesPipeline", "Reexport", "Requires", "Showoff", "SparseArrays", "Statistics", "StatsBase", "UUIDs"]
-git-tree-sha1 = "21d5dd05d230a98b97223d271561f1871989944c"
+git-tree-sha1 = "ba747739872a67bc1a8078aec3313bde075b3fb0"
 uuid = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-version = "1.5.4"
+version = "1.5.5"
 
 [[Polynomials]]
 deps = ["Intervals", "LinearAlgebra", "RecipesBase"]
@@ -1240,7 +1240,7 @@ version = "0.6.2"
 deps = ["AbstractTrees", "CSV", "DataFrames", "DiffResults", "Distributed", "DistributedArrays", "Distributions", "ForwardDiff", "LinearAlgebra", "LogDensityProblems", "NewickTree", "Parameters", "Random", "StatsBase", "Test", "TransformVariables"]
 path = ".."
 uuid = "eab5b8f2-ac71-4eb1-ac2b-64791b8dae63"
-version = "2.0.0"
+version = "2.0.1"
 
 [[Widgets]]
 deps = ["Colors", "Dates", "Observables", "OrderedCollections"]
