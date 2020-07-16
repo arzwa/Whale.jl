@@ -890,7 +890,9 @@ version = "0.5.5"
 
 [[PalmTree]]
 deps = ["ColorSchemes", "Luxor", "NewickTree", "Parameters", "Printf"]
-path = "../../PalmTree"
+git-tree-sha1 = "8f8adc40c2db182ee0710fd62a4f8644bff56042"
+repo-rev = "master"
+repo-url = "https://github.com/arzwa/PalmTree.jl.git"
 uuid = "103a96ca-e421-11e8-0497-536c6ddde151"
 version = "0.1.0"
 
