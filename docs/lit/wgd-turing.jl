@@ -51,7 +51,7 @@ r = Whale.RatesModel(params, fixed=(:p,))
 w = WhaleModel(r, t, 0.5)
 ccd = read_ale(joinpath(@__DIR__, "../../example/example-1/ale"), w)
 
-# Note that the duplication and loss rates should here be specified on a log-scale for the DLWGD model. We use an LKJ prior for the covariance matrix, specifying a prior for the correlation of duplication and loss rates (`ρ`) and a prior for the scale parameter `τ`, see e.g. the [stan docs](https://mc-stan.org/docs/2_23/stan-users-guide/multivariate-hierarchical-priors-section.html)
+# Note that the duplication and loss rates should here be specified on a log-scale for the DLWGD model. We use an LKJ prior for the covariance matrix, specifying a prior for the correlation of duplication and loss rates (`ρ`) and a prior for the scale parameter `τ` (see e.g. the [stan docs](https://mc-stan.org/docs/2_23/stan-users-guide/multivariate-hierarchical-priors-section.html)):
 
 @model branchrates(model, ccd, ::Type{T}=Matrix{Float64}) where {T} = begin
     η ~ Beta(3,1)
@@ -89,7 +89,7 @@ trees[1].trees
 # Or maybe all the gene pairs
 ps = Whale.getpairs(trees, w);
 
-# Now let's look at the gene pairs which have a non-zero posterior probability of being derived from WGD node 18 (the *Arabidopsis* WGD, execute `@show w` to check the model structure)
+# Now let's look at the gene pairs which have a non-zero posterior probability of being derived from WGD node 18 (the *P. patens* WGD, execute `@show w` to check the model structure)
 p = filter(x->x[Symbol("18_wgd")] > 0.0, ps)[!,:pair]
 
 # The full (approximate) probability distribution over reconciliation events for this gene pair is
