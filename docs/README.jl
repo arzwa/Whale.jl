@@ -3,21 +3,21 @@
 
 # # Whale: Bayesian gene tree reconciliation and whole-genome duplication inference by amalgamated likelihood estimation
 
-#```
-#
-#                             .-------------'```'----....,,__                        _,
-#                            |                               `'`'`'`'-.,.__        .'(
-#                            |                                             `'--._.'   )
-#                            |                                                   `'-.<
-#                            \               .-'`'-.                            -.    `\
-#                             \               -.o_.     _                     _,-'`\    |
-#                              ``````''--.._.-=-._    .'  \            _,,--'`      `-._(
-#                                (^^^^^^^^`___    '-. |    \  __,,..--'                 `
-#                                 `````````   `'--..___\    |`
-#                                                       `-.,'
-#```
 
-# Whale.jl is a julia library implementing joint inference of gene tree topologies and their reconciliations to a species tree using the **amalgamation** method of Szollosi et al. (2014) to compute the marginalize the reconciliation likelihood over a distribution over tree topologies. Whale implements the duplication-loss (DL) model of gene family evolution as well as a duplication-loss and whole-genome duplication (DLWGD) model (Rabier et al. 2014, Zwaenepoel et al. 2019). The latter can be used for the inference of ancient whole-genome duplications (WGDs) from gene trees while taking into account gene tree and reconciliation uncertainty.
+##
+##                             .-------------'```'----....,,__                        _,
+##                            |                               `'`'`'`'-.,.__        .'(
+##                            |                                             `'--._.'   )
+##                            |                                                   `'-.<
+##                            \               .-'`'-.                            -.    `\
+##                             \               -.o_.     _                     _,-'`\    |
+##                              ``````''--.._.-=-._    .'  \            _,,--'`      `-._(
+##                                (^^^^^^^^`___    '-. |    \  __,,..--'                 `
+##                                 `````````   `'--..___\    |`
+##                                                       `-.,'
+
+
+# Whale.jl is a julia library for joint inference of gene tree topologies and their reconciliations to a species tree. Whale uses the **amalgamation** method of Szollosi et al. (2014) to efficiently compute the marginal likelihood of the gene family under a duplication-loss model of gene family evolution over a distribution of tree topologies. Whale also implements a duplication-loss and whole-genome duplication (DLWGD) model (Rabier et al. 2014, Zwaenepoel et al. 2019). The latter can be used for the inference of ancient whole-genome duplications (WGDs) from gene trees while taking into account gene tree and reconciliation uncertainty.
 
 # The likelihood routines implemented in Whale support **automatic differentiation** using `ForwardDiff.jl`, allowing for efficient gradient-based Maximum-likelihood estimation and Hamiltonian Monte Carlo (HMC) based Bayesian inference. The library focuses on the Bayesian case, and implements relaxed clock priors to model the evolution of gene duplication and loss rates. Lastly, Whale allows to sample reconciled trees from the posterior distribution or a parameterized DL(+WGD) model using a stochastic backtracking agorithm (as in [ALE](https://github.com/ssolo/ALE)).
 
@@ -43,7 +43,7 @@ insertnode!(getlca(t, "ATHA", "ATRI"), name="wgd")
 # model
 θ = ConstantDLWGD(λ=0.1, μ=0.2, q=[0.2, 0.1], η=0.9)
 r = Whale.RatesModel(θ, fixed=(:p,))
-w = WhaleModel(r, t, .1)
+w = WhaleModel(r, t, .1);
 
 # next we get the data (we need a model object for that)
 ccd = read_ale(joinpath("example/example-1/ale"), w)
@@ -60,11 +60,35 @@ end
 model = constantrates(w, ccd)
 chain = sample(model, NUTS(0.65), 100)
 pdf = DataFrame(chain)
+first(pdf, 5)
 
 # We can sample reconciled trees from the posterior using a backtracking algorithm
 fun = (m, x)-> Array(x) |> x->m((λ=x[3], μ=x[4], η=x[5], q=x[1:2]))
 tt = TreeTracker(w, ccd[end-1:end], pdf, fun)
 trees = track(tt)
+
+# now we plot the tree using `Luxor.jl`
+using PalmTree, Luxor
+import Luxor: RGB
+
+rectree = trees[1].trees[1].tree
+outpath = joinpath(@__DIR__, "example/example-1/tree.svg")
+tl = TreeLayout(rectree, cladogram=true, dims=(400,500))
+gray, blck = RGB(0.99, 0.99, 0.99), RGB()
+
+@svg begin
+    Luxor.origin(Point(0,20))
+    setfont("Noto sans italic", 7)
+    drawtree(tl, color=n->n.data.label != "loss" ? blck : gray)
+    nodemap(tl, prewalk(rectree),
+        (n, p) -> !isleaf(n) ?
+            settext("  $(n.data.cred)", p, valign="center") :
+            settext("  $(n.data.name)", p, valign="center"))
+    nodemap(tl, prewalk(rectree),
+        (n, p) -> n.data.label == "duplication" && box(p, 4, 4, :fill))
+end 400 500 outpath;
+
+# ![](example/example-1/tree.svg)
 
 # ## Citation
 
