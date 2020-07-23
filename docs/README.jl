@@ -67,26 +67,28 @@ fun = (m, x)-> Array(x) |> x->m((λ=x[3], μ=x[4], η=x[5], q=x[1:2]))
 tt = TreeTracker(w, ccd[end-1:end], pdf, fun)
 trees = track(tt)
 
-# now we plot the tree using `Luxor.jl`
+# Now we plot the MAP tree for the first family using `Luxor.jl`
 using PalmTree, Luxor
 import Luxor: RGB
 
 rectree = trees[1].trees[1].tree
 outpath = joinpath(@__DIR__, "example/example-1/tree.svg")
-tl = TreeLayout(rectree, cladogram=true, dims=(400,500))
-gray, blck = RGB(0.99, 0.99, 0.99), RGB()
+tl = TreeLayout(rectree, cladogram=true, dims=(350,300))
+gray, blck = RGB(0.9, 0.9, 0.9), RGB()
 
 @svg begin
     Luxor.origin(Point(0,20))
-    setfont("Noto sans italic", 7)
+    setfont("Noto sans italic", 12)
     drawtree(tl, color=n->n.data.label != "loss" ? blck : gray)
     nodemap(tl, prewalk(rectree),
         (n, p) -> !isleaf(n) ?
             settext("  $(n.data.cred)", p, valign="center") :
-            settext("  $(n.data.name)", p, valign="center"))
+            settext("  $(split(n.data.name, "_")[1])", p, valign="center"))
     nodemap(tl, prewalk(rectree),
-        (n, p) -> n.data.label == "duplication" && box(p, 4, 4, :fill))
-end 400 500 outpath;
+        (n, p) -> n.data.label == "duplication" && box(p, 8, 8, :fill))
+    nodemap(tl, prewalk(rectree),
+        (n, p) -> startswith(n.data.label, "wgd") && star(p,3,5,3,0.5,:fill))
+end 420 420 outpath;
 
 # ![](example/example-1/tree.svg)
 

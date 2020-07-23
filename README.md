@@ -72,7 +72,7 @@ ccd = read_ale(joinpath("example/example-1/ale"), w)
 ```
 
 ```
-12-element Array{Whale.CCD{UInt16,Float64},1}:
+12-element Array{CCD{UInt16,Float64},1}:
  CCD{UInt16,Float64}(Γ=83, 𝓛=13)
  CCD{UInt16,Float64}(Γ=55, 𝓛=13)
  CCD{UInt16,Float64}(Γ=89, 𝓛=13)
@@ -106,14 +106,14 @@ first(pdf, 5)
 
 ```
 5×5 DataFrame
-│ Row │ q1        │ q2       │ r[1]     │ r[2]     │ η        │
-│     │ Float64   │ Float64  │ Float64  │ Float64  │ Float64  │
-├─────┼───────────┼──────────┼──────────┼──────────┼──────────┤
-│ 1   │ 0.0363986 │ 0.180667 │ 0.116364 │ 0.133189 │ 0.8814   │
-│ 2   │ 0.0399424 │ 0.621034 │ 0.128347 │ 0.169938 │ 0.814346 │
-│ 3   │ 0.128362  │ 0.239903 │ 0.120084 │ 0.139141 │ 0.820706 │
-│ 4   │ 0.102919  │ 0.116727 │ 0.107388 │ 0.153163 │ 0.783433 │
-│ 5   │ 0.0347364 │ 0.451086 │ 0.140796 │ 0.193334 │ 0.772992 │
+│ Row │ q1         │ q2       │ r[1]     │ r[2]     │ η        │
+│     │ Float64    │ Float64  │ Float64  │ Float64  │ Float64  │
+├─────┼────────────┼──────────┼──────────┼──────────┼──────────┤
+│ 1   │ 0.0953611  │ 0.228601 │ 0.140129 │ 0.169225 │ 0.558353 │
+│ 2   │ 0.130931   │ 0.217714 │ 0.129844 │ 0.164947 │ 0.760279 │
+│ 3   │ 0.011601   │ 0.310436 │ 0.141782 │ 0.190466 │ 0.775876 │
+│ 4   │ 0.00851225 │ 0.483908 │ 0.119012 │ 0.148087 │ 0.703354 │
+│ 5   │ 0.023645   │ 0.147576 │ 0.118809 │ 0.144727 │ 0.785279 │
 ```
 
 We can sample reconciled trees from the posterior using a backtracking algorithm
@@ -126,11 +126,11 @@ trees = track(tt)
 
 ```
 2-element Array{Whale.RecSummary,1}:
- RecSummary(# unique trees = 20)
- RecSummary(# unique trees = 21)
+ RecSummary(# unique trees = 17)
+ RecSummary(# unique trees = 24)
 ```
 
-now we plot the tree using `Luxor.jl`
+Now we plot the MAP tree for the first family using `Luxor.jl`
 
 ```julia
 using PalmTree, Luxor
@@ -138,20 +138,22 @@ import Luxor: RGB
 
 rectree = trees[1].trees[1].tree
 outpath = joinpath(@__DIR__, "example/example-1/tree.svg")
-tl = TreeLayout(rectree, cladogram=true, dims=(400,500))
-gray, blck = RGB(0.99, 0.99, 0.99), RGB()
+tl = TreeLayout(rectree, cladogram=true, dims=(350,300))
+gray, blck = RGB(0.9, 0.9, 0.9), RGB()
 
 @svg begin
     Luxor.origin(Point(0,20))
-    setfont("Noto sans italic", 7)
+    setfont("Noto sans italic", 12)
     drawtree(tl, color=n->n.data.label != "loss" ? blck : gray)
     nodemap(tl, prewalk(rectree),
         (n, p) -> !isleaf(n) ?
             settext("  $(n.data.cred)", p, valign="center") :
-            settext("  $(n.data.name)", p, valign="center"))
+            settext("  $(split(n.data.name, "_")[1])", p, valign="center"))
     nodemap(tl, prewalk(rectree),
-        (n, p) -> n.data.label == "duplication" && box(p, 4, 4, :fill))
-end 400 500 outpath;
+        (n, p) -> n.data.label == "duplication" && box(p, 8, 8, :fill))
+    nodemap(tl, prewalk(rectree),
+        (n, p) -> startswith(n.data.label, "wgd") && star(p,3,5,3,0.5,:fill))
+end 420 420 outpath;
 ```
 
 ![](example/example-1/tree.svg)
