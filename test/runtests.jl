@@ -1,9 +1,10 @@
 using Pkg; Pkg.activate(@__DIR__)
 using Whale, NewickTree, Parameters
-using Test, Random
+using Test, Random, Distributed
 
 const ALEOBSERVE = false  # do tests requiring `ALEobserve` in the path
 const DHMC = true         # do DynamicHMC related tests
+const DISTRIBUTED = true
 
 @testset "Whale tests" begin
     @testset "likelihood" begin
@@ -30,12 +31,43 @@ const DHMC = true         # do DynamicHMC related tests
         @test logpdf!(w, ccd) ≈ -570.9667405899105
     end
 
+    @testset "All different likelihood routines" begin
+        data = joinpath(@__DIR__, "../example/example-1/ale")
+        t = deepcopy(Whale.extree)
+        n = length(postwalk(t))
+        insertnode!(getlca(t, "ATHA", "ATHA"), name="wgd_1")
+        r = RatesModel(ConstantDLWGD(λ=0.1, μ=0.2, q=[0.2], η=0.9))
+        x = randn(4)
+        w = WhaleModel(r, t, 0.05)
+        ccd = read_ale(data, w)
+        ccd_da = read_ale(data, w, true)  # DArray
+        l1 = logpdf!(w(x), ccd)
+        l2 = logpdf(w(x), ccd)
+        l3 = logpdf!(w(x), ccd_da)
+        l4 = logpdf(w(x), ccd_da)
+        l5 = Whale.fand∇f(w(x), ccd_da, x)
+        @test l1 ≈ l2 ≈ l3 ≈ l4 ≈ l5[1]
+        if DISTRIBUTED
+            addprocs(2)
+            @everywhere using Pkg
+            @everywhere Pkg.activate(@__DIR__)
+            @everywhere using Whale
+            ccd_da = read_ale(data, w, true)  # DArray
+            l6 = logpdf!(w(x), ccd_da)
+            l7 = logpdf(w(x), ccd_da)
+            l8 = Whale.fand∇f(w(x), ccd_da, x)
+            @test l6 ≈ l7 ≈ l8[1] ≈ l1
+            rmprocs(workers())
+            @test length(workers()) == 1
+        end
+    end
+
     @testset "Conditioning - nowhere extinct" begin
         t = deepcopy(Whale.extree)
         insertnode!(t[1][1], name="wgd_1")
         insertnode!(t[1][2][1], name="wgd_2")
         p = -Inf
-        # the higher the retention rates, the higehr the probability of non-ext
+        # the higher the retention rates, the higher the probability of non-ext
         for q = 0:0.1:1
             r = RatesModel(ConstantDLWGD(λ=0.3, μ=0.4, q=[q,q], η=0.66))
             w = WhaleModel(r, t, 0.05,

@@ -47,7 +47,8 @@ end
 function _grad(wm::WhaleModel, data::Vector, x)
     function fun(x)
         model = wm(x)  # sets the model
-        mapreduce(u->logpdf(model, u), +, data)
+        ℓ = mapreduce(u->logpdf(model, u), +, data)
+        ℓhood(ℓ - length(data)*condition(model))
     end
     cfg = ForwardDiff.GradientConfig(fun, x, ForwardDiff.Chunk{length(x)}())
     vcat(fand∇f(fun, x, cfg)...)

@@ -12,8 +12,8 @@ using Distributions, Test, DynamicHMC
         prior = CRPrior(MvLogNormal(ones(2)), Beta(3,1), Beta())
         problem = WhaleProblem(D, w, prior)
         p, ∇p = Whale.logdensity_and_gradient(problem, zeros(4))
-        shouldbe = [-276.061487822, 160.141680772, -7.199728049, -1.26771978]
-        @test p ≈ -462.771909465
+        shouldbe = [-286.51921458, 182.41911264, -1.07830352, -1.34490497]
+        @test p ≈ -447.84586660
         @test all(∇p .≈ shouldbe)
     end
 
@@ -24,9 +24,9 @@ using Distributions, Test, DynamicHMC
         prior = Whale.IWIRPrior(Ψ=[1. 0.; 0. 1.])
         problem = WhaleProblem(D, w, prior)
         p, ∇p = Whale.logdensity_and_gradient(problem, zeros(36))
-        @test p ≈ -467.66476172315
-        @test all(∇p[3:5] .≈ [-32.807670074, -37.277598588, -35.218775468])
-        @test all(∇p[end-2:end] .≈ [0.0, -1.26771978, -6.199728049])
+        @test p ≈ -452.73871886
+        @test all(∇p[3:5] .≈ [-34.0031273, -37.39635692, -35.3375338])
+        @test all(∇p[end-2:end] .≈ [0.0, -1.34490497, -0.07830352])
     end
 
     @testset "DHMC prior sampling" begin
