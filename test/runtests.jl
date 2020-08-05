@@ -7,7 +7,7 @@ const DHMC = true         # do DynamicHMC related tests
 const DISTRIBUTED = true
 
 @testset "Whale tests" begin
-    @testset "likelihood" begin
+    @testset "Likelihood" begin
         data = joinpath(@__DIR__, "../example/example-1/ale")
         t = deepcopy(Whale.extree)
         n = length(postwalk(t))
@@ -92,7 +92,7 @@ const DISTRIBUTED = true
         end
     end
 
-    @testset "set sampling probabilities" begin
+    @testset "Set sampling probabilities" begin
         data = joinpath(@__DIR__, "../example/example-1/ale")
         t = deepcopy(Whale.extree)
         n = length(postwalk(t))
