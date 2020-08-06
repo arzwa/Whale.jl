@@ -161,6 +161,7 @@ function getnodelabel(n)
 end
 
 # WGD-related summarization
+# XXX Obsolete?
 iswgddup(n::RecNode) = n.data.label=="wgd"
 getwgds(tree::RecNode) = filter(iswgddup, postwalk(tree))
 getwgds(tree::RecNode, wgds) = filter(
@@ -197,6 +198,39 @@ function wgdtable(data, ccd, wgd)
     end
     DataFrame(X)
 end
+
+"""
+    gettables(trees::Vector{RecSummary} [,nodes=[]])
+
+Get for every node in teh species tree a data structure with all
+gene tree nodes reconciled to that nodes for each relevant event type.
+Output is suggested to be saved as JSON string.
+"""
+function gettables(trees, nodes=[])
+    table = Dict()
+    seen  = Set()
+    for s in trees, (_, t) in s.trees
+        for n in prewalk(t)
+            isleaf(n) && continue
+            e = n.data.e
+            (!isempty(nodes) && e ∉ nodes) && continue
+            l = n.data.label
+            h = Whale.cladehash(n)
+            h ∈ seen && continue
+            push!(seen, h)
+            !haskey(table, e) ? table[e] = Dict() : nothing
+            !haskey(table[e], l) ? table[e][l] = [] : nothing
+            push!(table[e][l], (
+                f = n.data.cred, fname = s.fname,
+                left  = join(name.(getleaves(n[1])), ","),
+                right = join(name.(getleaves(n[2])), ",")))
+        end
+    end
+    table
+end
+
+# XXX: Why only WGDs? We should just generalize this to obtaining a table
+# for whichever species tree node we wish...
 
 # function pruneloss!(tree::RecTree)
 #     @unpack root, annot = tree

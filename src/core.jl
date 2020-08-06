@@ -86,7 +86,7 @@ function whale!(n::ModelNode{T}, ℓ, x, wm) where T
         !iscompatible(γ, n) && continue
         leaf = isleaf(γ)
         if leaf && isleaf(n)
-            ℓ[e][γ.id,1] = one(T)
+            ℓ[e][γ.id,1] = n.data.leafℙ
         elseif !isleaf(n)
             p = Πspeciation(γ, ℓ, n) + Πloss(γ, ℓ, n)
             ℓ[e][γ.id,1] += p

@@ -122,6 +122,44 @@ const DISTRIBUTED = true
         @test all(isapprox.(map(sum, eachrow(df[!,1:end-2])), Ref(1.)))
     end
 
+    @testset "MUL trees" begin
+        data = joinpath(@__DIR__, "../example/example-1/ale")
+        multree = readnw("((MPOL:4.752,PPAT:4.752):0.292,((SMOE:4.0,PPAT:4.0):0.457,(((OSAT:1.555,(ATHA:0.5548,CPAP:0.5548):1.0002):0.738,ATRI:2.293):1.225,(GBIL:3.178,PABI:3.178):0.34):0.939):0.587);")
+        n = length(postwalk(multree))
+        r = RatesModel(DLWGD(λ=ones(n), μ=ones(n), η=0.9), fixed=(:p,:q))
+        w = WhaleModel(r, multree, 0.05)
+        ccd = read_ale(data, w)
+        @test isfinite(logpdf!(w, ccd))
+    end
+
     ALEOBSERVE && include(joinpath(@__DIR__, "mle.jl"))
     DHMC && include(joinpath(@__DIR__, "dhmc.jl"))
+
+    @testset "Discretization" begin
+        t = readnw(readline(joinpath(@__DIR__, "../example/example-5/tree.nw")))
+        d = joinpath(@__DIR__, "../example/example-5/OG0014587.ale")
+        for n in prewalk(t); n.data.distance = 1.; end
+        n = length(postwalk(t))
+        for i=1:10
+            r = randn(n)
+            r = RatesModel(DLWGD(λ=r, μ=r, η=0.9), fixed=(:p,:q))
+            ℓ = map(-5:0.5:-1) do n
+                w = WhaleModel(r, t, 10^n)
+                data = read_ale(d, w)
+                # @show n, logpdf!(w, data)
+                logpdf!(w, data)
+            end
+            @test all(abs.(ℓ .- ℓ[1]) .< 0.1)
+            # println("-"^80)
+        end
+    end
 end
+
+# t = readnw(readline(joinpath(@__DIR__, "../example/example-5/tree.nw")))
+# d = joinpath(@__DIR__, "../example/example-5/OG0006450.ale")
+# r = RatesModel(ConstantDLWGD(λ=1., μ=1., η=0.9))
+# w = WhaleModel(r, t, 0.1)
+# x = read_ale(d, w)[1]
+# f(e,x,w) = begin println(nwstr(w[e],dist=false));
+#     Dict(i=>x.ℓ[e][i,:] for i=1:length(x) if x.ℓ[e][i,1] != 0.); end
+# logpdf!(w, x)

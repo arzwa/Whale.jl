@@ -267,7 +267,7 @@ end
 function _backtrack!(b::BackTracker)  # intra branch backtracking
     @unpack state, ccd, model = b
     @unpack e, γ, t = state
-    if isleaf(ccd[γ])
+    if isleaf(ccd[γ])  # jump to the end of the branch rightaway
         return backtrack!(b, SliceState(e, γ, 1))
     end
     r = rand()*ccd.ℓ[e][γ,t]
