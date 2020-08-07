@@ -200,7 +200,7 @@ function wgdtable(data, ccd, wgd)
 end
 
 """
-    gettables(trees::Vector{RecSummary} [,nodes=[]])
+    gettables(trees::Vector{RecSummary}, nodes=[])
 
 Get for every node in teh species tree a data structure with all
 gene tree nodes reconciled to that nodes for each relevant event type.
@@ -209,7 +209,7 @@ Output is suggested to be saved as JSON string.
 function gettables(trees, nodes=[])
     table = Dict()
     seen  = Set()
-    for s in trees, (_, t) in s.trees
+    for (i,s) in enumerate(trees), (_, t) in s.trees
         for n in prewalk(t)
             isleaf(n) && continue
             e = n.data.e
@@ -220,10 +220,10 @@ function gettables(trees, nodes=[])
             push!(seen, h)
             !haskey(table, e) ? table[e] = Dict() : nothing
             !haskey(table[e], l) ? table[e][l] = [] : nothing
-            push!(table[e][l], (
-                f = n.data.cred, fname = s.fname,
-                left  = join(name.(getleaves(n[1])), ","),
-                right = join(name.(getleaves(n[2])), ",")))
+            push!(table[e][l], (i = i, 
+                f = n.data.cred, fname = s.fname, 
+                left  = name.(getleaves(n[1])),
+                right = name.(getleaves(n[2]))))
         end
     end
     table
@@ -231,25 +231,3 @@ end
 
 # XXX: Why only WGDs? We should just generalize this to obtaining a table
 # for whichever species tree node we wish...
-
-# function pruneloss!(tree::RecTree)
-#     @unpack root, annot = tree
-#     nodes = postwalk(root)
-#     ids = cladehash.(nodes)
-#     for (h, n) in zip(ids, nodes)
-#         if annot[h].label == "loss"  # deletion happens at sploss node
-#             delete!(tree.annot, h)
-#         elseif annot[h].label == "sploss"
-#             child = children(n)[1]
-#             newchild = RecNode(child.γ, child.e, child.t,
-#                 child.children, n.parent)
-#             delete!(n.parent.children, n)
-#             delete!(tree.annot, h)
-#             push!(n.parent, newchild)
-#         else
-#             ann = annot[h]
-#             delete!(tree.annot, h)
-#             tree.annot[cladehash(n)] = ann
-#         end
-#     end
-# end

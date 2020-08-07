@@ -35,7 +35,7 @@ function dlsim(Ψ, θ, a::Int)
     return root
 end
 
-function dlsim!(n, t, e, model) where I
+function dlsim!(n, t, e, model)
     @unpack λ, μ = getθ(model, e)
     w = randexp(λ+μ)
     t -= w
