@@ -63,6 +63,27 @@ function logpdf(prior::IRPrior, θ::T) where T
 end
 
 """
+    ExpPrior
+
+Exponential prior for dup/loss distance estimation.
+"""
+@with_kw struct ExpPrior <: Prior
+    πr::Exponential = Exponential()
+    πq::Beta = Beta()
+    πη::Union{Beta,Normal} = Beta(3,1)
+end
+
+function logpdf(prior::ExpPrior, θ::T) where T
+    @unpack πr, πq, πη = prior
+    @unpack λ, η = θ.params
+    q = hasfield(T, :q) ? θ.q : Float64[]
+    μ = hasfield(T, :μ) ? θ.μ : Float64[]
+    p  = typeof(πη)<:Normal && πη.σ == zero(πη.σ) ? 0. : logpdf(πη, η)
+    p += sum(logpdf.(πr, λ)) + sum(logpdf.(πr, μ)) + sum(logpdf.(πq, q)) 
+    isfinite(p) ? p : -Inf
+end
+
+"""
     IWIRPrior
 
 Bivariate independent rates prior with Inverse-Wishart prior on

@@ -138,3 +138,46 @@ end
         # condition tends to lead to underestimation of μ
     end
 end
+
+function mlfunsdist(model, ccd, η, nwgd=0)
+    f(x::Vector{T}) where T = -logpdf(model([x ; x]), ccd)
+    g!(G, x) = G .= ForwardDiff.gradient(f, x)
+    return f, g!
+end
+
+@testset "Estimating distances experiment" begin
+    # So we simulate under a known time tree, do inference for a 
+    # tree with branch lengths set to 1., and then divide the 
+    # MLEs for branch-wise rates on this tree by the original branch
+    # length. This should recover the true rate(s).
+    Random.seed!(115)
+    t = readnw("((A:1.5,B:1.5):1.2,C:2.7);")
+    l = length(getleaves(t))
+    n = length(postwalk(t))
+    θ = ConstantDLWGD(λ=.5, μ=.5, η=0.66)
+    r = Whale.RatesModel(θ, fixed=(:η, :p))
+    w = WhaleModel(r, t, 0.05)
+    ts, ps = dlsimbunch(Whale.root(w), w.rates, 500, condition=:root)
+    ale = aleobserve(ts)
+
+    tt = deepcopy(t)
+    for n in prewalk(tt); n.data.distance = 1. ; end
+    θ = DLWGD(λ=ones(n), μ=ones(n), η=0.66)
+    r = Whale.RatesModel(θ, fixed=(:η, :p))
+    ww = WhaleModel(r, tt, 0.05)
+    ccd = read_ale(ale, ww)
+
+    f(x::Vector{T}) where T = -logpdf(ww([x ; x]), ccd)
+    g!(G, x) = G .= ForwardDiff.gradient(f, x)    
+    
+    # And now optimize
+    results = optimize(f, g!, randn(n), LBFGS())
+    λ = exp.(results.minimizer)
+    rs = map(prewalk(Whale.root(w))) do n
+        r = λ[id(n)] / distance(n)
+        @info id(n), name(n), r
+        @test !isfinite(r) || 0.1 < r < 0.9
+        r
+    end
+    @test abs(mean(rs[2:end]) - 0.5) < 0.1
+end

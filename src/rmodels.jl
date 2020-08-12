@@ -97,3 +97,34 @@ trans(m::DLWGD) = (
     η=as𝕀)
 
 (::DLWGD)(θ) = DLWGD(;λ=θ.λ, μ=θ.μ, q=θ.q, η=eltype(θ.λ)(θ.η), p=θ.p)
+
+"""
+    Critical{T,V}
+
+Branch-specific duplication and loss rates, with WGD events. Assumes
+a geometric distribution with parameter `η` on the number of lineages
+at the root.
+"""
+@with_kw struct Critical{T,V} <: Params{T}
+    λ::Vector{T}
+    q::Vector{T} = Float64[]
+    p::Vector{V} = Float64[]
+    η::T = 0.66
+end
+
+function getθ(m::Critical, n)
+    return if iswgd(n)
+        c = nonwgdchild(n)
+        (λ=m.λ[id(c)], μ=m.λ[id(c)], q=m.q[wgdid(n)])
+    else
+        (λ=m.λ[id(n)], μ=m.λ[id(n)], p=getp(m, n), η=m.η)
+    end
+end
+
+trans(m::Critical) = (
+    λ=as(Array, asℝ₊, length(m.λ)),
+    q=as(Array, as𝕀, length(m.q)),
+    p=as(Array, as𝕀, length(m.p)),
+    η=as𝕀)
+
+(::Critical)(θ) = Critical(;λ=θ.λ, q=θ.q, η=eltype(θ.λ)(θ.η), p=θ.p)
