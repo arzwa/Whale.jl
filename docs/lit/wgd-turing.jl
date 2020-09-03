@@ -1,12 +1,18 @@
 # # Bayesian inference using `Turing.jl`
 
-# In this example we will use the probabilistic programming language implemented in [`Turing.jl`](https://turing.ml/dev/) with Whale to specify Bayesian hierarchical models for gene tree reconciliation in a flexible way
+# In this example we will use the probabilistic programming language 
+# implemented in [`Turing.jl`](https://turing.ml/dev/) with Whale to 
+# specify Bayesian hierarchical models for gene tree reconciliation 
+# in a flexible way
 using Whale, NewickTree, Distributions, Turing, DataFrames, LinearAlgebra, Random
 Random.seed!(7137);
 
 # ## Using a constant-rates model
 
-# First we will do inference for a simple constant-rates model (i.e. assuming a single duplication and loss rate for the entire species tree). First we load the species tree (using the example tree available in the WHale library)
+# First we will do inference for a simple constant-rates model (i.e. 
+# assuming a single duplication and loss rate for the entire species 
+# tree). First we load the species tree (using the example tree available 
+# in the Whale library)
 t = deepcopy(Whale.extree)
 n = length(postwalk(t))  # number of internal nodes
 
@@ -38,11 +44,15 @@ model = constantrates(w, ccd)
 chain = sample(model, NUTS(0.65), 100)
 
 # !!! warning
-#     Of course such a chain should be run much longer than in this example! Here a very short chain is presented to ensure reasonable build times for this documentation.
+#     Of course such a chain should be run much longer than in this example! 
+# Here a very short chain is presented to ensure reasonable build times for 
+# this documentation.
 
 # ## Using a branch-specific rates model
 
-# Now we will consider a model with branch-specific duplication and loss rates, using a more complicated hierarchical model with an bivariate uncorrelated relaxed clock prior.
+# Now we will consider a model with branch-specific duplication and loss rates, 
+# using a more complicated hierarchical model with an bivariate uncorrelated 
+# relaxed clock prior.
 # We'll use the same tree as above. The relevant model now is
 # the DLWGD model:
 
@@ -51,7 +61,11 @@ r = Whale.RatesModel(params, fixed=(:p,))
 w = WhaleModel(r, t, 0.5)
 ccd = read_ale(joinpath(@__DIR__, "../../example/example-1/ale"), w)
 
-# Note that the duplication and loss rates should here be specified on a log-scale for the DLWGD model. We use an LKJ prior for the covariance matrix, specifying a prior for the correlation of duplication and loss rates (`ρ`) and a prior for the scale parameter `τ` (see e.g. the [stan docs](https://mc-stan.org/docs/2_23/stan-users-guide/multivariate-hierarchical-priors-section.html)):
+# Note that the duplication and loss rates should here be specified on a log-scale 
+# for the DLWGD model. We use an LKJ prior for the covariance matrix, specifying a 
+# prior for the correlation of duplication and loss rates (`ρ`) and a prior for the 
+# scale parameter `τ` (see e.g. the [stan docs
+# ](https://mc-stan.org/docs/2_23/stan-users-guide/multivariate-hierarchical-priors-section.html)):
 
 @model branchrates(model, ccd, ::Type{T}=Matrix{Float64}) where {T} = begin
     η ~ Beta(3,1)
@@ -75,7 +89,9 @@ model = branchrates(w, ccd)
 chain = sample(model, NUTS(0.65), 100)
 
 # !!! warning
-#     Of course such a chain should be run much longer than in this example! Here a very short chain is presented to ensure reasonable build times for this documentation.
+#     Of course such a chain should be run much longer than in this example! 
+#     Here a very short chain is presented to ensure reasonable build times 
+#     for this documentation.
 
 # Now let's obtain reconciled trees
 pdf = DataFrame(chain)
@@ -89,10 +105,13 @@ trees[1].trees
 # Or maybe all the gene pairs
 ps = Whale.getpairs(trees, w);
 
-# Now let's look at the gene pairs which have a non-zero posterior probability of being derived from WGD node 18 (the *P. patens* WGD, execute `@show w` to check the model structure)
+# Now let's look at the gene pairs which have a non-zero posterior probability 
+# of being derived from WGD node 18 (the *P. patens* WGD, execute `@show w` to 
+# check the model structure)
 p = filter(x->x[Symbol("18_wgd")] > 0.0, ps)[!,:pair]
 
-# The full (approximate) probability distribution over reconciliation events for this gene pair is
+# The full (approximate) probability distribution over reconciliation events for 
+# this gene pair is
 row = ps[ps[!,:pair] .== p[1],1:end-2]
 for (k,v) in zip(names(row), Array(row))
     v > 0. && println(k, ": ", v)

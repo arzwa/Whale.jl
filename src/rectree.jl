@@ -202,28 +202,30 @@ end
 """
     gettables(trees::Vector{RecSummary}, nodes=[])
 
-Get for every node in teh species tree a data structure with all
+Get for every node in the species tree a data structure with all
 gene tree nodes reconciled to that nodes for each relevant event type.
 Output is suggested to be saved as JSON string.
 """
-function gettables(trees, nodes=[])
+function Whale.gettables(trees, nodes=[])
     table = Dict()
-    seen  = Set()
-    for (i,s) in enumerate(trees), (_, t) in s.trees
-        for n in prewalk(t)
-            isleaf(n) && continue
-            e = n.data.e
-            (!isempty(nodes) && e ∉ nodes) && continue
-            l = n.data.label
-            h = Whale.cladehash(n)
-            h ∈ seen && continue
-            push!(seen, h)
-            !haskey(table, e) ? table[e] = Dict() : nothing
-            !haskey(table[e], l) ? table[e][l] = [] : nothing
-            push!(table[e][l], (i = i, 
-                f = n.data.cred, fname = s.fname, 
-                left  = name.(getleaves(n[1])),
-                right = name.(getleaves(n[2]))))
+    for (i,s) in enumerate(trees)
+        seen = Set()
+        for (_, t) in s.trees
+            for n in prewalk(t)
+                isleaf(n) && continue
+                e = n.data.e
+                (!isempty(nodes) && e ∉ nodes) && continue
+                l = n.data.label
+                h = Whale.cladehash(n)
+                (h, l) ∈ seen && continue
+                push!(seen, (h, l))
+                !haskey(table, e) ? table[e] = Dict() : nothing
+                !haskey(table[e], l) ? table[e][l] = [] : nothing
+                push!(table[e][l], (i = i, 
+                    f = n.data.cred, fname = s.fname, 
+                    left  = name.(getleaves(n[1])),
+                    right = name.(getleaves(n[2]))))
+            end
         end
     end
     table
