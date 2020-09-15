@@ -221,7 +221,11 @@ function addubiquitous!(d::Dict)
     d[:Bip_bls][Γ] = 0.
 end
 
-# Something like this should be possible
+
+# Obtaining the CCD from trees
+# Something like this should be possible It would be good to work directly with
+# the CCD, Clade and Triple structs, but those are currently not that
+# convenient for those purposes...
 # function getccd(trees::Vector{String})
 #     ccd = getccd(tree)
 #     for i in 2:length(trees)
@@ -230,9 +234,30 @@ end
 #     end
 #     ccd
 # end
-#
+# 
 # function getccd(tree)
+#     length(children(tree)) == 3 && root_arbitrary!(tree)
 #     function walk(n)
-#
+#         
 #     end
+# end
+# 
+
+# clade(node) = hash(getleaves(node))
+# function triple(node)
+#     l = getleaves(node[1])
+#     r = getleaves(node[1])
+#     (hash(l ∪ r), hash(l), hash(r))
+# end
+
+# function root_arbitrary!(n::Node)
+#     @assert length(children(n)) == 3 "Root not trifurcating!"
+#     newnode = Node(id(n[1]), n)
+#     a = n[1]
+#     b = n[2]
+#     delete!(n, a)
+#     delete!(n, b)
+#     push!(newnode, a)
+#     push!(newnode, b)
+#     n
 # end
