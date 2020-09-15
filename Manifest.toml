@@ -209,7 +209,9 @@ version = "0.3.3"
 
 [[NewickTree]]
 deps = ["AbstractTrees", "Test"]
-git-tree-sha1 = "ee88ab77181cdf6288d90f96574e8b4f81584a4e"
+git-tree-sha1 = "3e401948b7a6956efa8d65b8ad6d5a3e7bc18c0f"
+repo-rev = "master"
+repo-url = "https://github.com/arzwa/NewickTree.jl.git"
 uuid = "b0a14db8-6308-4ebc-8917-f72cd81f5094"
 version = "0.2.0"
 
