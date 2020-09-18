@@ -126,10 +126,13 @@ const DISTRIBUTED = true
         data = joinpath(@__DIR__, "../example/example-1/ale")
         multree = readnw("((MPOL:4.752,PPAT:4.752):0.292,((SMOE:4.0,PPAT:4.0):0.457,(((OSAT:1.555,(ATHA:0.5548,CPAP:0.5548):1.0002):0.738,ATRI:2.293):1.225,(GBIL:3.178,PABI:3.178):0.34):0.939):0.587);")
         n = length(postwalk(multree))
-        r = RatesModel(DLWGD(λ=ones(n), μ=ones(n), η=0.9), fixed=(:p,:q))
+        r = RatesModel(DLWGD(λ=zeros(n).-1, μ=zeros(n).-1, η=0.9), fixed=(:p,:q))
         w = WhaleModel(r, multree, 0.05)
         ccd = read_ale(data, w)
         @test isfinite(logpdf!(w, ccd))
+        ts = hcat([Whale.backtrack(w, ccd) for i=1:100]...)
+        rs = Whale.sumtrees(permutedims(ts), ccd, w)
+        tables = Whale.gettables(rs, leaves=true)
     end
 
     ALEOBSERVE && include(joinpath(@__DIR__, "mle.jl"))

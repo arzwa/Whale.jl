@@ -58,6 +58,7 @@ Base.length(m::ModelNode) = size(m.data.slices)[1]
 iswgd(n::Node) = startswith(name(n), "wgd")
 wgdid(n::ModelNode) = n.data.wgdid
 lastslice(m::ModelNode) = lastindex(m, 1)
+ismulnode(n::Node) = 0. < n.data.leafℙ < 1.0
 
 abstract type SamplingCondition end
 
@@ -131,7 +132,9 @@ function WhaleModel(rates::RatesModel{T}, Ψ::Node{I}, Δt;
             i += 1
         else
             n.id = I(j)
-            haskey(mulgroups, name(n)) ? mulid[name(n)] = n.id : nothing
+            if haskey(mulgroups, name(n)) 
+                mulid[name(n)] = n.id
+            end
             j += 1
         end
         index[id(n)] = k

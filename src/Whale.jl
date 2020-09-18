@@ -39,4 +39,5 @@ module Whale
     export WhaleModel, CCD, CCDArray, read_ale, logpdf, logpdf!
     export WhaleProblem, CRPrior, IRPrior, IWIRPrior, DLWGD, ConstantDLWGD
     export TreeTracker, track, transform, sumtrees, RatesModel, transform
+    export sumtrees, backtrack
 end
