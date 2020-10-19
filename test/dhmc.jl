@@ -29,18 +29,6 @@ using Distributions, Test, DynamicHMC, Random
         @test all(∇p[end-2:end] .≈ [0.0, -1.34490497, -0.07830352])
     end
 
-    @testset "Exp prior" begin
-        r = RatesModel(Whale.Critical(λ=ones(n), q=[0.2], η=0.9))
-        w = WhaleModel(r, t, 0.1)
-        D = read_ale(joinpath(@__DIR__, "../example/example-1/ale"), w, true)
-        prior = Whale.ExpPrior()
-        problem = WhaleProblem(D, w, prior)
-        p, ∇p = Whale.logdensity_and_gradient(problem, zeros(Whale.dimension(r.trans)))
-        @test p ≈ -463.29567160
-        # @test all(∇p[3:5] .≈ [-34.0031273, -37.39635692, -35.3375338])
-        # @test all(∇p[end-2:end] .≈ [0.0, -1.34490497, -0.07830352])
-    end
-
     @testset "DHMC prior sampling" begin
         Random.seed!(9217)
         r = RatesModel(ConstantDLWGD(λ=0.1, μ=0.2, q=[0.2], η=0.9))
