@@ -18,6 +18,8 @@ getψ(n::ModelNode, i::Int) = n[i,4]
 #     return (one(α) - α)*(one(α) - β)*β
 # end
 
+Distributions.loglikelihood(model::WhaleModel, x) = logpdf(model, x)
+
 # NOTE conditioning should be done outside the inner loop. If the normalizing
 # factor is expensive we don't want to compute it `n` times. The difference is
 # really minor when the conditioning factor is cheap (e.g. pbothsides)
