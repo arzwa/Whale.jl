@@ -1,7 +1,7 @@
 name = "Whale"
 uuid = "eab5b8f2-ac71-4eb1-ac2b-64791b8dae63"
 authors = ["Arthur ZWAENEPOEL <arzwa@psb.ugent.be>"]
-version = "2.0.1"
+version = "2.0.2"
 
 [deps]
 AbstractTrees = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
