@@ -16,9 +16,9 @@ end
 
 const ModelNode{T,I} = Node{I,Slices{T,I}}
 
-function Slices(node::Node{I,D}, Δt, minn, wgdid=I(0)) where {I,D}
+function Slices(node::Node{I,D}, Δt, minn, maxn, wgdid=I(0)) where {I,D}
     t = distance(node)
-    n = isnan(t) ? 0 : max(minn, ceil(Int, t/Δt))
+    n = isnan(t) ? 0 : min(maxn, max(minn, ceil(Int, t/Δt)))
     slices = ones(n+1, 4)
     slices[:,1] = vcat(0.0, repeat([n== 0 ? 0. : t/n], n))
     Slices(slices, name(node), Set{I}(), wgdid)
@@ -53,14 +53,14 @@ lastslice(m::ModelNode) = lastindex(m, 1)
 abstract type SamplingCondition end
 
 """
-    WhaleModel(ratesmodel, tree, Δt, [minn=5])
+    WhaleModel(ratesmodel, tree, Δt, [minn=5, maxn=50])
 
 The main Whale model object. This is defined by a `ratesmodel` specifying the
 prameterization of the phylogenetic model and a tree specifying the structure
 of the model. `Δt` is the size of the slices used in the discretization of the
 branch lengths. `minn` is the minimum number of slices for each branch (which
 would then correspond to the maximum number of duplication/loss events possible
-along a branch.
+along a branch. `maxn` is then the maximum number of slices on a branch.
 """
 struct WhaleModel{T,M,I,C<:SamplingCondition} <:DiscreteMultivariateDistribution
     rates::M
@@ -79,7 +79,7 @@ NewickTree.getroot(m::WhaleModel) = root(m)
 # order such that the leaves come first, than the internal nodes, and
 # finally the WGDs (but the iteration order is still a postorder).
 function WhaleModel(rates::RatesModel{T}, Ψ::Node{I}, Δt;
-        minn=5, condition=RootCondition()) where {T,I}
+        minn=5, maxn=50, condition=RootCondition()) where {T,I}
     nonwgd = 0  # count non-wgd nodes
     wgdid = I(0)
     order = ModelNode{T,I}[]
@@ -92,8 +92,8 @@ function WhaleModel(rates::RatesModel{T}, Ψ::Node{I}, Δt;
             i = I(0)
         end
         y′ = isroot(x) ?
-            Node(id(x), Slices(x, Δt, minn, i)) :
-            Node(id(x), Slices(x, Δt, minn, i), y)
+            Node(id(x), Slices(x, Δt, minn, maxn, i)) :
+            Node(id(x), Slices(x, Δt, minn, maxn, i), y)
         for c in children(x)
             walk(c, y′)
         end
