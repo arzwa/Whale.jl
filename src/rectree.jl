@@ -13,9 +13,9 @@ Base.show(io::IO, rsum::RecSummary) =
 writetrees(s::String, rsum::Vector{NamedTuple}) = open(s, "w") do io
     writetrees(io, rsum)
 end
-function writetrees(io::IO, rsum::Vector{NamedTuple}, sep="\t")
+function writetrees(io::IO, rsum::Vector{NamedTuple}, sep="\n")
     for (f,t) in rsum
-        write(io, "$f$sep$(nwstr(t))\n")
+        write(io, "# pp $f$sep$(nwstr(t))\n")
     end
 end
 
