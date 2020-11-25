@@ -168,7 +168,7 @@ Get for every node in the species tree a data structure with all
 gene tree nodes reconciled to that nodes for each relevant event type.
 Output is suggested to be saved as JSON string.
 """
-function gettables(trees, nodes=[]; leaves=false)
+function gettables(trees, nodes=[]; leaves=true)
     table = Dict()
     for (i,s) in enumerate(trees)
         seen = Set()
