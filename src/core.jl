@@ -76,6 +76,11 @@ function logpdf(wm::WhaleModel{T}, X::CCDArray) where T
     ℓhood(ℓ - length(X)*condition(wm))
 end
 
+Distributions.logpdf(m::ModelArray, xs::Vector{<:CCD}) = 
+    sum(tmap(i->logpdf(m.models[i], xs[i]), 1:length(xs)))
+
+Distributions.loglikelihood(m, x) = logpdf(m, x)
+
 function whale!(n::ModelNode{T}, ℓ, x, wm) where T
     iswgd(n)  && return whalewgd!(n, ℓ, x, wm)
     isroot(n) && return whaleroot!(n, ℓ, x, wm)

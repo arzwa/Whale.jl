@@ -14,6 +14,7 @@ module Whale
     using TransformVariables
     using DataFrames
     using CSV
+    using ThreadTools
     using Base.Threads
     import TransformVariables: TransformTuple, transform_and_logjac, transform
     import LogDensityProblems: logdensity_and_gradient

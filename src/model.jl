@@ -218,3 +218,10 @@ function setsamplingp!(model, dict::Dict)
         params.p[id(l)] = haskey(dict, name(l)) ? dict[name(l)] : 0.
     end
 end
+
+struct ModelArray{M} <: DiscreteMultivariateDistribution
+    models::Vector{M}
+end
+
+Base.length(m::ModelArray) = length(m.models)
+
