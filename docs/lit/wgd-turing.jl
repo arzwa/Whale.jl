@@ -9,6 +9,7 @@
 # Bayesian hierarchical models for gene tree reconciliation in a flexible way
 using Whale, NewickTree, Distributions, Turing, DataFrames, LinearAlgebra, Random
 using Plots, StatsPlots
+Turing.turnprogress(false)  # you probably don't want to do this
 Random.seed!(7137);
 
 # ## Using a constant-rates model
@@ -34,10 +35,10 @@ w = WhaleModel(r, t, .1)
 # Note the last argument to `WhaleModel`, this is the slice length `Δt`, here
 # set to `0.1`. This determines the discretization of the branches of the 
 # species tree, and may affect the accuracy of the ALE likelihood. While the
-# transition probabilities over the slcies are exact, the number of slices on 
+# transition probabilities over the slices are exact, the number of slices on 
 # a branch constrains the maximum number of duplications possible along the
 # branch. By default, Whale will ensure 5 slices on each branch if your `Δt`
-# would be chosen too course. Note that the information printed to the `stdout`
+# would be chosen too coarse. Note that the information printed to the `stdout`
 # for the `WhaleModel` struct gives you this information, e.g. the line
 #
 # ```
@@ -45,7 +46,7 @@ w = WhaleModel(r, t, .1)
 # ```
 #
 # indicates that the branch leading to node 10 (which is not a WGD), has length
-# `0.292` and is slices in 5 slices of length `0.0584`.
+# `0.292` and is sliced in 5 slices of length `0.0584`.
 
 # next we get the data (we need a model object for that)
 ccd = read_ale(joinpath(@__DIR__, "../../example/example-1/ale"), w)
@@ -75,7 +76,9 @@ end
 model = constantrates(w, ccd)
 chain = sample(model, NUTS(0.65), 100)
 
-plot(chain)
+aesthetics = (grid=false, size=(500,800), titlefontsize=9, 
+              title_loc=:left, guidefont=8, color=:black)
+plot(chain; aesthetics...)
 
 # !!! warning
 #     Of course such a chain should be run much longer than in this example!
@@ -185,12 +188,15 @@ trees = track(tt)
 
 # The rest is the same as above.
 
-# It may also be of interest to specify a similar model with a single
-# 'turnover' rate for each branch, i.e.  enforcing the `λ = μ` for each branch,
-# but allowing this rate to vary across branches. It is straightforward to
-# specify a hierarchical model for this:
+# ## A critical branch-specific rates model
 
-@model branchrates2(model, ccd, ::Type{T}=Float64) where {T} = begin
+# It may also be of interest to specify a similar model with a single
+# 'turnover' rate for each branch, i.e.  enforcing `λ = μ` for each branch, but
+# allowing this rate to vary across branches. A birth-death process with this
+# property is said to be a *critical* birth-death process. It is
+# straightforward to specify a hierarchical model for this:
+
+@model critical(model, ccd, ::Type{T}=Float64) where {T} = begin
     η ~ Beta(3,1)
     σ ~ Exponential()
     r = Vector{T}(undef, n)
@@ -206,7 +212,7 @@ trees = track(tt)
 end
 
 Random.seed!(54)
-chain = sample(branchrates2(w, ccd), NUTS(0.65), 100)
+chain = sample(critical(w, ccd), NUTS(0.65), 100)
 
 # !!! note
 #     Often it can be beneficial to set the hyperparameter `η` to a fixed value
