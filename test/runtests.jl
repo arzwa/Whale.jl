@@ -15,7 +15,7 @@ const DISTRIBUTED = true
         insertnode!(getlca(t, "ATHA", "ATRI"), name="wgd_2")
         r = RatesModel(
                 DLWGD(λ=ones(n), μ=ones(n), q=[0.2, 0.1], η=0.9), fixed=(:p,))
-        w = WhaleModel(r, t, 0.05)
+        w = WhaleModel(r, t, 0.05, maxn=10000)
         ccd = read_ale(data, w)
         @test logpdf!(w, ccd) ≈ -570.9667405899105
         @test logpdf(w, ccd) ≈ -570.9667405899105
@@ -26,7 +26,7 @@ const DISTRIBUTED = true
         # root rates should not have an effect
         r.params.λ[id(getroot(w))] = NaN
         r.params.μ[id(getroot(w))] = NaN
-        w = WhaleModel(r, t, 0.05)
+        w = WhaleModel(r, t, 0.05, maxn=10000)
         ccd = read_ale(data, w)
         @test logpdf!(w, ccd) ≈ -570.9667405899105
     end
