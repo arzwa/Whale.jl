@@ -76,6 +76,9 @@ end
 model = constantrates(w, ccd)
 chain = sample(model, NUTS(0.65), 100)
 
+# Making some trace plots is straightforward using tools from the Turing
+# probabilistic programming ecosystem
+
 aesthetics = (grid=false, size=(500,800), titlefontsize=9, 
               title_loc=:left, guidefont=8, color=:black)
 plot(chain; aesthetics...)
@@ -168,19 +171,18 @@ end
 # the root index (or in other words, we interpret the rates at the root node as
 # the expected rates for the branches in the tree). 
 
-model = branchrates(w, ccd)
-
-Random.seed!(45)
-chain = sample(model, NUTS(0.65), 100)
+chain = sample(branchrates(w, ccd), NUTS(0.65), 100)
 
 # !!! warning
 #     Of course such a chain should be run much longer than in this example!
 #     Here a very short chain is presented to ensure reasonable build times for
-#     this documentation.
+#     this documentation. Generally, one should at least strive for ESS values
+#     > 100 although short chains may be good for exploring and testing different
+#     models. 
 
-# Now let's obtain reconciled trees. Note that the function `fun` below
-# is afunction that takes a row from the posterior data frame and returns
-# a parameterized Whale model.
+# Now let's obtain reconciled trees. Note that the function `fun` below is
+# a function that takes a row from the posterior data frame and returns a
+# parameterized Whale model.
 pdf = DataFrame(chain)[13:end]
 fun = (m, x)-> Array(x) |> x->m((λ=x[3:2:36], μ=x[4:2:36], η=x[end-2], q=x[1:2]))
 tt = TreeTracker(w, ccd[end-1:end], pdf, fun)
@@ -213,6 +215,11 @@ end
 
 Random.seed!(54)
 chain = sample(critical(w, ccd), NUTS(0.65), 100)
+
+# Note that this model seems to be much easier to sample from, as can be judged
+# by the ESS values. The results, although based on a small data set and a very
+# short chain, already seem to suggest that the gene trees contain some evidence 
+# for a *P. patens* WGD (as `q1` seems to be decidedly non-zero).
 
 # !!! note
 #     Often it can be beneficial to set the hyperparameter `η` to a fixed value
