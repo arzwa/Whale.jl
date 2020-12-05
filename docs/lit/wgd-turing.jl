@@ -141,7 +141,7 @@ ccd = read_ale(joinpath(@__DIR__, "../../example/example-1/ale"), w)
 # and a prior for the scale parameter `τ` (see e.g. the [stan
 # docs](https://mc-stan.org/docs/2_23/stan-users-guide/multivariate-hierarchical-priors-section.html)):
 
-@model branchrates(model, ccd, ::Type{T}=Matrix{Float64}) where {T} = begin
+@model branchrates(model, ccd, ::Type{T}=Float64) where T = begin
     η ~ Beta(3,1)
     ρ ~ Uniform(-1, 1.)
     τ ~ Exponential()
@@ -149,15 +149,21 @@ ccd = read_ale(joinpath(@__DIR__, "../../example/example-1/ale"), w)
     R = [1. ρ ; ρ 1.]
     Σ = S*R*S
     !isposdef(Σ) && return -Inf
-    r = T(undef, 2, n)
-    r[:,1] ~ MvNormal(zeros(2), ones(2))
-    for i=2:n
-        r[:,i] ~ MvNormal(r[:,1], Σ)
+    r = Matrix{T}(undef, 2, n)
+    o = id(getroot(model))
+    r[:,o] ~ MvNormal(zeros(2), ones(2))
+    for i=1:n
+        i == o && continue
+        r[:,i] ~ MvNormal(r[:,o], Σ)
     end
     q1 ~ Beta()
     q2 ~ Beta()
     ccd ~ model((λ=r[1,:], μ=r[2,:], η=η, q=[q1, q2]))
 end
+
+# In this model we store the mean duplication and loss rate across branches at
+# the root index (or in other words, we interpret the rates at the root node as
+# the expected rates for the branches in the tree). 
 
 model = branchrates(w, ccd)
 
@@ -178,3 +184,36 @@ tt = TreeTracker(w, ccd[end-1:end], pdf, fun)
 trees = track(tt)
 
 # The rest is the same as above.
+
+# It may also be of interest to specify a similar model with a single
+# 'turnover' rate for each branch, i.e.  enforcing the `λ = μ` for each branch,
+# but allowing this rate to vary across branches. It is straightforward to
+# specify a hierarchical model for this:
+
+@model branchrates2(model, ccd, ::Type{T}=Float64) where {T} = begin
+    η ~ Beta(3,1)
+    σ ~ Exponential()
+    r = Vector{T}(undef, n)
+    o = id(getroot(model))
+    r[o] ~ Turing.Flat()
+    for i=1:n
+        i == o && continue
+        r[i] ~ Normal(r[o], σ)
+    end
+    q1 ~ Beta()
+    q2 ~ Beta()
+    ccd ~ model((λ=r, μ=r, η=η, q=[q1, q2]))
+end
+
+Random.seed!(54)
+chain = sample(branchrates2(w, ccd), NUTS(0.65), 100)
+
+# !!! note
+#     Often it can be beneficial to set the hyperparameter `η` to a fixed value
+#     based on the data. `η` is the parameter for the shifted geometric prior
+#     on the number of genes at the root of the gene tree across families, so
+#     that the expected number of genes at the root is `1/η`. Under the
+#     assumption that the evolutonary process is more or less stationary (i.e.
+#     there is no systematic growth or contraction of families across the
+#     genome), we may wish to set `η` to the average number of genes in a
+#     family in a genome observed in the data.
