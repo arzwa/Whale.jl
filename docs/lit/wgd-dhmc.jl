@@ -40,7 +40,7 @@ kwargs = (bins=20, color=:white, grid=false, legend=false)
 ps1 = [histogram(df[!,x], xlabel=x; kwargs...) for x in names(df)]
 kwargs = (color=:black, grid=false, legend=false)
 ps2 = [plot(df[!,x], xlabel=x; kwargs...) for x in names(df)]
-plot(ps1..., ps2..., layout=(2,5), guidefont=font(8))
+plot(ps1..., ps2..., layout=(2,5), size=(900,300), guidefont=font(8))
 
 # From these results (NB: which are based on a mere 12 gene families), we find little support for the second genome duplication (in the angiosperm branch), i.e. the retention rate `q_2` is not markedly different from 0. The WGD on the *P. patens* tip branch however seems to gain some support, with a posterior mean retention rate (`q_1`) of about 0.4, which is quite high. However, this is definitely too small a data set to make substantial conclusions!
 

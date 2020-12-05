@@ -86,7 +86,9 @@ plot(chain; aesthetics...)
 # !!! warning
 #     Of course such a chain should be run much longer than in this example!
 #     Here a very short chain is presented to ensure reasonable build times for
-#     this documentation.
+#     this documentation. Generally, one should at least strive for ESS values
+#     exceeding 100 although short chains may be good for exploring and testing
+#     different models. 
 
 # Now let's obtain reconciled trees
 pdf = DataFrame(chain)[13:end]
@@ -173,12 +175,8 @@ end
 
 chain = sample(branchrates(w, ccd), NUTS(0.65), 100)
 
-# !!! warning
-#     Of course such a chain should be run much longer than in this example!
-#     Here a very short chain is presented to ensure reasonable build times for
-#     this documentation. Generally, one should at least strive for ESS values
-#     > 100 although short chains may be good for exploring and testing different
-#     models. 
+# Of course, again bear in mind that in real applications you will want to take
+# larger samples, e.g. 1000 instead of 100.
 
 # Now let's obtain reconciled trees. Note that the function `fun` below is
 # a function that takes a row from the posterior data frame and returns a
@@ -216,7 +214,7 @@ end
 Random.seed!(54)
 chain = sample(critical(w, ccd), NUTS(0.65), 100)
 
-# Note that this model seems to be much easier to sample from, as can be judged
+# Note that this model seems to be somewhat easier to sample from, as can be judged
 # by the ESS values. The results, although based on a small data set and a very
 # short chain, already seem to suggest that the gene trees contain some evidence 
 # for a *P. patens* WGD (as `q1` seems to be decidedly non-zero).
