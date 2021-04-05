@@ -9,7 +9,6 @@
 # Bayesian hierarchical models for gene tree reconciliation in a flexible way
 using Whale, NewickTree, Distributions, Turing, DataFrames, LinearAlgebra, Random
 using Plots, StatsPlots
-Turing.turnprogress(false)  # you probably don't want to do this
 Random.seed!(7137);
 
 # ## Using a constant-rates model
@@ -74,7 +73,7 @@ end
 #   parameters.
 
 model = constantrates(w, ccd)
-chain = sample(model, NUTS(0.65), 100)
+chain = sample(model, NUTS(0.65), 100, progress=false)
 
 # Making some trace plots is straightforward using tools from the Turing
 # probabilistic programming ecosystem
@@ -173,7 +172,7 @@ end
 # the root index (or in other words, we interpret the rates at the root node as
 # the expected rates for the branches in the tree). 
 
-chain = sample(branchrates(w, ccd), NUTS(0.65), 100)
+chain = sample(branchrates(w, ccd), NUTS(0.65), 100, progress=false)
 
 # Of course, again bear in mind that in real applications you will want to take
 # larger samples, e.g. 1000 instead of 100.
@@ -212,7 +211,7 @@ trees = track(tt)
 end
 
 Random.seed!(54)
-chain = sample(critical(w, ccd), NUTS(0.65), 100)
+chain = sample(critical(w, ccd), NUTS(0.65), 100, progress=false)
 
 # Note that this model seems to be somewhat easier to sample from, as can be judged
 # by the ESS values. The results, although based on a small data set and a very
