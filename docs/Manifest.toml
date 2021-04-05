@@ -1026,14 +1026,6 @@ git-tree-sha1 = "0fa5e78929aebc3f6b56e1a88cf505bb00a354c4"
 uuid = "5432bcbf-9aad-5242-b902-cca2824c8663"
 version = "0.5.8"
 
-[[PalmTree]]
-deps = ["ColorSchemes", "Luxor", "NewickTree", "Parameters", "Printf"]
-git-tree-sha1 = "8f8adc40c2db182ee0710fd62a4f8644bff56042"
-repo-rev = "master"
-repo-url = "https://github.com/arzwa/PalmTree.jl.git"
-uuid = "103a96ca-e421-11e8-0497-536c6ddde151"
-version = "0.1.0"
-
 [[Pango_jll]]
 deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "FriBidi_jll", "Glib_jll", "HarfBuzz_jll", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "9a336dee51d20d1ed890c4a8dca636e86e2b76ca"
