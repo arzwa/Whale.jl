@@ -28,7 +28,7 @@ function gettrans(p::P, fixed) where P<:Params
     eval(expr)
 end
 
-(m::RatesModel)(x::Vector) = m(m.trans(x))
+(m::RatesModel)(x::Vector) = m(transform(m.trans, x))  #m(m.trans(x))
 function (m::RatesModel)(θ)
     θ′ = merge(θ, [k=>getfield(m.params, k) for k in m.fixed])
     RatesModel(m.params(θ′), m.fixed, m.trans)

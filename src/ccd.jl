@@ -173,7 +173,7 @@ end
 function addleafclades!(d::Dict)
     leafclades = Dict{Int,String}()
     themap = Dict()  # 'leaf id' to 'set id'
-    for (k, v) in sort(d[:set_id])
+    for (k, v) in sort!(OrderedDict(d[:set_id]))
         if length(v) == 1
             d[:Bip_counts][k] = d[:observations]
             d[:Dip_counts][k] = Tuple{Int,Int,Int}[]
