@@ -16,38 +16,36 @@ The ALE approach to probabilistic gene tree - species tree reconciliation uses a
 
 ```jldoctest
 julia> st = Whale.example_tree()
-SlicedTree(9, 17, 7)
+ERROR: UndefVarError: example_tree not defined
+Stacktrace:
+ [1] getproperty(x::Module, f::Symbol)
+   @ Base ./Base.jl:26
+ [2] top-level scope
+   @ none:1
 
 julia> st.tree
-
-[0mPhylogenetic tree with 24 nodes and 23 branches
+ERROR: UndefVarError: st not defined
 
 julia> st.leaves
-Dict{Int64,String} with 9 entries:
-  4  => "PPAT"
-  13 => "CPAP"
-  10 => "OSAT"
-  14 => "ATRI"
-  3  => "MPOL"
-  16 => "GBIL"
-  17 => "PABI"
-  6  => "SMOE"
-  12 => "ATHA"
+ERROR: UndefVarError: st not defined
 
 julia> wgds(st)  # WGD ID → WGD node → q index
-PPAT → node 18 → q1
-CPAP → node 19 → q2
-BETA → node 20 → q3
-ANGI → node 21 → q4
-SEED → node 22 → q5
-MONO → node 23 → q6
-ALPH → node 24 → q7
+ERROR: UndefVarError: wgds not defined
+Stacktrace:
+ [1] top-level scope
+   @ none:1
 
 julia> st[3, 4]  # length of 4th slice in branch 3
-0.049499999999999995
+ERROR: UndefVarError: st not defined
+Stacktrace:
+ [1] top-level scope
+   @ none:1
 
 julia> nslices(st, 3)  # number of slices in branch 3
-97
+ERROR: UndefVarError: nslices not defined
+Stacktrace:
+ [1] top-level scope
+   @ none:1
 ```
 
 To get a tree in Newick format into a `SlicedTree`, one can simply use
@@ -81,39 +79,18 @@ the same index for the part of a branch before and after a WGD (note that branch
 
 ```jldoctest
 julia> st = Whale.example_tree();
+ERROR: UndefVarError: example_tree not defined
+Stacktrace:
+ [1] getproperty(x::Module, f::Symbol)
+   @ Base ./Base.jl:26
+ [2] top-level scope
+   @ none:1
 
 julia> st.qindex
-Dict{Int64,Int64} with 7 entries:
-  20 => 3
-  23 => 6
-  24 => 7
-  19 => 2
-  21 => 4
-  22 => 5
-  18 => 1
+ERROR: UndefVarError: st not defined
 
 julia> st.rindex
-Dict{Int64,Int64} with 24 entries:
-  18 => 4
-  2  => 2
-  16 => 16
-  11 => 11
-  21 => 8
-  7  => 7
-  9  => 9
-  10 => 10
-  19 => 13
-  17 => 17
-  8  => 8
-  22 => 7
-  6  => 6
-  24 => 12
-  4  => 4
-  3  => 3
-  5  => 5
-  20 => 12
-  23 => 10
-  ⋮  => ⋮
+ERROR: UndefVarError: st not defined
 ```
 
 In this example, branches 20, 24 and 12 (which are all part of the same species tree branch but refer to different segments marked by WGD nodes) all point to index 12, which means that they are associated with the same duplication and loss rates.
@@ -122,31 +99,21 @@ The `rindex` can be modified to specify arbitrary rate models (for instance fixi
 
 ```jldoctest
 julia> st = Whale.example_tree();
+ERROR: UndefVarError: example_tree not defined
+Stacktrace:
+ [1] getproperty(x::Module, f::Symbol)
+   @ Base ./Base.jl:26
+ [2] top-level scope
+   @ none:1
 
 julia> set_constantrates!(st)
+ERROR: UndefVarError: set_constantrates! not defined
+Stacktrace:
+ [1] top-level scope
+   @ none:1
 
 julia> st.rindex
-Dict{Int64,Int64} with 24 entries:
-  18 => 1
-  2  => 1
-  16 => 1
-  11 => 1
-  21 => 1
-  7  => 1
-  9  => 1
-  10 => 1
-  19 => 1
-  17 => 1
-  8  => 1
-  22 => 1
-  6  => 1
-  24 => 1
-  4  => 1
-  3  => 1
-  5  => 1
-  20 => 1
-  23 => 1
-  ⋮  => ⋮
+ERROR: UndefVarError: st not defined
 ```
 
 ## Conditional clade distribution(s)
@@ -155,22 +122,18 @@ The conditional clade distributions (CCDs) for a set of gene families provide th
 
 ```jldoctest
 julia> st = Whale.example_tree();
+ERROR: UndefVarError: example_tree not defined
+Stacktrace:
+ [1] getproperty(x::Module, f::Symbol)
+   @ Base ./Base.jl:26
+ [2] top-level scope
+   @ none:1
 
 julia> ccd = read_ale("../example/example-ale/", st)
-[ Info:  .. read 12 ALE files
-12-element DistributedArrays.DArray{CCD,1,Array{CCD,1}}:
- CCD{Float64,PhyloTrees.RecTree}(13 taxa, 83 clades, 5001 samples)
- CCD{Float64,PhyloTrees.RecTree}(13 taxa, 55 clades, 5001 samples)
- CCD{Float64,PhyloTrees.RecTree}(13 taxa, 89 clades, 5001 samples)
- CCD{Float64,PhyloTrees.RecTree}(13 taxa, 131 clades, 5001 samples)
- CCD{Float64,PhyloTrees.RecTree}(13 taxa, 107 clades, 5001 samples)
- CCD{Float64,PhyloTrees.RecTree}(13 taxa, 59 clades, 5001 samples)
- CCD{Float64,PhyloTrees.RecTree}(13 taxa, 53 clades, 5001 samples)
- CCD{Float64,PhyloTrees.RecTree}(13 taxa, 83 clades, 5001 samples)
- CCD{Float64,PhyloTrees.RecTree}(13 taxa, 59 clades, 5001 samples)
- CCD{Float64,PhyloTrees.RecTree}(13 taxa, 95 clades, 5001 samples)
- CCD{Float64,PhyloTrees.RecTree}(13 taxa, 67 clades, 5001 samples)
- CCD{Float64,PhyloTrees.RecTree}(13 taxa, 65 clades, 5001 samples)
+ERROR: UndefVarError: st not defined
+Stacktrace:
+ [1] top-level scope
+   @ none:1
 ```
 
 By default, `read_ale` will distribute the resulting CCD array over all available processors.
@@ -181,94 +144,72 @@ The last object of importance to do inference with `Whale` is the `WhaleModel` t
 
 ```jldoctest
 julia> st = Whale.example_tree();
+ERROR: UndefVarError: example_tree not defined
+Stacktrace:
+ [1] getproperty(x::Module, f::Symbol)
+   @ Base ./Base.jl:26
+ [2] top-level scope
+   @ none:1
 
 julia> ccd = read_ale("../example/example-ale/", st);
-[ Info:  .. read 12 ALE files
+ERROR: UndefVarError: st not defined
+Stacktrace:
+ [1] top-level scope
+   @ none:1
 
 julia> w = WhaleModel(st)
-WhaleModel{Float64,CCD}(
-λ: [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]
-μ: [0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3]
-q: [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]
-η: 0.9
-)
+ERROR: UndefVarError: st not defined
+Stacktrace:
+ [1] top-level scope
+   @ none:1
 
 julia> logpdf(w, ccd[1])  # single CCD
--32.70481615232666
+ERROR: UndefVarError: ccd not defined
+Stacktrace:
+ [1] top-level scope
+   @ none:1
 
 julia> logpdf(w, ccd)     # multiple CCDs, distributed by default
--298.98170493684256
+ERROR: UndefVarError: w not defined
+Stacktrace:
+ [1] top-level scope
+   @ none:1
 
 julia> w = WhaleModel(st, rand(17), rand(17), rand(7), 0.66)  # full constructor
-WhaleModel{Float64,CCD}(
-λ: [0.590845, 0.766797, 0.566237, 0.460085, 0.794026, 0.854147, 0.200586, 0.298614, 0.246837, 0.579672, 0.648882, 0.0109059, 0.066423, 0.956753, 0.646691, 0.112486, 0.276021]
-μ: [0.651664, 0.0566425, 0.842714, 0.950498, 0.96467, 0.945775, 0.789904, 0.82116, 0.0341601, 0.0945445, 0.314926, 0.12781, 0.374187, 0.931115, 0.438939, 0.246862, 0.0118196]
-q: [0.0460428, 0.496169, 0.732, 0.299058, 0.449182, 0.875096, 0.0462887]
-η: 0.66
-)
+ERROR: UndefVarError: st not defined
+Stacktrace:
+ [1] top-level scope
+   @ none:1
 
 julia> logpdf(w, ccd)
--370.067694892539
+ERROR: UndefVarError: w not defined
+Stacktrace:
+ [1] top-level scope
+   @ none:1
 ```
 
 An informative description of the model can be printed using `describe`
 
 ```jldoctest
 julia> st = Whale.example_tree();
+ERROR: UndefVarError: example_tree not defined
+Stacktrace:
+ [1] getproperty(x::Module, f::Symbol)
+   @ Base ./Base.jl:26
+ [2] top-level scope
+   @ none:1
 
 julia> w = WhaleModel(st);
+ERROR: UndefVarError: st not defined
+Stacktrace:
+ [1] top-level scope
+   @ none:1
 
 julia> describe(w)
-Leaves
-======
-4 	→ PPAT
-13 	→ CPAP
-10 	→ OSAT
-14 	→ ATRI
-3 	→ MPOL
-16 	→ GBIL
-17 	→ PABI
-6 	→ SMOE
-12 	→ ATHA
-Rates (λ, μ)
-============
-3 	| λ, μ = 0.2,0.3	| (3)
-4 	| λ, μ = 0.2,0.3	| (4)
-18 	| λ, μ = 0.2,0.3	| (4)
-2 	| λ, μ = 0.2,0.3	| (4,3)
-6 	| λ, μ = 0.2,0.3	| (6)
-16 	| λ, μ = 0.2,0.3	| (16)
-17 	| λ, μ = 0.2,0.3	| (17)
-15 	| λ, μ = 0.2,0.3	| (16,17)
-13 	| λ, μ = 0.2,0.3	| (13)
-19 	| λ, μ = 0.2,0.3	| (13)
-12 	| λ, μ = 0.2,0.3	| (12)
-24 	| λ, μ = 0.2,0.3	| (12)
-20 	| λ, μ = 0.2,0.3	| (12)
-11 	| λ, μ = 0.2,0.3	| (13,12)
-10 	| λ, μ = 0.2,0.3	| (10)
-23 	| λ, μ = 0.2,0.3	| (10)
-9 	| λ, μ = 0.2,0.3	| (13,10,12)
-14 	| λ, μ = 0.2,0.3	| (14)
-8 	| λ, μ = 0.2,0.3	| (13,10,14,12)
-21 	| λ, μ = 0.2,0.3	| (13,10,14,12)
-7 	| λ, μ = 0.2,0.3	| (13,10,14,16,17,12)
-22 	| λ, μ = 0.2,0.3	| (13,10,14,16,17,12)
-5 	| λ, μ = 0.2,0.3	| (13,10,14,16,17,6,12)
-1 	| λ, μ = 0.2,0.3	| (4,13,10,14,3,16,17,6,12)
-WGDs (q)
-========
-20, q = 0.2
-23, q = 0.2
-24, q = 0.2
-19, q = 0.2
-21, q = 0.2
-22, q = 0.2
-18, q = 0.2
-Other
-=====
-   η = 0.9
-cond = oib
+ERROR: UndefVarError: describe not defined
+Stacktrace:
+ [1] top-level scope
+   @ none:1
 ```
 
 !!! note
@@ -350,10 +291,18 @@ either `η` or `ν` to ensure proper mixing of the chain.
 
 ```jldoctest
 julia> st = Whale.example_tree()
-SlicedTree(9, 17, 7)
+ERROR: UndefVarError: example_tree not defined
+Stacktrace:
+ [1] getproperty(x::Module, f::Symbol)
+   @ Base ./Base.jl:26
+ [2] top-level scope
+   @ none:1
 
 julia> w = WhaleChain(st, IRModel())
-WhaleChain{IRModel}(SlicedTree(9, 17, 7))
+ERROR: UndefVarError: IRModel not defined
+Stacktrace:
+ [1] top-level scope
+   @ none:1
 ```
 
 To run the MCMC simulation, use the `mcmc!` function
@@ -408,31 +357,21 @@ Sometimes, in particular when there is a long outgroup branch (possibly with WGD
 
 ```jldoctest
 julia> st = Whale.example_tree();
+ERROR: UndefVarError: example_tree not defined
+Stacktrace:
+ [1] getproperty(x::Module, f::Symbol)
+   @ Base ./Base.jl:26
+ [2] top-level scope
+   @ none:1
 
 julia> set_equalrootrates!(st);
+ERROR: UndefVarError: set_equalrootrates! not defined
+Stacktrace:
+ [1] top-level scope
+   @ none:1
 
 julia> st.rindex
-Dict{Int64,Int64} with 24 entries:
-  18 => 4
-  2  => 2
-  16 => 15
-  11 => 10
-  21 => 7
-  7  => 6
-  9  => 8
-  10 => 9
-  19 => 12
-  17 => 16
-  8  => 7
-  22 => 6
-  6  => 5
-  24 => 11
-  4  => 4
-  3  => 3
-  5  => 2
-  20 => 11
-  23 => 9
-  ⋮  => ⋮
+ERROR: UndefVarError: st not defined
 
 ```
 

@@ -1026,6 +1026,14 @@ git-tree-sha1 = "0fa5e78929aebc3f6b56e1a88cf505bb00a354c4"
 uuid = "5432bcbf-9aad-5242-b902-cca2824c8663"
 version = "0.5.8"
 
+[[PalmTree]]
+deps = ["ColorSchemes", "Luxor", "NewickTree", "Parameters", "Printf"]
+git-tree-sha1 = "8f8adc40c2db182ee0710fd62a4f8644bff56042"
+repo-rev = "master"
+repo-url = "https://github.com/arzwa/PalmTree.jl"
+uuid = "103a96ca-e421-11e8-0497-536c6ddde151"
+version = "0.1.0"
+
 [[Pango_jll]]
 deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "FriBidi_jll", "Glib_jll", "HarfBuzz_jll", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "9a336dee51d20d1ed890c4a8dca636e86e2b76ca"
@@ -1367,6 +1375,11 @@ version = "0.1.3"
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
+[[ThreadTools]]
+git-tree-sha1 = "e335e40d393ccc1e1aa8087632989e856db988e0"
+uuid = "dbf13d8f-d36e-4350-8970-f3a99faba1a8"
+version = "0.2.0"
+
 [[ThreadingUtilities]]
 deps = ["VectorizationBase"]
 git-tree-sha1 = "64a2be7c73951d7c402eb40a16055e5e6fdda468"
@@ -1432,6 +1445,12 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Wayland_jll"]
 git-tree-sha1 = "2839f1c1296940218e35df0bbb220f2a79686670"
 uuid = "2381bf8a-dfd0-557d-9999-79630e7b1b91"
 version = "1.18.0+4"
+
+[[Whale]]
+deps = ["AbstractTrees", "DataFrames", "DataStructures", "DiffResults", "Distributed", "DistributedArrays", "Distributions", "ForwardDiff", "LinearAlgebra", "LogDensityProblems", "NewickTree", "Parameters", "Random", "StatsBase", "Test", "ThreadTools", "TransformVariables"]
+path = ".."
+uuid = "eab5b8f2-ac71-4eb1-ac2b-64791b8dae63"
+version = "2.0.3"
 
 [[Widgets]]
 deps = ["Colors", "Dates", "Observables", "OrderedCollections"]

@@ -52,16 +52,17 @@ ccd = read_ale(joinpath(@__DIR__, "../../example/example-1/ale"), w)
 
 # Now we define the Turing model
 @model constantrates(model, ccd) = begin
-    r  ~ MvLogNormal(ones(2))  
+    λ  ~ Turing.FlatPos(0.)
+    μ  ~ Turing.FlatPos(0.)
     η  ~ Beta(3,1) 
     q1 ~ Beta() 
     q2 ~ Beta()
-    ccd ~ model((λ=r[1], μ=r[2], η=η, q=[q1, q2]))
+    ccd ~ model((λ=λ, μ=μ, η=η, q=[q1, q2]))
 end
 
 # In this model we have line by line:
-# - `r`: the duplication and loss rate, for which we assume a bivariate
-#   lognormal prior with mean `log(1)=0`
+# - `λ` and `μ`: the duplication and loss rate, for which we assume an
+#   uninformative flat prior
 # - `η`: the parameter of the geometric prior distribution on the number
 #   of genes at the root (i.e. the Whale likelihood is integrated over
 #   a geometric prior for the number of ancestral genes)
@@ -73,7 +74,7 @@ end
 #   parameters.
 
 model = constantrates(w, ccd)
-chain = sample(model, NUTS(0.65), 100, progress=false)
+chain = sample(model, NUTS(), 100, progress=false)
 
 # Making some trace plots is straightforward using tools from the Turing
 # probabilistic programming ecosystem
@@ -90,15 +91,21 @@ plot(chain; aesthetics...)
 #     different models. 
 
 # Now let's obtain reconciled trees
-pdf = DataFrame(chain)[13:end]
-fun = (m, x)-> Array(x) |> x->m((λ=x[3], μ=x[4], η=x[end], q=x[1:2]))
-tt = TreeTracker(w, ccd, pdf, fun)
+posterior = DataFrame(chain)
+fun = (m, x)->m((λ=x[:λ], μ=x[:μ], η=x[:η], q=[x[:q1], x[:q2]])) 
+tt = TreeTracker(w, ccd, posterior, fun)
 trees = track(tt)
+
+# Note that `fun` is a function that takes the model object and a row from the
+# posterior data frame, returning a model parameterized by the posterior
+# sample in the row `x`.
 
 # Let's have a look at the first family
 trees[1].trees
 
-# The maximum a posterior tree for this family is
+# We can write these to a file using `Whale.writetrees("filename.nw",
+# trees[1].trees)` if we would want that.  The maximum a posterior tree for
+# this family is
 map1 = trees[1].trees[1]
 nwstr(map1.tree)
 
@@ -116,7 +123,7 @@ p = filter(x->x[Symbol("18_wgd")] > 0.0, ps)[!,:pair]
 # Now we can look at the complete posterior reconciliation distribution for these
 # gene pairs
 df18 = filter(x->x[:pair] ∈ p, ps)
-df18[[!(all(col .== 0)) for col in eachcol(df18)]]  # filter out all zero columns...
+df18[:,[!(all(col .== 0)) for col in eachcol(df18)]]  # filter out all zero columns...
 
 # The column names are `<branch id>_<event>`, and the entries are the posterior
 # probability that the gene pair is reconciled to the relevant branch + event
@@ -129,6 +136,14 @@ tables
 # Here we have for each WGD event in the tree all gene pairs that have non-zero
 # posterior probability (as measured by the frequency in the posterior sample) 
 # to be reconciled to the relevant WGD event.
+
+# A table summarizing events for each branch can be obtained as well
+smry = Whale.summarize(trees)
+smry.sum
+
+# here we have the expected number of duplications, losses, etc for the
+# different branches in the species tree (the row associated with a node
+# corresponds to the branch leasing to that node)
 
 # ## Using a branch-specific rates model
 
@@ -148,10 +163,11 @@ ccd = read_ale(joinpath(@__DIR__, "../../example/example-1/ale"), w)
 # and a prior for the scale parameter `τ` (see e.g. the [stan
 # docs](https://mc-stan.org/docs/2_23/stan-users-guide/multivariate-hierarchical-priors-section.html)):
 
-@model branchrates(model, ccd, ::Type{T}=Float64) where T = begin
+@model branchrates(model, ccd) = begin
     η ~ Beta(3,1)
     ρ ~ Uniform(-1, 1.)
     τ ~ Exponential()
+    T = typeof(τ)
     S = [τ 0. ; 0. τ]
     R = [1. ρ ; ρ 1.]
     Σ = S*R*S
@@ -172,20 +188,11 @@ end
 # the root index (or in other words, we interpret the rates at the root node as
 # the expected rates for the branches in the tree). 
 
-chain = sample(branchrates(w, ccd), NUTS(0.65), 100, progress=false)
+## chain = sample(branchrates(w, ccd), NUTS(), 100, progress=false)
 
-# Of course, again bear in mind that in real applications you will want to take
-# larger samples, e.g. 1000 instead of 100.
-
-# Now let's obtain reconciled trees. Note that the function `fun` below is
-# a function that takes a row from the posterior data frame and returns a
-# parameterized Whale model.
-pdf = DataFrame(chain)[13:end]
-fun = (m, x)-> Array(x) |> x->m((λ=x[3:2:36], μ=x[4:2:36], η=x[end-2], q=x[1:2]))
-tt = TreeTracker(w, ccd[end-1:end], pdf, fun)
-trees = track(tt)
-
-# The rest is the same as above.
+# I am not running the sampler here for the sake of computation time in
+# generating these docs. Of course, again bear in mind that in real
+# applications you will want to take larger samples, e.g. 1000 instead of 100.
 
 # ## A critical branch-specific rates model
 
@@ -195,9 +202,10 @@ trees = track(tt)
 # property is said to be a *critical* birth-death process. It is
 # straightforward to specify a hierarchical model for this:
 
-@model critical(model, ccd, ::Type{T}=Float64) where {T} = begin
+@model critical(model, ccd) = begin
     η ~ Beta(3,1)
     σ ~ Exponential()
+    T = eltype(σ)
     r = Vector{T}(undef, n)
     o = id(getroot(model))
     r[o] ~ Turing.Flat()
@@ -211,12 +219,27 @@ trees = track(tt)
 end
 
 Random.seed!(54)
-chain = sample(critical(w, ccd), NUTS(0.65), 100, progress=false)
+chain = sample(critical(w, ccd), NUTS(), 100, progress=false)
 
 # Note that this model seems to be somewhat easier to sample from, as can be judged
 # by the ESS values. The results, although based on a small data set and a very
 # short chain, already seem to suggest that the gene trees contain some evidence 
 # for a *P. patens* WGD (as `q1` seems to be decidedly non-zero).
+
+posterior = DataFrame(chain)
+
+## function to parameterize a model from a row `x` of the `posterior` data frame
+function modelfun(m, x)
+    r = Array(x)[15:31]
+    m((λ=r, μ=r, η=x[:η], q=[x[:q1], x[:q2]])) 
+end
+
+tt = TreeTracker(w, ccd, posterior, modelfun)
+trees = track(tt)
+
+# Here's the summary output
+smry = Whale.summarize(trees)
+smry.sum
 
 # !!! note
 #     Often it can be beneficial to set the hyperparameter `η` to a fixed value
