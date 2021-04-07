@@ -1,10 +1,17 @@
 
 # Bayesian inference using NUTS with `DynamicHMC.jl`
 
-In this example case, the basic workflow for assessing WGD hypotheses using Whale will be illustrated. We will use the [`DynamicHMC`](https://github.com/tpapp/DynamicHMC.jl) library for Bayesian inference.
+In this example case, the basic workflow for assessing WGD hypotheses using
+Whale will be illustrated. We will use the
+[`DynamicHMC`](https://github.com/tpapp/DynamicHMC.jl) library for Bayesian
+inference.
 
 !!! note
-    Inference in Whale with DynamicHMC.jl supports distributed computing. To use distributed parallelism, start up julia with `-p <ncores>` (or do `using Distributed; addprocs(ncores)`. Instead of loading Whale with `using Whale`, use `@everywhere using Whale` and normally all log-likelihood computations should now run in parallel.
+    Inference in Whale with DynamicHMC.jl supports distributed computing. To
+    use distributed parallelism, start up julia with `-p <ncores>` (or do
+    `using Distributed; addprocs(ncores)`. Instead of loading Whale with
+    `using Whale`, use `@everywhere using Whale` and normally all
+    log-likelihood computations should now run in parallel.
 
 ```@example wgd-dhmc
 using Whale, DynamicHMC, Random, NewickTree, Distributions, DataFrames
@@ -13,7 +20,10 @@ Random.seed!(562);
 nothing #hide
 ```
 
-Set up the model and the data, here I will use a model with constant duplication and loss rates across the species tree. Note that the tree contains two WGD events (internal nodes labeled with a name starting with `wgd`).
+Set up the model and the data, here I will use a model with constant
+duplication and loss rates across the species tree. Note that the tree
+contains two WGD events (internal nodes labeled with a name starting with
+`wgd`).
 
 ```@example wgd-dhmc
 tree  = readnw("((MPOL:4.752,(PPAT:2.752)wgd_1:2.0):0.292,(SMOE:4.457,((((OSAT:1.555,(ATHA:0.5548,CPAP:0.5548):1.0002):0.738,ATRI:2.293):1.0)wgd_2:0.225,(GBIL:3.178,PABI:3.178):0.34):0.939):0.587);")
@@ -25,7 +35,8 @@ data  = read_ale(joinpath(@__DIR__, "../../example/example-1/ale"), model, true)
 ```
 
 !!! note
-    To use the `DynamicHMC` interface, the third argument of `read_ale` should be set to `true`.
+    To use the `DynamicHMC` interface, the third argument of `read_ale`
+    should be set to `true`.
 
 And next we set up the Bayesian inference 'problem', using the default priors:
 
@@ -34,7 +45,9 @@ prior = Whale.CRPrior()
 problem = WhaleProblem(data, model, prior)
 ```
 
-Now we run NUTS (of course this is a ridicuously short run, and in reality you want to use something like a 1000 iterations. Also, it's better to keep `doubling_stages` >= 3).
+Now we run NUTS (of course this is a ridicuously short run, and in reality
+you want to use something like a 1000 iterations. Also, it's better to keep
+`doubling_stages` >= 3).
 
 ```@example wgd-dhmc
 results = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 200,
@@ -61,7 +74,13 @@ ps2 = [plot(df[!,x], xlabel=x; kwargs...) for x in names(df)]
 plot(ps1..., ps2..., layout=(2,5), size=(900,300), guidefont=font(8))
 ```
 
-From these results (NB: which are based on a mere 12 gene families), we find little support for the second genome duplication (in the angiosperm branch), i.e. the retention rate `q_2` is not markedly different from 0. The WGD on the *P. patens* tip branch however seems to gain some support, with a posterior mean retention rate (`q_1`) of about 0.4, which is quite high. However, this is definitely too small a data set to make substantial conclusions!
+From these results (NB: which are based on a mere 12 gene families), we find
+little support for the second genome duplication (in the angiosperm branch),
+i.e. the retention rate `q_2` is not markedly different from 0. The WGD on
+the *P. patens* tip branch however seems to gain some support, with a
+posterior mean retention rate (`q_1`) of about 0.4, which is quite high.
+However, this is definitely too small a data set to make substantial
+conclusions!
 
 We can obtain reconciled trees sampled from the posterior
 
@@ -75,15 +94,16 @@ Consider the first gene family
 family1 = trees[1].trees
 ```
 
-Note that the `freq` field gives the approximate posterior probability of this tree (estimated by the sample frequency). We can get the MAP tree as a newick string
+Note that the `freq` field gives the approximate posterior probability of
+this tree (estimated by the sample frequency). We can get the MAP tree as a
+newick string
 
 ```@example wgd-dhmc
 nwstr(family1[1].tree)
 ```
 
 Now we'll plot the MAP tree
-
-```@example wgd-dhmc
+```julia
 using PalmTree, Luxor
 import Luxor: RGB
 
@@ -109,22 +129,30 @@ tl = TreeLayout(rectree, cladogram=true, dims=(300,300))
 end 500 400 outpath
 ```
 
-The support values are posterior probabilities for the associated reconciled split. Note that the tree does not contain branch lengths. Duplication events are marked by squares, whereas the WGDs are marked by stars.
+The support values are posterior probabilities for the associated reconciled
+split. Note that the tree does not contain branch lengths. Duplication events
+are marked by squares, whereas the WGDs are marked by stars.
 
-The events field for each gene family contains a summary of the expected number of events for each branch (where each branch is identified by the node to which the branch leads, as shown in the `node` column)
+The events field for each gene family contains a summary of the expected
+number of events for each branch (where each branch is identified by the node
+to which the branch leads, as shown in the `node` column)
 
 ```@example wgd-dhmc
 trees[1].events
 ```
 
-We can get for every gene pair the posterior reconciliation probability. The following data frame can therefore be used to probabilistically assess whether two homologous genes are orthologs, WGD-derived paralogs or non-WGD derived paralogs.
+We can get for every gene pair the posterior reconciliation probability. The
+following data frame can therefore be used to probabilistically assess
+whether two homologous genes are orthologs, WGD-derived paralogs or non-WGD
+derived paralogs.
 
 ```@example wgd-dhmc
 pair_pps = Whale.getpairs(trees, model)
 first(pair_pps, 5)
 ```
 
-Every row of this data frame is a probability distribution over reconciliation events, so each row sums to one, as we can verify:
+Every row of this data frame is a probability distribution over
+reconciliation events, so each row sums to one, as we can verify:
 
 ```@example wgd-dhmc
 map(sum, eachrow(pair_pps[!,1:end-2]))
@@ -139,9 +167,14 @@ for (n, v) in zip(names(x), Array(x))
 end
 ```
 
-The posterior probability (under the DL model) that this gene pair traces back to the speciation corresponding to node 17 (i.e. the root) is approximately 0.86, whereas the posterior probability that this gene pair traces back to an ancestral duplication event is 0.14.
+The posterior probability (under the DL model) that this gene pair traces
+back to the speciation corresponding to node 17 (i.e. the root) is
+approximately 0.86, whereas the posterior probability that this gene pair
+traces back to an ancestral duplication event is 0.14.
 
-We can get a WGD-centric view as well. The following retrieves a table for each WGD with all gene tree nodes that have a non-zero posterior probability of being reconciled to that particular WGD node
+We can get a WGD-centric view as well. The following retrieves a table for
+each WGD with all gene tree nodes that have a non-zero posterior probability
+of being reconciled to that particular WGD node
 
 ```@example wgd-dhmc
 tables = Whale.getwgdtables(trees, data, model)

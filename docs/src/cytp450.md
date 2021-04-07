@@ -50,7 +50,7 @@ trees[1].trees
 
 Note that there are many trees with similar posterior probability, so in other words the maximum a posteriori (MAP) tree is not that meaningful in itself. We can however plot the MAP tree with posterior node probabilities to get an idea of the reconciled tree and the nodes with considerable posterior uncertainty. I will use `Luxor.jl` together with my small helper library for plotting trees:
 
-```@example cytp450
+```julia
 using PalmTree, Luxor
 import Luxor: RGB
 
