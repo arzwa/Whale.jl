@@ -100,6 +100,8 @@ nwstr(family1[1].tree)
 #         (n, p) -> startswith(n.data.label, "wgd") && star(p,3,5,3,0.5,:fill))
 # end 500 400 outpath
 # ```
+#
+# ![](assets/dhmc-fam1-map.svg)
 
 # The support values are posterior probabilities for the associated reconciled
 # split. Note that the tree does not contain branch lengths. Duplication events

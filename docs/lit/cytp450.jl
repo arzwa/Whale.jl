@@ -66,6 +66,8 @@ trees[1].trees
 #         (n, p) -> n.data.label == "duplication" && box(p, 4, 4, :fill))
 # end 500 850 outpath
 # ```
+#
+# ![](assets/cytp450-map.svg)
 
 # Squares show duplication events and internal node labels show the posterior
 # probability of observing the relevant node in the reconciled tree.

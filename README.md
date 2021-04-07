@@ -1,4 +1,4 @@
-[![](https://img.shields.io/badge/docs-dev-blue.svg)](https://arzwa.github.io/Whale.jl/stable/index.html)
+[![](https://img.shields.io/badge/docs-dev-blue.svg)](https://arzwa.github.io/Whale.jl/dev/index.html)
 [![build](https://github.com/arzwa/Whale.jl/actions/workflows/workflow.yaml/badge.svg)](https://github.com/arzwa/Whale.jl/actions/workflows/workflow.yaml)
 
 # Whale: Bayesian gene tree reconciliation and whole-genome duplication inference by amalgamated likelihood estimation
