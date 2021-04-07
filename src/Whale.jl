@@ -15,6 +15,7 @@ module Whale
     using TransformVariables
     using DataFrames
     using Base.Threads
+    using ThreadTools
     import TransformVariables: TransformTuple, transform_and_logjac, transform
     import LogDensityProblems: logdensity_and_gradient
     import NewickTree: id, name, distance

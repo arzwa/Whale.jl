@@ -97,10 +97,10 @@ function read_ale(s::String, wm::WhaleModel, darray=false)
     spmap = Dict(name(l)=>id(l) for l in getleaves(root(wm)))
     ccd = if isfile(s) && endswith(s, ".ale")
         [CCD(s, wm, spmap)]
-    elseif isfile(s)
-        [CCD(l, wm, spmap) for l in readlines(s) if !startswith(s, "#")]
     else
-        [CCD(joinpath(s,x),wm,spmap) for x in readdir(s) if endswith(x,".ale")]
+        fs = isfile(s) ? readlines(s) : readdir(s, join=true)
+        fs = filter(x->!startswith(x, "#"), fs) 
+        tmap(f->CCD(f, wm, spmap), fs)
     end
     darray ? distribute(ccd) : ccd
 end
