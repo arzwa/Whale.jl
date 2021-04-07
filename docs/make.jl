@@ -17,12 +17,12 @@ for f in fnames
     write(outpath, x)
 end
 
+@info "makedocs"
 makedocs(
     modules = [Whale],
-    format = :html,
     sitename = "Whale.jl",
     authors = "Arthur Zwaenepoel",
-    doctest = :fix,
+    doctest = false,
 	pages = ["Index"=>"index.md",
 			 "Examples"=>output],)
 
