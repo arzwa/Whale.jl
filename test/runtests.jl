@@ -17,6 +17,8 @@ const DISTRIBUTED = true
                 DLWGD(λ=ones(n), μ=ones(n), q=[0.2, 0.1], η=0.9), fixed=(:p,))
         w = WhaleModel(r, t, 0.05, maxn=10000)
         ccd = read_ale(data, w)
+        #julia> @btime logpdf($w, $ccd)
+        #  645.114 μs (338 allocations: 4.63 MiB)
         @test logpdf!(w, ccd) ≈ -570.9667405899105
         @test logpdf(w, ccd) ≈ -570.9667405899105
         ccd = read_ale(data, w, true)
@@ -29,6 +31,11 @@ const DISTRIBUTED = true
         w = WhaleModel(r, t, 0.05, maxn=10000)
         ccd = read_ale(data, w)
         @test logpdf!(w, ccd) ≈ -570.9667405899105
+
+        #gradfun(x) = logpdf(w(RatesModel(DLWGD(λ=x[1:n], μ=x[n+1:2n], q=x[2n+1:2n+3], η=x[end]))), ccd)
+        #x = [ones(n) ; ones(n); [0.1, 0.2] ; 0.8]
+        #julia> @btime ForwardDiff.gradient(gradfun, $x);
+        #  34.466 ms (4788 allocations: 203.48 MiB)
     end
 
     @testset "All different likelihood routines" begin
