@@ -17,6 +17,9 @@ const DISTRIBUTED = true
                 DLWGD(λ=ones(n), μ=ones(n), q=[0.2, 0.1], η=0.9), fixed=(:p,))
         w = WhaleModel(r, t, 0.05, maxn=10000)
         ccd = read_ale(data, w)
+        #julia> @btime logpdf($w, $ccd)
+        #  220.969 μs (252 allocations: 290.95 KiB)
+        #-570.9667405899105
         @test logpdf!(w, ccd) ≈ -570.9667405899105
         @test logpdf(w, ccd) ≈ -570.9667405899105
         ccd = read_ale(data, w, true)

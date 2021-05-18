@@ -1,7 +1,6 @@
 # ALE agorithm for DLWGD model
 # utilities
 # NOTE: in these utils λ and μ should be on 'rate' scale
-iscompatible(γ::Clade, n::ModelNode) = γ.species ⊆ n.data.clade
 getϵ(n::ModelNode) = n[end,2]
 getϕ(n::ModelNode) = n[end,3]
 getΔ(n::ModelNode, i::Int) = n[i,1]
@@ -84,19 +83,20 @@ function whale!(n::ModelNode{T}, ℓ, x, wm) where T
     e = id(n)
     θ = getθ(wm.rates, n)
     ℓ[e] .= zero(T)
-    for γ in x.clades
-        !iscompatible(γ, n) && continue
+    for c in x.compat[e]
+        γ = x[c]
+        j = x.index[c,e]
         leaf = isleaf(γ)
         if leaf && isleaf(n)
-            ℓ[e][γ.id,1] = one(T)
+            ℓ[e][j,1] = one(T)
         elseif !isleaf(n)
-            p = Πspeciation(γ, ℓ, n) + Πloss(γ, ℓ, n)
-            ℓ[e][γ.id,1] += p
+            p = Πspeciation(x, γ, ℓ, n) + Πloss(x, γ, ℓ, n)
+            ℓ[e][j,1] += p
         end
         for i=2:length(n)  # iterate over slices
-            ℓ[e][γ.id,i] += getϕ(n, i)*ℓ[e][γ.id,i-1]
+            ℓ[e][j,i] += getϕ(n, i)*ℓ[e][j,i-1]
             if !leaf
-                ℓ[e][γ.id,i] += Πduplication(γ, ℓ, n, i, θ.λ, θ.μ)
+                ℓ[e][j,i] += Πduplication(x, γ, ℓ, n, i)
             end
         end
     end
@@ -106,19 +106,20 @@ function whalewgd!(n::ModelNode{T}, ℓ, x, wm) where T
     e = id(n)
     ℓ[e] .= zero(T)
     @unpack q, λ, μ = getθ(wm.rates, n)
-    for γ in x.clades
-        !iscompatible(γ, n) && continue
+    for c in x.compat[e]
+        γ = x[c]
+        j = x.index[c,e]
         p = zero(T)
         leaf = isleaf(γ)
         if !leaf
-            p += Πwgdretention(γ, ℓ, n, q)
+            p += Πwgdretention(x, γ, ℓ, n, q)
         end
-        p += Πwgdloss(γ, ℓ, n, q)
-        ℓ[e][γ.id,1] = p
+        p += Πwgdloss(x, γ, ℓ, n, q)
+        ℓ[e][j,1] = p
         for i=2:length(n)  # iterate over slices
-            ℓ[e][γ.id,i] += getϕ(n, i)*ℓ[e][γ.id,i-1]
+            ℓ[e][j,i] += getϕ(n, i)*ℓ[e][j,i-1]
             if !leaf
-                ℓ[e][γ.id,i] += Πduplication(γ, ℓ, n, i, λ, μ)
+                ℓ[e][j,i] += Πduplication(x, γ, ℓ, n, i)
             end
         end
     end
@@ -131,66 +132,63 @@ function whaleroot!(n::ModelNode{T}, ℓ, x, wm) where T
     η_ = one(η)/(one(η) - (one(η) - η) * getϵ(n))^2
     for γ in x.clades
         leaf = isleaf(γ)
-        p1 = Πloss(γ, ℓ, n)
+        p1 = Πloss(x, γ, ℓ, n)
         p2 = zero(p1)
         if !leaf
-            p1 += Πspeciation(γ, ℓ, n)
-            p2 += Πroot(γ, ℓ, n, η)
+            p1 += Πspeciation(x, γ, ℓ, n)
+            p2 += Πroot(x, γ, ℓ, n, η)
         end
         ℓ[e][γ.id,1] = p1 * η_ + p2
     end
     ℓ[e][end,1] *= η
 end
 
-@inline function Πroot(γ, ℓ, n, η)
+@inline function Πroot(x, γ, ℓ, n, η)
     e = id(n)
     p = zero(eltype(ℓ[e]))
     for t in γ.splits  # speciation
-        @inbounds p += t.p * ℓ[e][t.γ1,1] * ℓ[e][t.γ2,1]
+        @inbounds p += t.p * getl(x, ℓ, e, t.γ1, 1) * getl(x, ℓ, e, t.γ2, 1)
     end
     return p*(one(p) -η)*(one(p) -(one(p) -η) * getϵ(n))
 end
 
-@inline function Πspeciation(γ, ℓ, n)
+@inline function Πspeciation(x, γ, ℓ, n)
     f = id(n[1])
     g = id(n[2])
     p = zero(eltype(ℓ[f]))
     for t in γ.splits
         @inbounds p += t.p * (
-            ℓ[f][t.γ1,end] * ℓ[g][t.γ2,end] +
-            ℓ[g][t.γ1,end] * ℓ[f][t.γ2,end])
+              getl(x, ℓ, f, t.γ1) * getl(x, ℓ, g, t.γ2) +
+              getl(x, ℓ, g, t.γ1) * getl(x, ℓ, f, t.γ2))
     end
     return p
 end
 
-@inline function Πloss(γ, ℓ, n)
+@inline function Πloss(x, γ, ℓ, n)
     f = id(n[1])
     g = id(n[2])
-    @inbounds ℓ[f][γ.id,end]*getϵ(n[2]) + ℓ[g][γ.id,end]*getϵ(n[1])
+    @inbounds getl(x, ℓ, f, γ.id)*getϵ(n[2]) + getl(x, ℓ, g, γ.id)*getϵ(n[1])
 end
 
-# NOTE: λ and μ on 'rate' scale
-@inline function Πduplication(γ, ℓ, n, i, λ, μ)
+@inline function Πduplication(x, γ, ℓ, n, i)
     e = id(n)
     p = zero(eltype(ℓ[e]))
     for t in γ.splits
-        @inbounds p += t.p * ℓ[e][t.γ1,i-1] * ℓ[e][t.γ2,i-1]
+        @inbounds p += t.p * getl(x, ℓ, e, t.γ1, i-1) * getl(x, ℓ, e, t.γ2, i-1)
     end
-    # return p * pdup(λ, μ, n[i,1])
-    # return λ*getΔ(n, i)*p
     return getψ(n, i) * p
 end
 
-@inline function Πwgdretention(γ, ℓ, n, q)
+@inline function Πwgdretention(x, γ, ℓ, n, q)
     f = id(n[1])
     p = zero(eltype(ℓ[f]))
     for t in γ.splits
-        @inbounds p += t.p * ℓ[f][t.γ1,end] * ℓ[f][t.γ2,end]
+        @inbounds p += t.p * getl(x, ℓ, f, t.γ1) * getl(x, ℓ, f, t.γ2)
     end
     return p * q
 end
 
-@inline function Πwgdloss(γ, ℓ, n, q)
+@inline function Πwgdloss(x, γ, ℓ, n, q)
     f = first(children(n))
-    @inbounds (one(q) - q)*ℓ[id(f)][γ.id,end] + 2q*getϵ(f)*ℓ[id(f)][γ.id,end]
+    @inbounds (one(q) - q)*getl(x, ℓ, id(f), γ.id) + 2q*getϵ(f)*getl(x, ℓ, id(f), γ.id)
 end

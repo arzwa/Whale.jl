@@ -1,18 +1,29 @@
-# Synteny amounts in Whale with a binary random varible associated with any
-# internal node indicating whether or not the node is synteny-preserving.
+# A more efficient implementation would omit redundant rows in the ℓ matrices.
+# For many nodes, there are a substantial number of all-zero rows.
+# We can keep a single clades × nodes matrix with indices in the ℓ matrix, with a
+# zero entry if the clade cannot be observed in the branch leading to the relevant
+# node.
 #
-# In the simplest approach to include synteny in Whale, we associate with each
-# triple a binary observation indicating whether a syntenic relation is
-# observed between the left and right subclade. In such a model everything is
-# straightforwardly observed, and we don't have to deal with the evolution of
-# synteny relationships along the species tree. In such an approach it would be
-# best to only use synteny information as evidence against small-scale
-# duplication, and don't use an absence of syntenic relation as evidence
-# against a speciation or WGD node. This is necessary because synteny breaks
-# down over time, and we would have no model for that in this case (since that
-# would require full model that enables to compute the probability of loss
-# of synteny down the tree, which is exactly the thing we want to avoid in
-# this simple approach).
+# More convenient would be to keep these indices in each `Clade` separately,
+# but those will again be a lot of different vectors. Maybe we should revise
+# the CCD struct somewhat more thoroughly?
+function index_and_getℓ(clades, model)
+    index = zeros(Int, length(clades), length(model))
+    compat = [Int[] for m in model.order]
+    for n in model.order
+        i = 1
+        for γ in clades 
+            !iscompatible(γ, n) && continue
+            push!(compat[id(n)], γ.id)
+            #γ.index[id(n)] = i
+            index[γ.id, id(n)] = i
+            i += 1
+        end
+    end
+    ℓ = [zeros(length(x), length(model[i])) for (i, x) in enumerate(compat)]
+    return compat, index, ℓ
+end
+
 """
     Triple
 """
@@ -35,11 +46,24 @@ struct Clade{T<:Integer}
     leaves ::Set{T}
     species::Set{T}
     blens  ::Float64
+    #index  ::Vector{Int}
 end
 
 Base.length(c::Clade) = length(c.leaves)
 Base.isless(c1::Clade, c2::Clade) = length(c1) < length(c2)
 NewickTree.isleaf(c::Clade) = length(c.leaves) == 1
+
+iscompatible(γ::Clade, n::ModelNode) = γ.species ⊆ n.data.clade
+
+function getl(x, ℓ, e, γ, t) 
+    i = x.index[γ, e] 
+    return i == 0 ? 0. : ℓ[e][i,t]
+end
+
+function getl(x, ℓ, e, γ)
+    i = x.index[γ, e] 
+    return i == 0 ? 0. : ℓ[e][i,end]
+end
 
 function Base.show(io::IO, c::Clade{T}) where T
     @unpack id, count = c
@@ -53,6 +77,8 @@ mutable struct CCD{T<:Integer,V<:Real}
     total  ::Int               # number of trees on which the CCD is based
     clades ::Vector{Clade{T}}  # ordered by size (small to large)!
     leaves ::Vector{String}
+    compat ::Vector{Vector{Int}}
+    index  ::Matrix{Int}
     ℓ      ::Vector{Matrix{V}}
     fname  ::String
     # NOTE leaves have the first clade IDs {1, ...} so we can use a vector
@@ -75,6 +101,7 @@ function CCD(ale::NamedTuple, wm::WhaleModel{T,M,I}, spmap) where {T,M,I}
     # the IDs from the ALE file, but asign new ones based on this order.
     order = sort([(length(v), k) for (k,v) in set_id])  # sort clades by size
     idmap = Dict(k => i for (i, (_, k)) in enumerate(order))  # γ => new ID map
+    l = length(wm)
     for (i, (_, k)) in enumerate(order)
         v = Bip_counts[k]
         t = [(idmap[t[1]], idmap[t[2]], t[3]) for t in Dip_counts[k]]
@@ -84,9 +111,8 @@ function CCD(ale::NamedTuple, wm::WhaleModel{T,M,I}, spmap) where {T,M,I}
         push!(clades, c)
     end
     leaves = last.(sort(collect(leaf_id)))
-    ℓ = Vector{Matrix{T}}(undef, length(wm))
-    for n in wm.order ℓ[id(n)] = zeros(T, length(clades), length(n)) end
-    CCD(observations, clades, leaves, ℓ, ale.fname)
+    compat, index, ℓ = index_and_getℓ(clades, wm)
+    CCD(observations, clades, leaves, compat, index, ℓ, ale.fname)
 end
 
 """
@@ -235,3 +261,19 @@ end
 #
 #     end
 # end
+
+# Synteny amounts in Whale with a binary random varible associated with any
+# internal node indicating whether or not the node is synteny-preserving.
+#
+# In the simplest approach to include synteny in Whale, we associate with each
+# triple a binary observation indicating whether a syntenic relation is
+# observed between the left and right subclade. In such a model everything is
+# straightforwardly observed, and we don't have to deal with the evolution of
+# synteny relationships along the species tree. In such an approach it would be
+# best to only use synteny information as evidence against small-scale
+# duplication, and don't use an absence of syntenic relation as evidence
+# against a speciation or WGD node. This is necessary because synteny breaks
+# down over time, and we would have no model for that in this case (since that
+# would require full model that enables to compute the probability of loss
+# of synteny down the tree, which is exactly the thing we want to avoid in
+# this simple approach).
