@@ -21,6 +21,8 @@ getψ(n::ModelNode, i::Int) = n[i,4]
 # NOTE conditioning should be done outside the inner loop. If the normalizing
 # factor is expensive we don't want to compute it `n` times. The difference is
 # really minor when the conditioning factor is cheap (e.g. pbothsides)
+loglikelihood(model::WhaleModel, X) = logpdf(model, X)
+
 """
     logpdf!(model, ccd)
 
