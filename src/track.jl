@@ -127,6 +127,9 @@ struct SliceState{I}
     t::Int64
 end
 
+# fixes a bug in GH actions tests?
+SliceState(e, γ, t) = SliceState(promote(e, γ)..., Int64(t))
+
 Loss(e) = SliceState(e, zero(e), 0)
 Base.show(io::IO, s::SliceState) = write(io, "$(Int64.((s.e, s.γ, s.t)))")
 

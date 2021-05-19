@@ -1,5 +1,5 @@
 using Pkg; Pkg.activate(@__DIR__)
-using Whale, NewickTree, Parameters
+using Whale, NewickTree, Parameters, ForwardDiff
 using Test, Random, Distributed
 
 const ALEOBSERVE = false  # do tests requiring `ALEobserve` in the path
@@ -7,7 +7,7 @@ const DHMC = true         # do DynamicHMC related tests
 const DISTRIBUTED = true
 
 @testset "Whale tests" begin
-    @testset "likelihood" begin
+    @testset "Likelihood" begin
         data = joinpath(@__DIR__, "../example/example-1/ale")
         t = deepcopy(Whale.extree)
         n = length(postwalk(t))
@@ -15,8 +15,10 @@ const DISTRIBUTED = true
         insertnode!(getlca(t, "ATHA", "ATRI"), name="wgd_2")
         r = RatesModel(
                 DLWGD(λ=ones(n), μ=ones(n), q=[0.2, 0.1], η=0.9), fixed=(:p,))
-        w = WhaleModel(r, t, 0.05)
+        w = WhaleModel(r, t, 0.05, maxn=10000)
         ccd = read_ale(data, w)
+        #julia> @btime logpdf($w, $ccd)
+        #  220.969 μs (252 allocations: 290.95 KiB)
         @test logpdf!(w, ccd) ≈ -570.9667405899105
         @test logpdf(w, ccd) ≈ -570.9667405899105
         ccd = read_ale(data, w, true)
@@ -26,9 +28,14 @@ const DISTRIBUTED = true
         # root rates should not have an effect
         r.params.λ[id(getroot(w))] = NaN
         r.params.μ[id(getroot(w))] = NaN
-        w = WhaleModel(r, t, 0.05)
+        w = WhaleModel(r, t, 0.05, maxn=10000)
         ccd = read_ale(data, w)
         @test logpdf!(w, ccd) ≈ -570.9667405899105
+
+        #gradfun(x) = logpdf(w(RatesModel(DLWGD(λ=x[1:n], μ=x[n+1:2n], q=x[2n+1:2n+3], η=x[end]))), ccd)
+        #x = [ones(n) ; ones(n); [0.1, 0.2] ; 0.8]
+        #julia> @btime ForwardDiff.gradient(gradfun, $x);
+        #  6.125 ms (4132 allocations: 12.41 MiB)
     end
 
     @testset "All different likelihood routines" begin
@@ -92,7 +99,7 @@ const DISTRIBUTED = true
         end
     end
 
-    @testset "set sampling probabilities" begin
+    @testset "Set sampling probabilities" begin
         data = joinpath(@__DIR__, "../example/example-1/ale")
         t = deepcopy(Whale.extree)
         n = length(postwalk(t))

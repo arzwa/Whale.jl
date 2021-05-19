@@ -1,5 +1,7 @@
 # A test suite for maximum likelihood estimation, which is at the same time
 # a simulation 'study' for the core algorithm.
+# NOTE: we can use `MLE(model)` from Turing.jl (more convenient)
+
 using Pkg; Pkg.activate(@__DIR__)
 using Whale, NewickTree
 using Optim, ForwardDiff

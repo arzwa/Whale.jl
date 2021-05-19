@@ -2,6 +2,7 @@ module Whale
     # TODO put DynamicHMC stuff in submodule
     using Distributed
     using Parameters
+    using DataStructures
     using NewickTree
     using DistributedArrays
     using Distributions
@@ -13,9 +14,8 @@ module Whale
     using LogDensityProblems
     using TransformVariables
     using DataFrames
-    using CSV
-    using ThreadTools
     using Base.Threads
+    using ThreadTools
     import TransformVariables: TransformTuple, transform_and_logjac, transform
     import LogDensityProblems: logdensity_and_gradient
     import NewickTree: id, name, distance
@@ -34,6 +34,7 @@ module Whale
     include("dhmc.jl")
     include("post.jl")
 
+    # should include some example data...
     # an example tree
     const extree = readnw("((MPOL:4.752,PPAT:4.752):0.292,(SMOE:4.457,(((OSAT:1.555,(ATHA:0.5548,CPAP:0.5548):1.0002):0.738,ATRI:2.293):1.225,(GBIL:3.178,PABI:3.178):0.34):0.939):0.587);")
 

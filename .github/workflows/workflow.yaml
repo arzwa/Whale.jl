@@ -1,0 +1,60 @@
+name: build
+
+on: 
+  push: 
+    branches:
+      - master
+    pull_request:
+
+jobs:
+ #debug:
+    #runs-on: ubuntu-latest
+    #steps:
+    #- uses: actions/checkout@v2
+    #- name: Setup tmate session
+    #  uses: mxschmitt/action-tmate@v3
+    #  timeout-minutes: 30
+  test:
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.version == 'nightly' }}
+    strategy:
+      matrix:
+        version:
+          - '1.6'
+          - 'nightly'
+        os:
+          - ubuntu-latest
+        arch:
+          - x64
+    steps:
+      - uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: julia-actions/julia-buildpkg@latest
+        #- uses: julia-actions/julia-runtest@latest
+      - run: |
+          julia --color=yes --check-bounds=yes --inline=yes --project=@. --depwarn=yes -e '
+            using Pkg
+            Pkg.test(coverage=false)'
+  docs: 
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps: 
+      - uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: '1.6'
+      - run: |
+          julia --project=docs -e '
+            using Pkg
+            Pkg.develop(PackageSpec(path=pwd()))
+            Pkg.add(url="https://github.com/arzwa/PalmTree.jl", rev="master")
+            Pkg.instantiate()'
+      - run: julia --project=docs docs/make.jl
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
+          DOCUMENTER_DEBUG: true
+

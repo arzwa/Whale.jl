@@ -3,11 +3,11 @@
 
 ```@example cytp450
 using Whale, DynamicHMC, DynamicHMC.Diagnostics, Random, NewickTree, DataFrames
-Random.seed!(624)
+Random.seed!(624);
+nothing #hide
 ```
 
-This is a use case I haven't been exploring before, namely large gene
-families. Here we consider a family of about 100 leaves.
+In this case study, we will perform Bayesian gene tree reconciliation for a single (large) gene family. The data can be found in the `example4` directory in the `Whale` git repository. We first load the data:
 
 ```@example cytp450
 base  = joinpath(@__DIR__, "../../example/example-4")
@@ -16,46 +16,41 @@ model = WhaleModel(RatesModel(ConstantDLWGD(λ=0.1, μ=0.2, η=0.9)), tree, .1)
 data  = read_ale(joinpath(base, "cytp450.ale"), model, true)
 ```
 
-Reading in the single CCD is already a very heavy operation. The CCD has about
-5000 unique clades.
+Reading in the single CCD (in the `read_ale` step is already a rather heavy operation. The CCD has about 5000 unique clades.
 
-We will use the DynamicHMC interface, using a constant-rates model (i.e. a single
-duplication and loss rate for the entire tree).
+For Bayesian inference we will use the DynamicHMC interface, using a constant-rates model (i.e. assuming a single duplication and loss rate for the entire tree). The default prior should of course not be chosen lightly, although for our current purposes it is reasonable:
 
 ```@example cytp450
 prior = Whale.CRPrior()
 problem = WhaleProblem(data, model, prior)
 ```
 
-Now run the actual HMC sampler
+Now we run the actual HMC sampler. Note that we perform a very short run here to reduce build times of the documentation, in reality you'd rather use something like a 1000 iterations.
 
 ```@example cytp450
-results = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 500,
+results = mcmc_with_warmup(Random.GLOBAL_RNG, problem, 100,
     warmup_stages=DynamicHMC.default_warmup_stages(doubling_stages=2))
 posterior = Whale.transform(problem, results.chain)
 @info summarize_tree_statistics(results.tree_statistics)
 ```
 
-We can get a data frame
+A data frame may be easier to work with (and save to disk)
 
 ```@example cytp450
 df = Whale.unpack(posterior)
-describe(df)
+describe(df, :mean, :q025=>x->quantile(x, 0.025), :q975=>x->quantile(x, 0.975))
 ```
 
-Get reconciled trees from the posterior
-rectrees = track(problem, posterior[1:10])
+Now we will obtain reconciled trees from the posterior
 
 ```@example cytp450
 trees = track(problem, posterior)
 trees[1].trees
 ```
 
-Note that there are many trees with similar posterior probability!
+Note that there are many trees with similar posterior probability, so in other words the maximum a posteriori (MAP) tree is not that meaningful in itself. We can however plot the MAP tree with posterior node probabilities to get an idea of the reconciled tree and the nodes with considerable posterior uncertainty. I will use `Luxor.jl` together with my small helper library for plotting trees:
 
-Now we will plot the MAP (maximum a posteriori) reconciled tree, showing duplication and loss events
-
-```@example cytp450
+```julia
 using PalmTree, Luxor
 import Luxor: RGB
 
@@ -73,8 +68,7 @@ tl = TreeLayout(rectree, cladogram=true, dims=(400,800))
     nodemap(tl, prewalk(rectree),
         (n, p) -> !isleaf(n) ?
             settext("  $(n.data.cred)", p, valign="center") :
-            settext(" $(n.data.name)", p, valign="center"))
-    Luxor.sethue(RGB())
+            settext("  $(n.data.name)", p, valign="center"))
     nodemap(tl, prewalk(rectree),
         (n, p) -> n.data.label == "duplication" && box(p, 4, 4, :fill))
 end 500 850 outpath
