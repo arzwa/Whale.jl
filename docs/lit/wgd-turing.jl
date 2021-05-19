@@ -11,7 +11,7 @@ using Whale
 using NewickTree, Distributions, Turing, DataFrames, LinearAlgebra, Random
 using Plots, StatsPlots
 Random.seed!(7137);
-const PROGRESS=false  # turn off progress logging in Turing
+const PROGRESS=true  # turn off progress logging in Turing
 
 # ## Using a constant-rates model
 
@@ -30,7 +30,7 @@ insertnode!(getlca(t, "ATHA", "ATRI"), name="wgd_2")
 # and we obtain a reference model object, using the constant-rates model with
 # two WGDs
 θ = ConstantDLWGD(λ=0.1, μ=0.2, q=[0.2, 0.1], η=0.9)
-w = WhaleModel(θ, t, .1)
+w = WhaleModel(θ, t, .1, minn=10, maxn=20)
 
 # Note the last argument to `WhaleModel`, this is the slice length `Δt`, here
 # set to `0.1`. This determines the discretization of the branches of the 
@@ -93,8 +93,8 @@ plot(chain; aesthetics...)
 
 # Now let's obtain reconciled trees
 posterior = DataFrame(chain)
-fun = (m, x)->m((λ=x[:λ], μ=x[:μ], η=x[:η], q=[x[:q1], x[:q2]])) 
-tt = TreeTracker(w, ccd, posterior, fun)
+ffun = (m, x)->m((λ=x[:λ], μ=x[:μ], η=x[:η], q=[x[:q1], x[:q2]])) 
+tt = TreeTracker(w, ccd, posterior, ffun)
 trees = track(tt)
 
 # Note that `fun` is a function that takes the model object and a row from the
@@ -146,6 +146,13 @@ smry.sum
 # different branches in the species tree (the row associated with a node
 # corresponds to the branch leasing to that node)
 
+# ## Maximum-likelihood estimation
+
+using Optim
+model = constantrates(w, ccd)
+result = optimize(model, MLE())
+
+
 # ## Using a branch-specific rates model
 
 # Now we will consider a model with branch-specific duplication and loss rates,
@@ -153,7 +160,7 @@ smry.sum
 # relaxed clock prior.  We'll use the same tree as above. The relevant model
 # now is the DLWGD model:
 
-θ = DLWGD(λ=randn(n), μ=randn(n), q=rand(2), η=rand())
+θ = DLWGD(λ=zeros(n), μ=zeros(n), q=rand(2), η=rand())
 w = WhaleModel(θ, t, 0.1)
 ccd = read_ale(joinpath(@__DIR__, "../../example/example-1/ale"), w)
 
