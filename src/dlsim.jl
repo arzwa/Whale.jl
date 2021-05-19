@@ -25,7 +25,7 @@ the number of lineages at the root. Note that gain events are
 not simulated, so if a DLG model is provided, the gain rate will
 be ignored.
 """
-dlsim(Ψ, θ) = dlsim(Ψ, θ, rand(Geometric(θ.params.η))+1)
+dlsim(Ψ, θ) = dlsim(Ψ, θ, rand(Geometric(θ.η))+1)
 function dlsim(Ψ, θ, a::Int)
     sproot = getroot(Ψ)
     ns = [dlsim!(Node(0, Rec(id(sproot), 0., "")), 0., sproot, θ) for i=1:a]

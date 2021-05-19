@@ -2,10 +2,6 @@ using Pkg; Pkg.activate(@__DIR__)
 using Whale, NewickTree, Parameters, ForwardDiff
 using Test, Random, Distributed
 
-const ALEOBSERVE = false  # do tests requiring `ALEobserve` in the path
-const DHMC = true         # do DynamicHMC related tests
-const DISTRIBUTED = true
-
 @testset "Whale tests" begin
     @testset "Likelihood" begin
         data = joinpath(@__DIR__, "../example/example-1/ale")
@@ -13,60 +9,29 @@ const DISTRIBUTED = true
         n = length(postwalk(t))
         insertnode!(getlca(t, "ATHA", "ATHA"), name="wgd_1")
         insertnode!(getlca(t, "ATHA", "ATRI"), name="wgd_2")
-        r = RatesModel(
-                DLWGD(λ=ones(n), μ=ones(n), q=[0.2, 0.1], η=0.9), fixed=(:p,))
+        r = DLWGD(λ=ones(n), μ=ones(n), q=[0.2, 0.1], η=0.9)
         w = WhaleModel(r, t, 0.05, maxn=10000)
         ccd = read_ale(data, w)
+        # two threads
         #julia> @btime logpdf($w, $ccd)
         #  220.969 μs (252 allocations: 290.95 KiB)
         @test logpdf!(w, ccd) ≈ -570.9667405899105
         @test logpdf(w, ccd) ≈ -570.9667405899105
-        ccd = read_ale(data, w, true)
-        @test logpdf!(w, ccd) ≈ -570.9667405899105
-        @test logpdf(w, ccd) ≈ -570.9667405899105
+        
+        g(x) = logpdf(w(DLWGD(λ=x[1:n], μ=x[n+1:2n], q=x[2n+1:2n+3], η=x[end])), ccd)
+        x = [ones(n) ; ones(n); [0.1, 0.2] ; 0.8]
+        G = ForwardDiff.gradient(g, x)
+        @test all(isfinite.(G))
+        # two threads
+        #julia> @btime ForwardDiff.gradient($g, $x);
+        #  2.723 ms (2240 allocations: 12.28 MiB)
 
         # root rates should not have an effect
-        r.params.λ[id(getroot(w))] = NaN
-        r.params.μ[id(getroot(w))] = NaN
+        r.λ[id(getroot(w))] = NaN
+        r.μ[id(getroot(w))] = NaN
         w = WhaleModel(r, t, 0.05, maxn=10000)
         ccd = read_ale(data, w)
         @test logpdf!(w, ccd) ≈ -570.9667405899105
-
-        #gradfun(x) = logpdf(w(RatesModel(DLWGD(λ=x[1:n], μ=x[n+1:2n], q=x[2n+1:2n+3], η=x[end]))), ccd)
-        #x = [ones(n) ; ones(n); [0.1, 0.2] ; 0.8]
-        #julia> @btime ForwardDiff.gradient(gradfun, $x);
-        #  6.125 ms (4132 allocations: 12.41 MiB)
-    end
-
-    @testset "All different likelihood routines" begin
-        data = joinpath(@__DIR__, "../example/example-1/ale")
-        t = deepcopy(Whale.extree)
-        n = length(postwalk(t))
-        insertnode!(getlca(t, "ATHA", "ATHA"), name="wgd_1")
-        r = RatesModel(ConstantDLWGD(λ=0.1, μ=0.2, q=[0.2], η=0.9))
-        x = randn(4)
-        w = WhaleModel(r, t, 0.05)
-        ccd = read_ale(data, w)
-        ccd_da = read_ale(data, w, true)  # DArray
-        l1 = logpdf!(w(x), ccd)
-        l2 = logpdf(w(x), ccd)
-        l3 = logpdf!(w(x), ccd_da)
-        l4 = logpdf(w(x), ccd_da)
-        l5 = Whale.fand∇f(w(x), ccd_da, x)
-        @test l1 ≈ l2 ≈ l3 ≈ l4 ≈ l5[1]
-        if DISTRIBUTED
-            addprocs(2)
-            @everywhere using Pkg
-            @everywhere Pkg.activate(@__DIR__)
-            @everywhere using Whale
-            ccd_da = read_ale(data, w, true)  # DArray
-            l6 = logpdf!(w(x), ccd_da)
-            l7 = logpdf(w(x), ccd_da)
-            l8 = Whale.fand∇f(w(x), ccd_da, x)
-            @test l6 ≈ l7 ≈ l8[1] ≈ l1
-            rmprocs(workers())
-            @test length(workers()) == 1
-        end
     end
 
     @testset "Conditioning - nowhere extinct" begin
@@ -76,7 +41,7 @@ const DISTRIBUTED = true
         p = -Inf
         # the higher the retention rates, the higher the probability of non-ext
         for q = 0:0.1:1
-            r = RatesModel(ConstantDLWGD(λ=0.3, μ=0.4, q=[q,q], η=0.66))
+            r = ConstantDLWGD(λ=0.3, μ=0.4, q=[q,q], η=0.66)
             w = WhaleModel(r, t, 0.05,
                 condition=Whale.NowhereExtinctCondition(t))
             @test Whale.condition(w) > p
@@ -88,8 +53,7 @@ const DISTRIBUTED = true
         n = length(postwalk(t)) -2
         for i=1:10
             θ = DLWGD(λ=randn(n) .- 3, μ=randn(n) .- 3, q=rand(2), η=0.67)
-            r = Whale.RatesModel(θ, fixed=(:p,))
-            w = WhaleModel(r, t, 0.05,
+            w = WhaleModel(θ, t, 0.05,
                     condition=Whale.NowhereExtinctCondition(t))
             p1 = exp(Whale.condition(w))
             ts, ps = Whale.dlsimbunch(w, 1000, condition=:none);
@@ -103,7 +67,7 @@ const DISTRIBUTED = true
         data = joinpath(@__DIR__, "../example/example-1/ale")
         t = deepcopy(Whale.extree)
         n = length(postwalk(t))
-        r = RatesModel(DLWGD(λ=ones(n), μ=ones(n), η=0.9), fixed=(:p,))
+        r = DLWGD(λ=ones(n), μ=ones(n), η=0.9)
         w = WhaleModel(r, t, 0.05)
         d = Dict(name(n)=>rand() for n in getleaves(t))
         Whale.setsamplingp!(w, d)
@@ -119,7 +83,7 @@ const DISTRIBUTED = true
         n = length(postwalk(t))
         insertnode!(getlca(t, "ATHA", "ATHA"), name="wgd_1")
         insertnode!(getlca(t, "ATHA", "ATRI"), name="wgd_2")
-        r = RatesModel(DLWGD(λ=ones(n), μ=ones(n), q=[0.2, 0.1], η=0.9))
+        r = DLWGD(λ=ones(n), μ=ones(n), q=[0.2, 0.1], η=0.9)
         w = WhaleModel(r, t, 0.05)
         ccd = read_ale(data, w)
         logpdf!(w, ccd)
@@ -128,7 +92,4 @@ const DISTRIBUTED = true
         df = Whale.getpairs([rsum], w)
         @test all(isapprox.(map(sum, eachrow(df[!,1:end-2])), Ref(1.)))
     end
-
-    ALEOBSERVE && include(joinpath(@__DIR__, "mle.jl"))
-    DHMC && include(joinpath(@__DIR__, "dhmc.jl"))
 end

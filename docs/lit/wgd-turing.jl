@@ -7,9 +7,11 @@
 # In this example we will use the probabilistic programming language
 # implemented in [`Turing.jl`](https://turing.ml/dev/) with Whale to specify
 # Bayesian hierarchical models for gene tree reconciliation in a flexible way
-using Whale, NewickTree, Distributions, Turing, DataFrames, LinearAlgebra, Random
+using Whale
+using NewickTree, Distributions, Turing, DataFrames, LinearAlgebra, Random
 using Plots, StatsPlots
 Random.seed!(7137);
+const PROGRESS=false  # turn off progress logging in Turing
 
 # ## Using a constant-rates model
 
@@ -28,8 +30,7 @@ insertnode!(getlca(t, "ATHA", "ATRI"), name="wgd_2")
 # and we obtain a reference model object, using the constant-rates model with
 # two WGDs
 θ = ConstantDLWGD(λ=0.1, μ=0.2, q=[0.2, 0.1], η=0.9)
-r = Whale.RatesModel(θ, fixed=(:p,))
-w = WhaleModel(r, t, .1)
+w = WhaleModel(θ, t, .1)
 
 # Note the last argument to `WhaleModel`, this is the slice length `Δt`, here
 # set to `0.1`. This determines the discretization of the branches of the 
@@ -74,7 +75,7 @@ end
 #   parameters.
 
 model = constantrates(w, ccd)
-chain = sample(model, NUTS(), 100, progress=false)
+chain = sample(model, NUTS(), 100, progress=PROGRESS)
 
 # Making some trace plots is straightforward using tools from the Turing
 # probabilistic programming ecosystem
@@ -152,9 +153,8 @@ smry.sum
 # relaxed clock prior.  We'll use the same tree as above. The relevant model
 # now is the DLWGD model:
 
-params = DLWGD(λ=randn(n), μ=randn(n), q=rand(2), η=rand())
-r = Whale.RatesModel(params, fixed=(:p,))
-w = WhaleModel(r, t, 0.1)
+θ = DLWGD(λ=randn(n), μ=randn(n), q=rand(2), η=rand())
+w = WhaleModel(θ, t, 0.1)
 ccd = read_ale(joinpath(@__DIR__, "../../example/example-1/ale"), w)
 
 # Note that the duplication and loss rates should here be specified on a
@@ -188,7 +188,7 @@ end
 # the root index (or in other words, we interpret the rates at the root node as
 # the expected rates for the branches in the tree). 
 
-chain = sample(branchrates(w, ccd), NUTS(), 100, progress=false)
+chain = sample(branchrates(w, ccd), NUTS(), 100, progress=PROGRESS)
 
 # I am not running the sampler here for the sake of computation time in
 # generating these docs. Of course, again bear in mind that in real
@@ -219,7 +219,7 @@ chain = sample(branchrates(w, ccd), NUTS(), 100, progress=false)
 end
 
 Random.seed!(54)
-chain = sample(critical(w, ccd), NUTS(), 100, progress=false)
+chain = sample(critical(w, ccd), NUTS(), 100, progress=PROGRESS)
 
 # Note that this model seems to be somewhat easier to sample from, as can be judged
 # by the ESS values. The results, although based on a small data set and a very

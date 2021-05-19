@@ -19,8 +19,7 @@ end
 # all families in each iteration, while now we do it the other way around to
 # prevent having a huge array of trees... If we could summarize trees on the go
 # however, we could interchange the order of the loops.
-track(tt::TreeTracker; kwargs...) = typeof(tt.data)<:DArray ?
-    track_distributed(tt; kwargs...) : track_threaded(tt; kwargs...)
+track(tt::TreeTracker; kwargs...) = track_threaded(tt; kwargs...)
 
 function flsh()  # flush streams (on cluster I have troubles with this)
     flush(stderr)
@@ -215,7 +214,7 @@ function _backtrack!(b, n)  # internode backtracking
     isleaf(n) ? (return addleafname!(b)) : nothing  # terminates recursion
     @unpack node, state, ccd = b
     @unpack e, γ, t = state
-    r = rand()*ccd.ℓ[e][γ,t]
+    r = rand()*getl(ccd, ccd.ℓ, e, γ, t)
     if isroot(n)
         return _backtrackroot!(r, b, n)
     elseif iswgd(n)
@@ -273,8 +272,8 @@ function _backtrack!(b::BackTracker)  # intra branch backtracking
     if isleaf(ccd[γ])
         return backtrack!(b, SliceState(e, γ, 1))
     end
-    r = rand()*ccd.ℓ[e][γ,t]
-    r -= getϕ(model[e], t) * ccd.ℓ[e][γ,t-1]
+    r = rand()*getl(ccd, ccd.ℓ, e, γ, t)
+    r -= getϕ(model[e], t) * getl(ccd, ccd.ℓ, e, γ, t-1)
     if r < 0.
         return backtrack!(-b)
     end
@@ -293,7 +292,9 @@ function duplication(r, b)
     Δt = model[e][t,1]
     for triple in ccd[γ].splits
         @unpack p, γ1, γ2 = triple
-        r -= p * ℓ[e][γ1,t-1] * ℓ[e][γ2,t-1] * getψ(model[e], t)
+        r -= p * getl(ccd, ℓ, e, γ1, t-1) * 
+                 getl(ccd, ℓ, e, γ2, t-1) * 
+                 getψ(model[e], t)
         if r < 0.
             return (r=r, next=[SliceState(e, γ1, t-1), SliceState(e, γ2, t-1)])
         end
@@ -311,11 +312,11 @@ function speciation(r, b, m)
     ℓ = ccd.ℓ
     for triple in ccd[γ].splits
         @unpack p, γ1, γ2 = triple
-        r -= p * ℓ[f][γ1,end] * ℓ[g][γ2,end]
+        r -= p * getl(ccd, ℓ, f, γ1) * getl(ccd, ℓ, g, γ2)
         if r < 0.
             return (r=r, next=[SliceState(f, γ1, tf), SliceState(g, γ2, tg)])
         end
-        r -= p * ℓ[g][γ1,end] * ℓ[f][γ2,end]
+        r -= p * getl(ccd, ℓ, g, γ1) * getl(ccd, ℓ, f, γ2)
         if r < 0.
             return (r=r, next=[SliceState(g, γ1, tg), SliceState(f, γ2, tf)])
         end
@@ -328,11 +329,11 @@ function sploss(r, b, m)
     @unpack e, γ, t, = state
     @unpack ℓ = ccd
     f, g = id(m[1]), id(m[2])
-    r -= ℓ[f][γ,end]*getϵ(m[2])
+    r -= getl(ccd, ℓ, f, γ)*getϵ(m[2])
     if r < 0.
         return (r=r, next=[SliceState(f, γ, lastslice(m[1])), Loss(g)])
     end
-    r -= ℓ[g][γ,end]*getϵ(m[1])
+    r -= getl(ccd, ℓ, g, γ)*getϵ(m[1])
     if r < 0.
         return (r=r, next=[SliceState(g, γ, lastslice(m[2])), Loss(f)])
     end
@@ -344,19 +345,20 @@ function wgdloss(r, b, m)
     @unpack e, γ, t, = state
     @unpack q = getθ(model.rates, m)
     f = id(m[1])
-    r -= (1. - q + 2q*getϵ(m[1])) * ccd.ℓ[f][γ,end]
+    r -= (1. - q + 2q*getϵ(m[1])) * getl(ccd, ccd.ℓ, f, γ)
     return (r=r, next=[SliceState(f, γ, lastslice(m[1])), Loss(f)])
 end
 
 function wgdretention(r, b, m)
     @unpack state, ccd, model = b
+    @unpack ℓ = ccd
     @unpack e, γ, t, = state
     @unpack q = getθ(model.rates, m)
     f = id(m[1])
     tf = lastslice(m[1])
     for triple in ccd[γ].splits
         @unpack p, γ1, γ2 = triple
-        r -= q * p * ccd.ℓ[f][γ1,end] * ccd.ℓ[f][γ2,end]
+        r -= q * p * getl(ccd, ℓ, f, γ1) * getl(ccd, ℓ, f, γ2)
         if r < 0.
             return (r=r, next=[SliceState(f, γ1, tf), SliceState(f, γ2, tf)])
         end
@@ -375,16 +377,18 @@ function rootbifurcation(r, b, m, η_)
     for triple in ccd[γ].splits
         @unpack p, γ1, γ2 = triple
         # either stay in root and duplicate
-        r -= p * ℓ[e][γ1,t] * ℓ[e][γ2,t] * √(one(η)/η_)*(one(η)-η)
+        r -= p * getl(ccd, ℓ, e, γ1, t) * 
+                 getl(ccd, ℓ, e, γ2, t) * 
+                 √(one(η)/η_)*(one(η)-η)
         if r < zero(r)
             return (r=r, next=[SliceState(e, γ1, t), SliceState(e, γ2, t)])
         end
         # or speciate
-        r -= p * ℓ[f][γ1,end] * ℓ[g][γ2,end] * η_
+        r -= p * getl(ccd, ℓ, f, γ1) * getl(ccd, ℓ, g, γ2) * η_
         if r < zero(r)
             return (r=r, next=[SliceState(f, γ1, tf), SliceState(g, γ2, tg)])
         end
-        r -= p * ℓ[g][γ1,end] * ℓ[f][γ2,end] * η_
+        r -= p * getl(ccd, ℓ, g, γ1) * getl(ccd, ℓ, f, γ2) * η_
         if r < zero(r)
             return (r=r, next=[SliceState(g, γ1, tg), SliceState(f, γ2, tf)])
         end
@@ -397,11 +401,11 @@ function rootloss(r, b, m, η_)
     @unpack e, γ, t, = state
     @unpack ℓ = ccd
     f, g = id(m[1]), id(m[2])
-    r -= ℓ[f][γ,end] * getϵ(m[2]) * η_
+    r -= getl(ccd, ℓ, f, γ) * getϵ(m[2]) * η_
     if r < 0.
         return (r=r, next=[SliceState(f, γ, lastslice(m[1])), Loss(g)])
     end
-    r -= ℓ[g][γ,end] * getϵ(m[1]) * η_
+    r -= getl(ccd, ℓ, g, γ) * getϵ(m[1]) * η_
     if r < 0.
         # XXX (*):  state.node.kind = :sploss
         return (r=r, next=[SliceState(g, γ, lastslice(m[2])), Loss(f)])

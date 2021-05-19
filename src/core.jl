@@ -1,4 +1,9 @@
 # ALE agorithm for DLWGD model
+# NOTE: This is not compatible with ReverseDiff, but it is not too hard to make
+# it so, using the ℓ matrices in the CCD as template and computing the slices
+# in the logpdf routine -- at the expense of more allocations (see
+# `revdiffsafe` branch)
+
 # utilities
 # NOTE: in these utils λ and μ should be on 'rate' scale
 getϵ(n::ModelNode) = n[end,2]
@@ -64,17 +69,6 @@ function logpdf(wm::WhaleModel{T}, xs::Vector{<:CCD}) where T
         ℓ[i] = logpdf(wm, xs[i])
     end
     ℓhood(sum(ℓ) - length(xs)*condition(wm))
-end
-
-# mapreduce implementations of logpdf for use with DArrays
-function logpdf!(wm::WhaleModel{T}, X::CCDArray) where T
-    ℓ = mapreduce((x)->logpdf!(wm, x.ℓ, x), +, X)
-    ℓhood(ℓ - (length(X))*condition(wm))
-end
-
-function logpdf(wm::WhaleModel{T}, X::CCDArray) where T
-    ℓ = mapreduce((x)->logpdf(wm, x), +, X)::T
-    ℓhood(ℓ - length(X)*condition(wm))
 end
 
 Distributions.logpdf(m::ModelArray, xs::Vector{<:CCD}) = 

@@ -78,7 +78,7 @@ NewickTree.getroot(m::WhaleModel) = root(m)
 # XXX this is insanely ugly. The ain hassle is that we want node IDs in
 # order such that the leaves come first, than the internal nodes, and
 # finally the WGDs (but the iteration order is still a postorder).
-function WhaleModel(rates::RatesModel{T}, Ψ::Node{I}, Δt;
+function WhaleModel(rates::Params{T}, Ψ::Node{I}, Δt;
         minn=5, maxn=50, condition=RootCondition()) where {T,I}
     nonwgd = 0  # count non-wgd nodes
     wgdid = I(0)
@@ -122,7 +122,7 @@ function WhaleModel(rates::RatesModel{T}, Ψ::Node{I}, Δt;
 end
 
 (m::WhaleModel)(θ) = m(m.rates(θ))
-function (m::WhaleModel)(rates::RatesModel{T}) where T
+function (m::WhaleModel)(rates::Params{T}) where T
     r = root(m)
     I = typeof(id(r))
     o = similar(m.order, ModelNode{T,I})
@@ -141,7 +141,7 @@ function setmodel!(model)
     for n in order setnode!(n, rates) end
 end
 
-function setnode!(n::ModelNode{T}, rates::M) where {T,M}
+function setnode!(n::ModelNode{T}, rates) where T
     iswgd(n) && return setwgdnode!(n, rates)
     θn = getθ(rates, n)
     n[1,2] = isleaf(n) ? θn.p : prod([c[end,2] for c in children(n)])
@@ -149,7 +149,7 @@ function setnode!(n::ModelNode{T}, rates::M) where {T,M}
     setslices!(n.data.slices, θn.λ, θn.μ)
 end
 
-function setwgdnode!(n::ModelNode{T}, rates::M) where {T,M}
+function setwgdnode!(n::ModelNode{T}, rates) where T
     ϵ = n[1][end,2]
     θn = getθ(rates, n)
     n[1,2] = θn.q * ϵ^2 + (1. - θn.q) * ϵ
@@ -210,12 +210,19 @@ function addbranchwgds!(tree; tips=false)
     nwgd
 end
 
+"""
+    setsamplingp!(model, dict)
+
+Set the sampling probabilities for the leaves in the model given the leaf
+names. This is a convenience function enabling one to use the leaf labels
+instead of node IDs.
+"""
 function setsamplingp!(model, dict::Dict)
-    @unpack params = model.rates
+    @unpack rates = model
     leaves = getleaves(getroot(model))
-    length(params.p) == 0 && push!(params.p, zeros(length(leaves))...)
+    length(rates.p) == 0 && push!(rates.p, zeros(length(leaves))...)
     for l in leaves
-        params.p[id(l)] = haskey(dict, name(l)) ? dict[name(l)] : 0.
+        rates.p[id(l)] = haskey(dict, name(l)) ? dict[name(l)] : 0.
     end
 end
 

@@ -121,7 +121,7 @@ end
 """
     read_ale(path, wm::WhaleModel)
 """
-function read_ale(s::String, wm::WhaleModel, darray=false)
+function read_ale(s::String, wm::WhaleModel)
     @assert ispath(s) "Not a file nor directory `$s`"
     spmap = Dict(name(l)=>id(l) for l in getleaves(root(wm)))
     ccd = if isfile(s) && endswith(s, ".ale")
@@ -131,15 +131,10 @@ function read_ale(s::String, wm::WhaleModel, darray=false)
         fs = filter(x->!startswith(x, "#"), fs) 
         tmap(f->CCD(f, wm, spmap), fs)
     end
-    darray ? distribute(ccd) : ccd
+    return ccd
 end
 
 getspecies(l, ids, spmap) = Set([spmap[split(l[id], "_")[1]] for id in ids])
-
-"""
-    CCDArray{I,T}
-"""
-const CCDArray{I,T} = DArray{CCD{I,T},1,Array{CCD{I,T},1}} where {T,I}
 
 # ALEobserve parser
 """

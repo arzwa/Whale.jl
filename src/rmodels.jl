@@ -5,36 +5,13 @@ function nonwgdchild end
 
 abstract type Params{T} end
 
-struct RatesModel{T,M<:Params{T},V}
-    params::M
-    fixed ::Tuple
-    trans ::V
+function (m::Params)(θ)
+    x = NamedTuple([k=>getfield(m, k) for k in propertynames(m)])
+    return updated(m, merge(x, θ))
 end
 
-RatesModel(θ; fixed=()) = RatesModel(θ, fixed, gettrans(θ, fixed))
-
-Base.eltype(m::RatesModel{T}) where T = T
-Base.show(io::IO, m::RatesModel) = write(io,
-    "RatesModel with $(m.fixed) fixed\n$(m.params)")
-
-getθ(m::RatesModel, node) = getθ(m.params, node)
-getp(m::P, n) where {T,P<:Params{T}} = hasfield(P, :p) &&
-    length(m.p) > 0 && isleaf(n) ? m.p[id(n)] : 0.
-
-# HACK: a little bit of metaprogramming to allow fixed parameters, necessary?
-function gettrans(p::P, fixed) where P<:Params
-    inner = join(["$k=$v," for (k,v) in pairs(trans(p)) if k ∉ fixed])
-    expr  = Meta.parse("as(($inner))")
-    eval(expr)
-end
-
-(m::RatesModel)(x::Vector) = m(transform(m.trans, x))  #m(m.trans(x))
-function (m::RatesModel)(θ)
-    θ′ = merge(θ, [k=>getfield(m.params, k) for k in m.fixed])
-    RatesModel(m.params(θ′), m.fixed, m.trans)
-end
-
-Base.rand(m::M) where M<:RatesModel = m(m.trans(randn(dimension(m.trans))))
+# sampling probability
+getp(m, n) = length(m.p) > 0 && isleaf(n) ? m.p[id(n)] : 0.
 
 """
     ConstantDLWGD{T,V}
@@ -55,12 +32,7 @@ getθ(m::ConstantDLWGD, n) = (
     λ=m.λ, μ=m.μ, η=m.η, p=getp(m, n),
     q=iswgd(n) ? m.q[wgdid(n)] : NaN)
 
-trans(m::ConstantDLWGD) = (
-    λ=asℝ₊, μ=asℝ₊, η=as𝕀,
-    q=as(Array, as𝕀, length(m.q)),
-    p=as(Array, as𝕀, length(m.p)))
-
-function (::ConstantDLWGD)(θ)
+function updated(::ConstantDLWGD, θ)
     T = eltype(θ.q)  # XXX q as reference, should be a promotion?
     ConstantDLWGD(; λ=T(θ.λ), μ=T(θ.μ), q=θ.q, η=T(θ.η), p=θ.p)
 end
@@ -89,11 +61,4 @@ function getθ(m::DLWGD, n)
     end
 end
 
-trans(m::DLWGD) = (
-    λ=as(Array, asℝ, length(m.λ)),
-    μ=as(Array, asℝ, length(m.λ)),
-    q=as(Array, as𝕀, length(m.q)),
-    p=as(Array, as𝕀, length(m.p)),
-    η=as𝕀)
-
-(::DLWGD)(θ) = DLWGD(;λ=θ.λ, μ=θ.μ, q=θ.q, η=eltype(θ.λ)(θ.η), p=θ.p)
+updated(::DLWGD, θ) = DLWGD(;λ=θ.λ, μ=θ.μ, q=θ.q, η=eltype(θ.λ)(θ.η), p=θ.p)
