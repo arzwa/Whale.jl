@@ -188,7 +188,7 @@ end
 # the root index (or in other words, we interpret the rates at the root node as
 # the expected rates for the branches in the tree). 
 
-## chain = sample(branchrates(w, ccd), NUTS(), 100, progress=false)
+chain = sample(branchrates(w, ccd), NUTS(), 100, progress=false)
 
 # I am not running the sampler here for the sake of computation time in
 # generating these docs. Of course, again bear in mind that in real

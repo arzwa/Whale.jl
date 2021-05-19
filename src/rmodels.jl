@@ -1,4 +1,4 @@
-# For convenience, I re-inserted the rate models in the Whale library.
+# The RatesModel is obsolete if we no longer use DynamicHMC
 function iswgd end
 function wgdid end
 function nonwgdchild end

@@ -140,8 +140,14 @@ function allbinarytrees(tree)
     walk(getroot(tree))
 end
 
-# Annoyingly, the order is not the one we'd need for inclusion - exclusion... (which would be 0,0,...,0; 1,0,...,0; 0,1,...,0; ... ... ; 1,1,...,1), hence the `treepgf_allbinary_sign` function.
+# Annoyingly, the order is not the one we'd need for inclusion - exclusion...
+# (which would be 0,0,...,0; 1,0,...,0; 0,1,...,0; ... ... ; 1,1,...,1), hence
+# the `treepgf_allbinary_sign` function.
 
-# In principle possible to use pgf for likelihood? https://www.jstor.org/stable/pdf/2245060.pdf?refreqid=excelsior%3A759e9c0a878328f1a759b9f4b7dade56 describes a numerical inversion algorithm that could be used to obtain the probability of a phylogenetic profile from the pgf (if the latter is correct)?
+# In principle possible to use pgf for likelihood?
+# https://www.jstor.org/stable/pdf/2245060.pdf?refreqid=excelsior%3A759e9c0a878328f1a759b9f4b7dade56
+# describes a numerical inversion algorithm that could be used to obtain the
+# probability of a phylogenetic profile from the pgf (if the latter is
+# correct)?
 
 # The pgf methods do not work yet with WGD

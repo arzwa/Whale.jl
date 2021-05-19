@@ -1,29 +1,12 @@
 # A more efficient implementation would omit redundant rows in the ℓ matrices.
-# For many nodes, there are a substantial number of all-zero rows.
-# We can keep a single clades × nodes matrix with indices in the ℓ matrix, with a
-# zero entry if the clade cannot be observed in the branch leading to the relevant
-# node.
+# For many nodes, there are a substantial number of all-zero rows.  We can keep
+# a single clades × nodes matrix with indices in the ℓ matrix, with a zero
+# entry if the clade cannot be observed in the branch leading to the relevant
+# node. Alternatively, and perhaps more convenient would be to keep these
+# indices in each `Clade` separately, but those will again be a lot of
+# different vectors. 
 #
-# More convenient would be to keep these indices in each `Clade` separately,
-# but those will again be a lot of different vectors. Maybe we should revise
-# the CCD struct somewhat more thoroughly?
-function index_and_getℓ(clades, model)
-    index = zeros(Int, length(clades), length(model))
-    compat = [Int[] for m in model.order]
-    for n in model.order
-        i = 1
-        for γ in clades 
-            !iscompatible(γ, n) && continue
-            push!(compat[id(n)], γ.id)
-            #γ.index[id(n)] = i
-            index[γ.id, id(n)] = i
-            i += 1
-        end
-    end
-    ℓ = [zeros(length(x), length(model[i])) for (i, x) in enumerate(compat)]
-    return compat, index, ℓ
-end
-
+# Maybe we should revise the CCD struct somewhat more thoroughly? Not sure.
 """
     Triple
 """
@@ -68,6 +51,26 @@ end
 function Base.show(io::IO, c::Clade{T}) where T
     @unpack id, count = c
     write(io, "Clade{$T}(γ$id, $count, $(length(c)))")
+end
+
+# find for each branch the compatible clades and give them consecutive indices
+# for that branch. Store these indices in an index matrix, so that `index[γ,e]`
+# gives the clade (row) index in the ℓ[e] matrix.
+function index_and_getℓ(clades, model)
+    index = zeros(Int, length(clades), length(model))
+    compat = [Int[] for m in model.order]
+    for n in model.order
+        i = 1
+        for γ in clades 
+            !iscompatible(γ, n) && continue
+            push!(compat[id(n)], γ.id)
+            #γ.index[id(n)] = i
+            index[γ.id, id(n)] = i
+            i += 1
+        end
+    end
+    ℓ = [zeros(length(x), length(model[i])) for (i, x) in enumerate(compat)]
+    return compat, index, ℓ
 end
 
 """
@@ -234,7 +237,8 @@ function addubiquitous!(d::Dict)
     # the number of leaves and number of trees in the sample).
     N = 0
     for i=1:length(c), j=i+1:length(c)
-        if length(l[i] ∩ l[j]) == 0 && length(l[i] ∪ l[j]) == n
+        length(l[i]) + length(l[j]) != n && continue
+        if length(l[i] ∩ l[j]) == 0
             @assert d[:Bip_counts][i] == d[:Bip_counts][j]
             N += d[:Bip_counts][i]
             push!(d[:Dip_counts][Γ], (i, j, d[:Bip_counts][j]))

@@ -10,7 +10,7 @@ getψ(n::ModelNode, i::Int) = n[i,4]
 ℓhood(ℓ) = isfinite(ℓ) ? ℓ : -Inf
 
 # # transition probability under the linear BDP 1 → 2
-# # NOTE: this should account for extinction down the tree no??
+# # NOTE: this should account for extinction down the tree no?? -> we use ψ now
 # function pdup(λ, μ, t)
 #     α = getα(λ, μ, t)
 #     β = (λ/μ)*α
@@ -93,12 +93,7 @@ function whale!(n::ModelNode{T}, ℓ, x, wm) where T
             p = Πspeciation(x, γ, ℓ, n) + Πloss(x, γ, ℓ, n)
             ℓ[e][j,1] += p
         end
-        for i=2:length(n)  # iterate over slices
-            ℓ[e][j,i] += getϕ(n, i)*ℓ[e][j,i-1]
-            if !leaf
-                ℓ[e][j,i] += Πduplication(x, γ, ℓ, n, i)
-            end
-        end
+        within_branch!(n, γ, ℓ, x, e, j, leaf) 
     end
 end
 
@@ -116,11 +111,15 @@ function whalewgd!(n::ModelNode{T}, ℓ, x, wm) where T
         end
         p += Πwgdloss(x, γ, ℓ, n, q)
         ℓ[e][j,1] = p
-        for i=2:length(n)  # iterate over slices
-            ℓ[e][j,i] += getϕ(n, i)*ℓ[e][j,i-1]
-            if !leaf
-                ℓ[e][j,i] += Πduplication(x, γ, ℓ, n, i)
-            end
+        within_branch!(n, γ, ℓ, x, e, j, leaf) 
+    end
+end
+
+@inline function within_branch!(n, γ, ℓ, x, e, j, leaf)
+    for i=2:length(n)  # iterate over slices
+        @inbounds ℓ[e][j,i] += getϕ(n, i)*ℓ[e][j,i-1]
+        if !leaf
+            @inbounds ℓ[e][j,i] += Πduplication(x, γ, ℓ, n, i)
         end
     end
 end
@@ -138,7 +137,7 @@ function whaleroot!(n::ModelNode{T}, ℓ, x, wm) where T
             p1 += Πspeciation(x, γ, ℓ, n)
             p2 += Πroot(x, γ, ℓ, n, η)
         end
-        ℓ[e][γ.id,1] = p1 * η_ + p2
+        @inbounds ℓ[e][γ.id,1] = p1 * η_ + p2
     end
     ℓ[e][end,1] *= η
 end
@@ -190,5 +189,5 @@ end
 
 @inline function Πwgdloss(x, γ, ℓ, n, q)
     f = first(children(n))
-    @inbounds (one(q) - q)*getl(x, ℓ, id(f), γ.id) + 2q*getϵ(f)*getl(x, ℓ, id(f), γ.id)
+    return (one(q) - q)*getl(x, ℓ, id(f), γ.id) + 2q*getϵ(f)*getl(x, ℓ, id(f), γ.id)
 end
