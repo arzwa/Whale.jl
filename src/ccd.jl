@@ -40,12 +40,12 @@ iscompatible(γ::Clade, n::ModelNode) = γ.species ⊆ n.data.clade
 
 function getl(x, ℓ, e, γ, t) 
     i = x.index[γ, e] 
-    return i == 0 ? 0. : ℓ[e][i,t]
+    return i == 0 ? 0. : ℓ[e][t,i]
 end
 
 function getl(x, ℓ, e, γ)
     i = x.index[γ, e] 
-    return i == 0 ? 0. : ℓ[e][i,end]
+    return i == 0 ? 0. : ℓ[e][end,i]
 end
 
 function Base.show(io::IO, c::Clade{T}) where T
@@ -69,7 +69,8 @@ function index_and_getℓ(clades, model)
             i += 1
         end
     end
-    ℓ = [zeros(length(x), length(model[i])) for (i, x) in enumerate(compat)]
+    #ℓ = [zeros(length(x), length(model[i])) for (i, x) in enumerate(compat)]
+    ℓ = [zeros(length(model[i]), length(x)) for (i, x) in enumerate(compat)]
     return compat, index, ℓ
 end
 

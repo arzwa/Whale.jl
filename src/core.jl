@@ -40,7 +40,7 @@ logpdf!(wm::WhaleModel, x::CCD) = logpdf!(wm, x.ℓ, x)
     for n in wm.order
         whale!(n, ℓ, x, wm)
     end
-    L = ℓ[id(root(wm))][end,1]
+    L = ℓ[id(root(wm))][1,end]
     L > zero(L) ? log(L) : -Inf
 end
 
@@ -87,10 +87,10 @@ function whale!(n::ModelNode{T}, ℓ, x, wm) where T
         j = x.index[c,e]
         leaf = isleaf(γ)
         if leaf && isleaf(n)
-            ℓ[e][j,1] = one(T)
+            ℓ[e][1,j] = one(T)
         elseif !isleaf(n)
             p = Πspeciation(x, γ, ℓ, n) + Πloss(x, γ, ℓ, n)
-            ℓ[e][j,1] += p
+            ℓ[e][1,j] += p
         end
         within_branch!(n, γ, ℓ, x, e, j, leaf) 
     end
@@ -109,17 +109,16 @@ function whalewgd!(n::ModelNode{T}, ℓ, x, wm) where T
             p += Πwgdretention(x, γ, ℓ, n, q)
         end
         p += Πwgdloss(x, γ, ℓ, n, q)
-        ℓ[e][j,1] = p
+        ℓ[e][1,j] = p
         within_branch!(n, γ, ℓ, x, e, j, leaf) 
     end
 end
 
-# XXX possible speed up by changing dims of ℓ...
 @inline function within_branch!(n, γ, ℓ, x, e, j, leaf)
     for i=2:length(n)  # iterate over slices
-        @inbounds ℓ[e][j,i] += getϕ(n, i)*ℓ[e][j,i-1]
+        @inbounds ℓ[e][i,j] += getϕ(n, i)*ℓ[e][i-1,j]
         if !leaf
-            @inbounds ℓ[e][j,i] += Πduplication(x, γ, ℓ, n, i)
+            @inbounds ℓ[e][i,j] += Πduplication(x, γ, ℓ, n, i)
         end
     end
 end
@@ -137,9 +136,9 @@ function whaleroot!(n::ModelNode{T}, ℓ, x, wm) where T
             p1 += Πspeciation(x, γ, ℓ, n)
             p2 += Πroot(x, γ, ℓ, n, η)
         end
-        @inbounds ℓ[e][γ.id,1] = p1 * η_ + p2
+        @inbounds ℓ[e][1,γ.id] = p1 * η_ + p2
     end
-    ℓ[e][end,1] *= η
+    ℓ[e][1,end] *= η
 end
 
 @inline function Πroot(x, γ, ℓ, n, η)

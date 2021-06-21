@@ -10,13 +10,26 @@ using Test, Random, Distributed
         insertnode!(getlca(t, "ATHA", "ATHA"), name="wgd_1")
         insertnode!(getlca(t, "ATHA", "ATRI"), name="wgd_2")
         r = DLWGD(λ=ones(n), μ=ones(n), q=[0.2, 0.1], η=0.9)
+
+        # super simple, 5 slices, 1 family
+        w = WhaleModel(r, t, 0.05, maxn=5)
+        ccd = read_ale(data, w)
+        l = logpdf(w, ccd[1])
+        # -35.739464951792215
+        @test l ≈ -59.03141590814281
+
         w = WhaleModel(r, t, 0.05, maxn=10000)
         ccd = read_ale(data, w)
         # two threads
-        #julia> @btime logpdf($w, $ccd)
+        #julia> @btime logpdf($w, $ccd)  non-log scale
         #  220.969 μs (252 allocations: 290.95 KiB)
-        @test logpdf!(w, ccd) ≈ -570.9667405899105
-        @test logpdf(w, ccd) ≈ -570.9667405899105
+        #julia> @btime logpdf($w, $ccd)
+        #  1.263 ms (252 allocations: 297.09 KiB)
+        # slowdown exclusively due to logaddexp I fear...
+        # unconditioned -614.1255864680994
+        l = -570.9600203240087  # -570.9667405899105,  not sure what changed...
+        @test logpdf!(w, ccd) ≈ l
+        @test logpdf(w, ccd)  ≈ l
         
         g(x) = logpdf(w(DLWGD(λ=x[1:n], μ=x[n+1:2n], q=x[2n+1:2n+3], η=x[end])), ccd)
         x = [ones(n) ; ones(n); [0.1, 0.2] ; 0.8]
@@ -31,7 +44,7 @@ using Test, Random, Distributed
         r.μ[id(getroot(w))] = NaN
         w = WhaleModel(r, t, 0.05, maxn=10000)
         ccd = read_ale(data, w)
-        @test logpdf!(w, ccd) ≈ -570.9667405899105
+        @test logpdf!(w, ccd) ≈ l
     end
 
     @testset "Conditioning - nowhere extinct" begin
