@@ -39,21 +39,6 @@ function track_threaded(tt::TreeTracker; progress=true, outdir="", summary=true)
     return result
 end
 
-# Both DArray and pmap based implementation. DArray allocates considerably less
-# memory!
-function track_distributed(tt::TreeTracker;
-        progress=true, outdir::String="", summary=true)
-    @unpack model, data, df, fun = tt
-    outdir != "" && mkpath(outdir)
-    f = progress ?
-        x->begin @info "Tracking $(x.fname)"; flsh();
-           track_and_sum(model, df, fun, x, outdir, summary) end :
-        x->track_and_sum(model, df, fun, x, outdir, summary)
-    # result = typeof(data)<:DArray ? map(x->f(x), data) : pmap(x->f(x), data)
-    result = map(x->f(x), data)
-    return result
-end
-
 # ccd is an individual family, not the full vector of ccds!
 function track_and_sum(model, df, fun, ccd, outdir="", summary=true)
     trees = Array{RecNode,1}(undef, size(df)[1])
@@ -241,6 +226,7 @@ function _backtrack!(r, b, n)
     error(b, r)
 end
 
+# XXX correct?
 function _backtrackroot!(r, b, n)
     @unpack η = getθ(b.model.rates, n)
     if b.state.γ == length(b.ccd)

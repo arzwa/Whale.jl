@@ -9,6 +9,7 @@ module Whale
     using DataFrames
     using Base.Threads
     using ThreadTools
+    using RecipesBase
     import NewickTree: id, name, distance
     import Distributions: logpdf, logpdf!
 

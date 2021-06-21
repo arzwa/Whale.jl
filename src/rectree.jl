@@ -219,3 +219,46 @@ end
 #         end
 #     end
 # end
+#
+@recipe function f(n::RecNode; mul=true)
+    nleaves = length(getleaves(n))
+    legend --> false
+    linecolor --> :black
+    grid --> false
+    yshowaxis --> false
+    xshowaxis --> false
+    x, y, nodepos = NewickTree.treepositions(n, false)
+    namefun(x) = (startswith(x, "loss") ? "" : (mul ? split(x, "_")[1] : x))
+    taxlabels = namefun.(name.(getleaves(n)))
+    yforeground_color_axis --> :white
+    ygrid --> false
+    ylims --> (0.5, nleaves + 0.5)
+    yticks --> (1:nleaves, taxlabels)
+    xlims --> (-0.2, maximum(y)+0.2)
+    xticks --> false
+    @series begin
+        seriestype := :path
+        y, x
+    end
+    nodes = Dict(s=>[] for s in ["d", "s", "w"])
+    for node in prewalk(n)
+        if node.data.label == "duplication"
+            push!(nodes["d"], nodepos[id(node)])
+        elseif startswith(node.data.label, "sp")
+            push!(nodes["s"], nodepos[id(node)])
+        elseif startswith(node.data.label, "wgd")
+            push!(nodes["w"], nodepos[id(node)])
+        end
+    end
+    #for (k, s) in zip(["s", "d", "w"], [:circle, :square, :star])
+    for (k, s, c) in zip(["d", "w"], [:square, :square], [:teal, :gold])
+        @series begin
+            linealpha := 0
+            seriestype := path
+            seriescolor --> c 
+            markershape --> s
+            markersize --> 4
+            -1 .* last.(nodes[k]), first.(nodes[k])
+        end
+    end
+end 

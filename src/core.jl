@@ -114,6 +114,7 @@ function whalewgd!(n::ModelNode{T}, ℓ, x, wm) where T
     end
 end
 
+# XXX possible speed up by changing dims of ℓ...
 @inline function within_branch!(n, γ, ℓ, x, e, j, leaf)
     for i=2:length(n)  # iterate over slices
         @inbounds ℓ[e][j,i] += getϕ(n, i)*ℓ[e][j,i-1]

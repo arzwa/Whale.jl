@@ -79,7 +79,7 @@ NewickTree.getroot(m::WhaleModel) = root(m)
 # order such that the leaves come first, than the internal nodes, and
 # finally the WGDs (but the iteration order is still a postorder).
 function WhaleModel(rates::Params{T}, Ψ::Node{I}, Δt;
-        minn=5, maxn=50, condition=RootCondition()) where {T,I}
+        minn=10, maxn=10_000, condition=RootCondition()) where {T,I}
     nonwgd = 0  # count non-wgd nodes
     wgdid = I(0)
     order = ModelNode{T,I}[]
