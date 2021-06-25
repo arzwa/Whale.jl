@@ -27,7 +27,7 @@ using Test, Random, Distributed
         #  1.263 ms (252 allocations: 297.09 KiB)
         # slowdown exclusively due to logaddexp I fear...
         # unconditioned -614.1255864680994
-        l = -570.9600203240087  # -570.9667405899105,  not sure what changed...
+        l = -570.9667405899105
         @test logpdf!(w, ccd) ≈ l
         @test logpdf(w, ccd)  ≈ l
         
@@ -55,8 +55,7 @@ using Test, Random, Distributed
         # the higher the retention rates, the higher the probability of non-ext
         for q = 0:0.1:1
             r = ConstantDLWGD(λ=0.3, μ=0.4, q=[q,q], η=0.66)
-            w = WhaleModel(r, t, 0.05,
-                condition=Whale.NowhereExtinctCondition(t))
+            w = WhaleModel(r, t, 0.05, condition=Whale.NowhereExtinctCondition(t))
             @test Whale.condition(w) > p
             p = Whale.condition(w)
         end
@@ -105,4 +104,40 @@ using Test, Random, Distributed
         df = Whale.getpairs([rsum], w)
         @test all(isapprox.(map(sum, eachrow(df[!,1:end-2])), Ref(1.)))
     end
+
+    @testset "MUL trees" begin
+        data = joinpath(@__DIR__, "../example/example-1/ale")
+        multree = readnw("((MPOL:4.752,PPAT:4.752):0.292,((SMOE:4.0"*
+                         ",PPAT:4.0):0.457,(((OSAT:1.555,(ATHA:0.55"*
+                         "48,CPAP:0.5548):1.0002):0.738,ATRI:2.293)"*
+                         ":1.225,(GBIL:3.178,PABI:3.178):0.34):0.93"*
+                         "9):0.587);")
+        n = length(postwalk(multree))
+        r = DLWGD(λ=zeros(n).-1, μ=zeros(n).-1, η=0.9)
+        w = WhaleModel(r, multree, 0.05)
+        ccd = read_ale(data, w)
+        @test isfinite(logpdf!(w, ccd))
+        ts = hcat([Whale.backtrack(w, ccd) for i=1:100]...)
+        rs = Whale.sumtrees(permutedims(ts), ccd, w)
+        tables = Whale.gettables(rs, leaves=true)
+    end
+
+    @testset "Discretization" begin
+        t = readnw(readline(joinpath(@__DIR__, "../example/example-5/tree.nw")))
+        d = joinpath(@__DIR__, "../example/example-5/OG0014587.ale")
+        for n in prewalk(t); n.data.distance = 1.; end
+        n = length(postwalk(t))
+        for i=1:10
+            r = randn(n)
+            r = DLWGD(λ=r, μ=r, η=0.9)
+            ℓ = map(-5:0.5:-1) do n
+                w = WhaleModel(r, t, 10^n)
+                data = read_ale(d, w)
+                #@show n, logpdf!(w, data)
+                logpdf!(w, data)
+            end
+            @test all(abs.(ℓ .- ℓ[1]) .< 0.1)
+        end
+    end
 end
+

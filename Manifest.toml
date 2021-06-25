@@ -242,10 +242,10 @@ version = "0.3.5"
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 
 [[NewickTree]]
-deps = ["AbstractTrees", "Test"]
-git-tree-sha1 = "e32aa72949ae783caf22ee05b0bc5bc911f02a2f"
+deps = ["AbstractTrees", "RecipesBase", "Test"]
+path = "../NewickTree"
 uuid = "b0a14db8-6308-4ebc-8917-f72cd81f5094"
-version = "0.2.2"
+version = "0.3.0"
 
 [[OpenSpecFun_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]

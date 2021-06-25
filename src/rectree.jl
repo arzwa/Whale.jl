@@ -13,6 +13,7 @@ Base.show(io::IO, rsum::RecSummary) =
 writetrees(s::String, rsum::Vector{NamedTuple}) = open(s, "w") do io
     writetrees(io, rsum)
 end
+
 function writetrees(io::IO, rsum::Vector{NamedTuple}, sep="\n")
     for (f,t) in rsum
         write(io, "# pp $f$sep$(nwstr(t))\n")
@@ -160,66 +161,53 @@ function getnodelabel(n)
     !isleaf(n) && return join([name(getleaves(c)[1]) for c in children(n)], ",")
 end
 
-# WGD-related summarization
-iswgddup(n::RecNode) = n.data.label=="wgd"
-getwgds(tree::RecNode) = filter(iswgddup, postwalk(tree))
-getwgds(tree::RecNode, wgds) = filter(
-    x->iswgddup(x) && name(x) ∈ wgds, postwalk(tree))
-
 """
-    getwgdtables(recs::Vector{RecSummary}, ccd, model::WhaleModel)
-    getwgdtables(recs::Vector{RecSummary}, ccd, wgds::Vector{String})
+    gettables(trees::Vector{RecSummary}, nodes=[])
+
+Get for every node in the species tree a data structure with all
+gene tree nodes reconciled to that nodes for each relevant event type.
+Output is suggested to be saved as JSON string.
 """
-getwgdtables(recs::AbstractVector{RecSummary}, ccd, wm::WhaleModel) =
-    getwgdtables(recs, ccd, name.(getwgds(wm)))
-function getwgdtables(recs::AbstractVector{RecSummary}, ccd, wgds::Vector)
-    data = [getwgddups(r, wgds) for r in recs]
-    [wgd=>wgdtable(data, ccd, wgd) for wgd in wgds]
-end
-
-function getwgddups(recs::RecSummary, wgds)
-    d = Dict(wgd=>Dict() for wgd in wgds)
-    for (f, tree) in recs.trees, n in getwgds(tree, wgds)
-        triple = (getγ(n), getγ(n[1]), getγ(n[2]))
-        haskey(d[name(n)], triple) ?
-            d[name(n)][triple] += f : d[name(n)][triple] = f
+function gettables(trees, nodes=[]; leaves=true)
+    table = Dict()
+    for (i,s) in enumerate(trees)
+        seen = Set()
+        for (_, t) in s.trees
+            for n in prewalk(t)
+                e = n.data.e
+                l = n.data.label
+                (isleaf(n) && !leaves) && continue
+                (isleaf(n) && (l == "loss" || l == "sploss")) && continue
+                (!isempty(nodes) && e ∉ nodes) && continue
+                x = isleaf(n) ? (e, name(n)) : (Whale.cladehash(n), l)
+                x ∈ seen && continue
+                push!(seen, x)
+                !haskey(table, e) ? table[e] = Dict() : nothing
+                !haskey(table[e], l) ? table[e][l] = [] : nothing
+                push!(table[e][l], (i = i, 
+                    f = n.data.cred, fname = s.fname, 
+                    left  = isleaf(n) ? name(n) : name.(getleaves(n[1])),
+                    right = isleaf(n) ? "" : name.(getleaves(n[2]))))
+            end
+        end
     end
-    d
+    table
 end
 
-function wgdtable(data, ccd, wgd)
-    X = []
-    for (i, (d, c)) in enumerate(zip(data, ccd)), (t, f) in d[wgd]
-        push!(X, (family=i, frequency=round(f, digits=4),
-            clade=t[1], left=t[2], right=t[3],
-            lleaves=join(getleaves(c, t[2]), ";"),
-            rleaves=join(getleaves(c, t[3]), ";")))
+# assumes JSON parsed tables (string ids...)
+function subgenome_assignments(tables, nodes)
+    d = Dict()
+    for n in string.(nodes)
+        tab = tables[n]["speciation"]
+        for entry in tab
+            gene = entry["left"]
+            !haskey(d, gene) ? d[gene] = Dict() : nothing
+            d[gene][n] = entry["f"]
+        end
     end
-    DataFrame(X)
+    return d
 end
 
-# function pruneloss!(tree::RecTree)
-#     @unpack root, annot = tree
-#     nodes = postwalk(root)
-#     ids = cladehash.(nodes)
-#     for (h, n) in zip(ids, nodes)
-#         if annot[h].label == "loss"  # deletion happens at sploss node
-#             delete!(tree.annot, h)
-#         elseif annot[h].label == "sploss"
-#             child = children(n)[1]
-#             newchild = RecNode(child.γ, child.e, child.t,
-#                 child.children, n.parent)
-#             delete!(n.parent.children, n)
-#             delete!(tree.annot, h)
-#             push!(n.parent, newchild)
-#         else
-#             ann = annot[h]
-#             delete!(tree.annot, h)
-#             tree.annot[cladehash(n)] = ann
-#         end
-#     end
-# end
-#
 @recipe function f(n::RecNode; mul=true)
     nleaves = length(getleaves(n))
     legend --> false
