@@ -87,7 +87,7 @@ function whale!(n::ModelNode{T}, ℓ, x, wm) where T
         j = x.index[c,e]
         leaf = isleaf(γ)
         if leaf && isleaf(n)
-            ℓ[e][1,j] = one(T)
+            ℓ[e][1,j] = n.data.leafℙ
         elseif !isleaf(n)
             p = Πspeciation(x, γ, ℓ, n) + Πloss(x, γ, ℓ, n)
             ℓ[e][1,j] += p

@@ -1,7 +1,3 @@
-# Yet another reimplementation, now with NewickTree and RatesModel interfaces,
-# this has no drawbacks as far as I can see compared to the previous
-# implementation.
-
 # NOTE: best to access the model through functions, so that we can adapt the API
 # without too much work
 """
