@@ -194,18 +194,31 @@ function gettables(trees, nodes=[]; leaves=true)
     table
 end
 
-# assumes JSON parsed tables (string ids...)
+"""
+    subgenome_assignments(tables, nodes)
+
+```
+tables = Whale.gettables(trees)
+df = Whale.subgenome_assignments(tables, [1,3])
+```
+"""
 function subgenome_assignments(tables, nodes)
-    d = Dict()
-    for n in string.(nodes)
+    df = DataFrame(:gene=>String[])
+    for n in nodes
         tab = tables[n]["speciation"]
+        genes = String[]
+        ps = Float64[]
         for entry in tab
-            gene = entry["left"]
-            !haskey(d, gene) ? d[gene] = Dict() : nothing
-            d[gene][n] = entry["f"]
+            gene = entry.left
+            push!(genes, gene)
+            push!(ps, entry.f)
         end
+        df = outerjoin(df, DataFrame(:gene=>genes, Symbol("subgenome_$n")=>ps), on=:gene)
     end
-    return d
+    for col in names(df)[2:end]
+        df[:,col] = replace!(df[:,col], missing=>0.)
+    end
+    return df
 end
 
 @recipe function f(n::RecNode; mul=true)

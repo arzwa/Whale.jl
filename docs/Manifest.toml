@@ -675,9 +675,9 @@ version = "1.36.0+3"
 
 [[Libiconv_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "8e924324b2e9275a51407a4e06deb3455b1e359f"
+git-tree-sha1 = "cba7b560fcc00f8cd770fa85a498cbc1d63ff618"
 uuid = "94ce4f54-9a6c-5748-9c1c-f9c7231a4531"
-version = "1.16.0+7"
+version = "1.16.0+8"
 
 [[Libmount_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -851,10 +851,10 @@ version = "0.4.8"
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 
 [[NewickTree]]
-deps = ["AbstractTrees", "Test"]
-git-tree-sha1 = "e32aa72949ae783caf22ee05b0bc5bc911f02a2f"
+deps = ["AbstractTrees", "RecipesBase", "Test"]
+path = "/home/arzwa/dev/NewickTree/"
 uuid = "b0a14db8-6308-4ebc-8917-f72cd81f5094"
-version = "0.2.2"
+version = "0.3.0"
 
 [[NonlinearSolve]]
 deps = ["ArrayInterface", "FiniteDiff", "ForwardDiff", "IterativeSolvers", "LinearAlgebra", "RecursiveArrayTools", "RecursiveFactorization", "Reexport", "SciMLBase", "Setfield", "StaticArrays", "UnPack"]
@@ -1243,6 +1243,11 @@ version = "0.1.3"
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
+[[ThreadTools]]
+git-tree-sha1 = "e335e40d393ccc1e1aa8087632989e856db988e0"
+uuid = "dbf13d8f-d36e-4350-8970-f3a99faba1a8"
+version = "0.2.0"
+
 [[ThreadingUtilities]]
 deps = ["VectorizationBase"]
 git-tree-sha1 = "64a2be7c73951d7c402eb40a16055e5e6fdda468"
@@ -1309,6 +1314,12 @@ git-tree-sha1 = "2839f1c1296940218e35df0bbb220f2a79686670"
 uuid = "2381bf8a-dfd0-557d-9999-79630e7b1b91"
 version = "1.18.0+4"
 
+[[Whale]]
+deps = ["AbstractTrees", "DataFrames", "DataStructures", "DiffResults", "Distributed", "DistributedArrays", "Distributions", "ForwardDiff", "LinearAlgebra", "LogDensityProblems", "NewickTree", "Parameters", "Random", "RecipesBase", "StatsBase", "Test", "ThreadTools", "TransformVariables"]
+path = "/home/arzwa/dev/Whale/"
+uuid = "eab5b8f2-ac71-4eb1-ac2b-64791b8dae63"
+version = "2.0.3"
+
 [[Widgets]]
 deps = ["Colors", "Dates", "Observables", "OrderedCollections"]
 git-tree-sha1 = "fc0feda91b3fef7fe6948ee09bb628f882b49ca4"
@@ -1328,7 +1339,7 @@ uuid = "02c8fc9c-b97f-50b9-bbe4-9be30ff0a78a"
 version = "2.9.11+0"
 
 [[XSLT_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Libgcrypt_jll", "Pkg", "XML2_jll"]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Libgcrypt_jll", "Libgpg_error_jll", "Pkg", "XML2_jll"]
 git-tree-sha1 = "2b3eac39df218762d2d005702d601cd44c997497"
 uuid = "aed1982a-8fda-507f-9586-7b0439959a61"
 version = "1.1.33+4"

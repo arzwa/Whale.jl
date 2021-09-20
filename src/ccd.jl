@@ -246,6 +246,19 @@ function addubiquitous!(d::Dict)
     d[:Bip_bls][Γ] = 0.
 end
 
+"""
+    profile_matrix(ccd::Vector{CCD}, species::Vector{String})
+
+Profile a bunch of CCD objects to obtain a phylogenetic profile matrix.
+"""
+function profile_matrix(ccd, species)
+    map(ccd) do x
+        counts = countmap(map(x->split(x, "_")[1], x.leaves))
+        (;[Symbol(k)=>haskey(counts, k) ? counts[k] : 0 for k in species]...)
+    end |> DataFrame
+end
+
+
 # Something like this should be possible
 # function getccd(trees::Vector{String})
 #     ccd = getccd(tree)
