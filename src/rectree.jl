@@ -263,3 +263,17 @@ end
         end
     end
 end 
+
+# Per Hengchi's request
+function recstr(n::RecNode)
+    function walk(n)
+        isleaf(n) && return "$(name(n))"
+        s = join([walk(c) for c in children(n)], ",")
+        label = n.data.label
+        cred  = n.data.cred
+        internal = "$(label)_$(cred)" 
+        return "($s)$internal"
+    end
+    s = walk(n)
+    s*";"
+end
