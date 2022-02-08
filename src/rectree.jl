@@ -158,7 +158,7 @@ end
 # get a human readable node label
 function getnodelabel(n)
     name(n) != "" && return name(n) * " ($(id(n)))"
-    !isleaf(n) && return join([name(getleaves(c)[1]) * " ($(id(n)))" for c in children(n)], ",")
+    !isleaf(n) && return join([name(getleaves(c)[1]) for c in children(n)], ",") * " ($(id(n)))"
 end
 
 """
