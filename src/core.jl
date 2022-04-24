@@ -127,18 +127,21 @@ function whaleroot!(n::ModelNode{T}, ℓ, x, wm) where T
     @unpack η = getθ(wm.rates, n)
     e = id(n)
     ℓ[e] .= zero(T)
-    η_ = one(η)/(one(η) - (one(η) - η) * getϵ(n))^2
+    ϵ = getϵ(n)
+    ξ = (1 - (1 - η) * ϵ)
     for γ in x.clades
         leaf = isleaf(γ)
-        p1 = Πloss(x, γ, ℓ, n)
-        p2 = zero(p1)
+        a = zero(T)
+        b = zero(T)
+        c = Πloss(x, γ, ℓ, n)
         if !leaf
-            p1 += Πspeciation(x, γ, ℓ, n)
-            p2 += Πroot(x, γ, ℓ, n, η)
+            a += Πroot(x, γ, ℓ, n, η)
+            b += Πspeciation(x, γ, ℓ, n)
         end
-        @inbounds ℓ[e][1,γ.id] = p1 * η_ + p2
+        #XXX bug! forgot factor (1-ϵ)!
+        #@inbounds ℓ[e][1,γ.id] = (1-η)*ξ*a/η + (η/ξ^2)*(b + c)
+        @inbounds ℓ[e][1,γ.id] = (1-η)*ξ*a/η + (η*(1-ϵ)/ξ^2)*(b + c)
     end
-    ℓ[e][1,end] *= η
 end
 
 @inline function Πroot(x, γ, ℓ, n, η)
@@ -147,7 +150,7 @@ end
     for t in γ.splits  # speciation
         @inbounds p += t.p * getl(x, ℓ, e, t.γ1, 1) * getl(x, ℓ, e, t.γ2, 1)
     end
-    return p*(one(p) -η)*(one(p) -(one(p) -η) * getϵ(n))
+    return p 
 end
 
 @inline function Πspeciation(x, γ, ℓ, n)
@@ -188,5 +191,5 @@ end
 
 @inline function Πwgdloss(x, γ, ℓ, n, q)
     f = first(children(n))
-    return (one(q) - q)*getl(x, ℓ, id(f), γ.id) + 2q*getϵ(f)*getl(x, ℓ, id(f), γ.id)
+    return (1 - q)*getl(x, ℓ, id(f), γ.id) + 2q*getϵ(f)*getl(x, ℓ, id(f), γ.id)
 end

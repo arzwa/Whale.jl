@@ -229,12 +229,14 @@ end
 # XXX correct?
 function _backtrackroot!(r, b, n)
     @unpack η = getθ(b.model.rates, n)
-    if b.state.γ == length(b.ccd)
-        r /= η
-    end
-    η_ = one(η)/(one(η) - (one(η) - η) * getϵ(n))^2
+    #if b.state.γ == length(b.ccd)
+    #    r /= η
+    #end
+    #η_ = one(η)/(one(η) - (one(η) - η) * getϵ(n))^2
+    ϵ = getϵ(n)
+    ξ = (1 - (1 - η) * ϵ)
     for f in [rootbifurcation, rootloss]
-        @unpack r, next = f(r, b, n, η_)
+        @unpack r, next = f(r, b, n, η, ξ, ϵ)
         if r < zero(r)
             return backtrack!(b, next)
         end
@@ -352,7 +354,7 @@ function wgdretention(r, b, m)
     return (r=r, next=SliceState[])
 end
 
-function rootbifurcation(r, b, m, η_)
+function rootbifurcation(r, b, m, η, ξ, ϵ)
     @unpack state, ccd, model = b
     @unpack e, γ, t, = state
     @unpack ℓ = ccd
@@ -365,16 +367,16 @@ function rootbifurcation(r, b, m, η_)
         # either stay in root and duplicate
         r -= p * getl(ccd, ℓ, e, γ1, t) * 
                  getl(ccd, ℓ, e, γ2, t) * 
-                 √(one(η)/η_)*(one(η)-η)
+                 ξ * (1 - η) / η
         if r < zero(r)
             return (r=r, next=[SliceState(e, γ1, t), SliceState(e, γ2, t)])
         end
         # or speciate
-        r -= p * getl(ccd, ℓ, f, γ1) * getl(ccd, ℓ, g, γ2) * η_
+        r -= p * getl(ccd, ℓ, f, γ1) * getl(ccd, ℓ, g, γ2) * η * (1-ϵ) / ξ^2
         if r < zero(r)
             return (r=r, next=[SliceState(f, γ1, tf), SliceState(g, γ2, tg)])
         end
-        r -= p * getl(ccd, ℓ, g, γ1) * getl(ccd, ℓ, f, γ2) * η_
+        r -= p * getl(ccd, ℓ, g, γ1) * getl(ccd, ℓ, f, γ2) * η * (1-ϵ) / ξ^2
         if r < zero(r)
             return (r=r, next=[SliceState(g, γ1, tg), SliceState(f, γ2, tf)])
         end
@@ -382,16 +384,16 @@ function rootbifurcation(r, b, m, η_)
     return (r=r, next=SliceState[])
 end
 
-function rootloss(r, b, m, η_)
+function rootloss(r, b, m, η, ξ, ϵ)
     @unpack state, ccd, model = b
     @unpack e, γ, t, = state
     @unpack ℓ = ccd
     f, g = id(m[1]), id(m[2])
-    r -= getl(ccd, ℓ, f, γ) * getϵ(m[2]) * η_
+    r -= getl(ccd, ℓ, f, γ) * getϵ(m[2]) * η * (1-ϵ) / ξ^2
     if r < 0.
         return (r=r, next=[SliceState(f, γ, lastslice(m[1])), Loss(g)])
     end
-    r -= getl(ccd, ℓ, g, γ) * getϵ(m[1]) * η_
+    r -= getl(ccd, ℓ, g, γ) * getϵ(m[1]) * η * (1-ϵ) / ξ^2
     if r < 0.
         # XXX (*):  state.node.kind = :sploss
         return (r=r, next=[SliceState(g, γ, lastslice(m[2])), Loss(f)])

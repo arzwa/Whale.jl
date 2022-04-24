@@ -1,3 +1,4 @@
+# custom gradients/frules may be useful here, and they are simple to derive
 # define all in terms of α and β!
 const ΛMATOL = 1e-6
 const MARGIN = 1e-3

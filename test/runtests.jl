@@ -15,7 +15,6 @@ using Test, Random, Distributed
         w = WhaleModel(r, t, 0.05, maxn=5)
         ccd = read_ale(data, w)
         l = logpdf(w, ccd[1])
-        # -35.739464951792215
         @test l ≈ -59.03141590814281
 
         w = WhaleModel(r, t, 0.05, maxn=10000)
