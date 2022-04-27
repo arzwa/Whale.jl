@@ -23,6 +23,7 @@ module Whale
     include("track.jl")
     include("rectree.jl")
     include("post.jl")
+    include("recplot.jl")
 
     # should include some example data...
     # an example tree

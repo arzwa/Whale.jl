@@ -65,26 +65,32 @@ and species tree node. The reference to the species tree node together
 with the number of leaves should give sufficient information. Loss nodes
 are identified by having `γ == 0`.
 """
-@with_kw_noshow mutable struct RecData{I}
+@with_kw_noshow mutable struct RecData{I,T}
     γ::I                # clade in CCD
     e::I = UInt16(1)    # edge (in species tree)
-    t::Int = 1          # slice index along edge `e`
+    t::T = 1            # slice index along edge `e`
     name::String  = ""
     cred::Float64 = NaN
     label::String = ""
 end
 
-const RecNode{I} = Node{I,RecData{I}} where I<:Integer
+# XXX the id of the node and the clade type in recdata need not correspond --
+# this is arbitrary...
+const RecNode{I,T} = Node{I,RecData{I,T}} where {I<:Integer,T<:Number}
 
-Base.show(io::IO, n::RecData) = write(io, "$(n.e), $(n.name)")
+Base.show(io::IO, n::RecData) = write(io, "$(n.e), $(n.name != "" ? n.name * ", " : "")$(n.t)$(n.label != "" ? ", "*n.label : "")")
 getγ(n::RecNode) = n.data.γ
 gete(n::RecNode) = n.data.e
 gett(n::RecNode) = n.data.t
+getc(n::RecNode) = n.data.cred
 rectuple(r::RecNode) = (r.data.γ, r.data.e)
 sister(n::RecNode) = first(setdiff(children(parent(n)), Set([n])))
-NewickTree.distance(r::RecNode) = NaN
+NewickTree.distance(r::RecData) = r.t
 NewickTree.support(r::RecData) = r.cred
 NewickTree.name(r::RecData) = r.name
+
+# useful below
+(n::RecNode)(i, t, l) = Node(i, RecData(getγ(n), gete(n), t, name(n), getc(n), l))
 
 # NOTE `t` is not in hash, because duplications with different `t` should ==
 # NOTE: sets of nodes use hashes (e.g. in `sister`), better not extend Base.hash!
@@ -175,7 +181,7 @@ backtrack(wm::WhaleModel, D::AbstractVector) = map((ccd)->backtrack(wm, ccd), D)
 function backtrack(wm::WhaleModel, ccd::CCD)
     bt = BackTracker(wm, ccd)
     backtrack!(bt)
-    return bt.node
+    return process_rectree(wm, bt.node)
 end
 
 backtrack!(b::BackTracker, next::SliceState) = backtrack!(b(next))
@@ -188,11 +194,11 @@ end
 
 # backtracking starts here for real
 backtrack!(b::BackTracker) =
-    b.state.γ == 0 ?
+    b.state.γ == 0 ?   # loss node
         (return addleafname!(b, "loss_$(hash(parent(b.node)))")) :
-        b.state.t == 1 ?
-            _backtrack!(b, b.model[b.state.e]) :
-            _backtrack!(b)
+        b.state.t == 1 ?   # last slice
+            _backtrack!(b, b.model[b.state.e]) :   # internode backtracking
+            _backtrack!(b)                         # intrabranch backtracking
 
 # `n` is a ModelNode!
 function _backtrack!(b, n)  # internode backtracking
@@ -229,10 +235,6 @@ end
 # XXX correct?
 function _backtrackroot!(r, b, n)
     @unpack η = getθ(b.model.rates, n)
-    #if b.state.γ == length(b.ccd)
-    #    r /= η
-    #end
-    #η_ = one(η)/(one(η) - (one(η) - η) * getϵ(n))^2
     ϵ = getϵ(n)
     ξ = (1 - (1 - η) * ϵ)
     for f in [rootbifurcation, rootloss]
@@ -402,3 +404,75 @@ function rootloss(r, b, m, η, ξ, ϵ)
 end
 
 # NOTE: we should set the parent node at the relevant occasion (see e.g. * ↑)
+
+# Post-process the backtracked tree to get an appropriate timetree 
+# Note that the `t` field in the RecNode after backtracking records the slice
+# (counted from the leafward boundary) where the branch leading to this node
+# *starts*. This is quite confusing. Easiest is to first compute the node
+# heights using the species tree node heights and the properties of the
+# reconciliation (i. e. there must be a node at each species tree branch
+# boundary). 
+# Dispatch on Integer type -- if Real than we already have done the
+# conversion... Bit hacky...
+# We'll label the nodes along the way.
+function process_rectree(w::WhaleModel, n::RecNode{I,T}) where {I,T<:Integer}
+    # the backtracked tree's nodes mark the birth time of a node
+    h = node_heights(n, w)
+    function walk(n, x, i)
+        isleaf(n) && return x, i
+        for c in children(n)
+            sn = w[c.data.e]
+            d = h[parent(c)] - h[c] 
+            y = c(I(i+1), d, getlabel(c, w))
+            push!(x, y)
+            _, i = walk(c, y, I(i+1))
+        end
+        return x, i
+    end
+    walk(n, n(I(1), 0., getlabel(n, w)), 1)[1]
+end
+
+# compute the node_heights for a backtracked reconciled tree.
+function node_heights(tree::RecNode, w::WhaleModel)
+    Sh = getheights(getroot(w))
+    H = maximum(values(Sh))
+    h = Dict(tree=>H)
+    for n in postwalk(tree)
+        e = n.data.e
+        if isleaf(n) 
+            h[n] = 0.
+        elseif getlabel(n, w) == "duplication"
+            d = n[1].data.t
+            Δ = getΔ(w[e], length(w[e]))
+            h[n] = H - Sh[e] + d*Δ - Δ/2  
+            # duplication assumed to happen in the middle of the slice
+        else
+            h[n] = H - Sh[e]
+        end
+    end
+    return h
+end
+
+# don't like this, very ad hoc,we could add a 'kind' field in `SliceState` instead
+# that would annotate RecNodes directly?
+const Labels = ["loss", "wgd", "wgdloss", "duplication", "sploss", "speciation"]
+
+function getlabel(n::RecNode, wm::WhaleModel)
+    childrec = [gete(c) for c in children(n)]
+    dup = all(gete(n) .== childrec) && length(childrec) == 2
+    wgd = iswgd(wm[gete(n)])
+    loss = any(x->x==0, [getγ(c) for c in children(n)])
+    return if getγ(n) == 0
+        Labels[1]
+    elseif !dup && !loss && wgd
+        Labels[2]
+    elseif loss && wgd
+        Labels[3]
+    elseif dup
+        Labels[4]
+    elseif loss
+        Labels[5]
+    else
+        Labels[6]
+    end
+end
