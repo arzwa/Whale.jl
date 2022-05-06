@@ -57,7 +57,9 @@ function getθ(m::DLWGD, n)
         c = nonwgdchild(n)
         (λ=exp(m.λ[id(c)]), μ=exp(m.μ[id(c)]), q=m.q[wgdid(n)])
     else
-        (λ=exp(m.λ[id(n)]), μ=exp(m.μ[id(n)]), p=getp(m, n), η=m.η)
+        id(n) > length(m.λ) ?
+            (λ=NaN, μ=NaN, p=getp(m, n), η=m.η) :
+            (λ=exp(m.λ[id(n)]), μ=exp(m.μ[id(n)]), p=getp(m, n), η=m.η)
     end
 end
 

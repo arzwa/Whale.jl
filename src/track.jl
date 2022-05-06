@@ -67,22 +67,21 @@ are identified by having `γ == 0`.
 """
 @with_kw_noshow mutable struct RecData{I,T}
     γ::I                # clade in CCD
-    e::I = UInt16(1)    # edge (in species tree)
+    e::I                # edge (in species tree)
     t::T = 1            # slice index along edge `e`
     name::String  = ""
     cred::Float64 = NaN
     label::String = ""
 end
 
-# XXX the id of the node and the clade type in recdata need not correspond --
-# this is arbitrary...
-const RecNode{I,T} = Node{I,RecData{I,T}} where {I<:Integer,T<:Number}
+const RecNode{I,T,U} = Node{U,RecData{I,T}} where {U<:Integer,I<:Integer,T<:Number}
 
 Base.show(io::IO, n::RecData) = write(io, "$(n.e), $(n.name != "" ? n.name * ", " : "")$(n.t)$(n.label != "" ? ", "*n.label : "")")
 getγ(n::RecNode) = n.data.γ
 gete(n::RecNode) = n.data.e
 gett(n::RecNode) = n.data.t
 getc(n::RecNode) = n.data.cred
+getlabel(n::RecNode) = n.data.label
 rectuple(r::RecNode) = (r.data.γ, r.data.e)
 sister(n::RecNode) = first(setdiff(children(parent(n)), Set([n])))
 NewickTree.distance(r::RecData) = r.t

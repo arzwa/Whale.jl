@@ -14,7 +14,6 @@ module Whale
     import Distributions: logpdf, logpdf!
 
     include("rmodels.jl")
-    include("dlsim.jl")
     include("bdputil.jl")
     include("model.jl")
     include("condition.jl")
@@ -24,6 +23,8 @@ module Whale
     include("rectree.jl")
     include("post.jl")
     include("recplot.jl")
+    include("simulation.jl")
+    include("lca.jl")
 
     # should include some example data...
     # an example tree

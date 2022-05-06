@@ -14,14 +14,6 @@ getϕ(n::ModelNode, i::Int) = n[i,3]
 getψ(n::ModelNode, i::Int) = n[i,4]
 ℓhood(ℓ) = isfinite(ℓ) ? ℓ : -Inf
 
-# # transition probability under the linear BDP 1 → 2
-# # NOTE: this should account for extinction down the tree no?? -> we use ψ now
-# function pdup(λ, μ, t)
-#     α = getα(λ, μ, t)
-#     β = (λ/μ)*α
-#     return (one(α) - α)*(one(α) - β)*β
-# end
-
 Distributions.loglikelihood(model::WhaleModel, x) = logpdf(model, x)
 
 # NOTE conditioning should be done outside the inner loop. If the normalizing
@@ -138,7 +130,7 @@ function whaleroot!(n::ModelNode{T}, ℓ, x, wm) where T
             a += Πroot(x, γ, ℓ, n, η)
             b += Πspeciation(x, γ, ℓ, n)
         end
-        #XXX bug! forgot factor (1-ϵ)!
+        #XXX forgot factor (1-ϵ), or should we not have it?
         #@inbounds ℓ[e][1,γ.id] = (1-η)*ξ*a/η + (η/ξ^2)*(b + c)
         @inbounds ℓ[e][1,γ.id] = (1-η)*ξ*a/η + (η*(1-ϵ)/ξ^2)*(b + c)
     end

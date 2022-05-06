@@ -263,6 +263,6 @@ function get_ale_ccd(tree::Node, wm::WhaleModel, aleobserve="ALEobserve")
     writenw(f, tree)
     run(`$aleobserve $f`)
     ccd = read_ale("$f.ale", wm)
-    rm(f)
+    rm(f); rm("$f.ale")
     return ccd
 end
