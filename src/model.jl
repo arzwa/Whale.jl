@@ -197,8 +197,13 @@ function getslice(λ, μ, t, ϵ)
     (ϵ=_ϵ(α, β, ϵ), ϕ=_ϕ(α, β, ϵ), ψ=_ψ(α, β, ϵ))
 end
 
-function nonwgdchild(n::ModelNode)
+function nonwgdchild(n)
     while iswgd(n) n = first(children(n)) end
+    return n
+end
+
+function nonwgdparent(n)
+    while iswgd(n) n = parent(n) end
     return n
 end
 
