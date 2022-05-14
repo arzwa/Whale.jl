@@ -7,6 +7,8 @@ struct RecSummary
     fname ::String   # original file name of the associated CCD
 end
 
+Base.getindex(rs::RecSummary, i) = rs.trees[i]
+
 Base.show(io::IO, rsum::RecSummary) =
     write(io, "RecSummary(# unique trees = $(length(rsum.trees)))")
 
@@ -27,9 +29,25 @@ function summarize(xs::AbstractVector{RecSummary}) # no joke
         push!(dfs, rs.events)
     end
     events = vcat(dfs...)
-    gdf = groupby(events, :node)
-    sm = combine(gdf, [x=>sum for x in names(gdf[1])[1:6]]...)
+    gdf = groupby(events, [:node, :clade])
+    sm = combine(gdf, 
+                 eventexpectation(mean)..., 
+                 eventexpectation(std)..., 
+                 eventquantile(0.025, "q1")...,
+                 eventquantile(0.975, "q2")...)
     (full=events, sum=sm)
+end
+
+function eventexpectation(fun, name=fun)
+    funs = [AsTable([lab, :freq]) => 
+            (x->fun(getindex(x, lab), weights(x.freq))) =>
+            "$(lab)_$(name)" for lab in Symbol.(Labels)]
+end
+
+function eventquantile(q, name)
+    funs = [AsTable([lab, :freq]) => 
+            (x->quantile(getindex(x, lab), weights(x.freq), q)) =>
+            "$(lab)_$name" for lab in Symbol.(Labels)]
 end
 
 function getpairs(rsum::AbstractVector{RecSummary}, model)
@@ -74,7 +92,7 @@ end
 
 function _getpairs!(d, idx, f, tree::Node)
     for n in postwalk(tree)
-        isleaf(n) && continue
+        (isleaf(n) || degree(n) == 1) && continue
         for l1 in getleaves(n[1]), l2 in getleaves(n[2])
             (l1.data.label == "loss" || l2.data.label == "loss") && continue
             pairid = join(sort([name(l1), name(l2)]), "__")
@@ -99,14 +117,18 @@ function sumtrees(trees::AbstractVector, ccd::CCD, wm::WhaleModel)
     clades = cladecounts(trees)
     summary = NamedTuple[]
     events = nothing
+    cladelab = [getcladelabel(wm[i]) for i=1:length(wm)]
     for (h, count) in sort(collect(counts), by=x->x[2], rev=true)
         tree = trees[findfirst(x->x==h, hashes)]
         freq = count/N
-        rtree, df = label_and_summarize!(tree, clades, N, ccd.leaves, wm)
+        rtree, df = label_and_summarize!(tree, clades, N, wm)
         push!(summary, (freq=freq, tree=rtree))
-        events = isnothing(events) ? df .* freq : events .+ (df .* freq)
+        df[!,:tree] .= h
+        df[!,:freq] .= freq
+        df[!,:clade] = cladelab
+        df[!,:node] = [id(wm[i]) for i=1:length(wm)]
+        events = isnothing(events) ? df : vcat(events, df)
     end
-    events[!,:node] = [getnodelabel(wm[i]) for i=1:length(wm)]
     RecSummary(summary, events, ccd.fname)
 end
 
@@ -115,26 +137,22 @@ sumevents(r::AbstractVector{RecSummary}) =
 
 cladecounts(trees) = countmap(vcat(map((t)->cladehash.(postwalk(t)), trees)...))
 
-function label_and_summarize!(tree::RecNode, clades, N, leafnames, wm)
+function label_and_summarize!(tree::RecNode, clades, N, wm)
     I = typeof(id(tree))
-    d = Dict{typeof(cladehash(tree)),NamedTuple}()
     e = Dict{String,Vector{Int}}(l=>zeros(Int, length(wm)) for l in Labels)
     for (i,n) in enumerate(postwalk(tree))
-        n.id = I(i)
-        label = getlabel(n, wm)
-        e[label][gete(n)]+= 1
-        n.data.label = label
+        e[n.data.label][gete(n)] += 1
         n.data.cred = clades[cladehash(n)]/N
-        startswith(label, "wgd") ?
+        startswith(n.data.label, "wgd") ?
             n.data.name = name(wm[gete(n)]) : nothing
     end
     (rtree=tree, df=DataFrame(e))
 end
 
 # get a human readable node label
-function getnodelabel(n)
-    name(n) != "" && return name(n) * " ($(id(n)))"
-    !isleaf(n) && return join([name(getleaves(c)[1]) for c in children(n)], ",") * " ($(id(n)))"
+function getcladelabel(n)
+    name(n) != "" && return name(n)
+    !isleaf(n) && return join([name(getleaves(c)[1]) for c in children(n)], ",")
 end
 
 """
@@ -209,4 +227,25 @@ function recstr(n::RecNode)
     end
     s = walk(n)
     s*";"
+end
+
+function count_events(trees::Vector)
+    counts = DefaultDict{String,Int}(0)
+    for tree in trees
+        count_events!(counts, tree)
+    end
+    return counts
+end
+
+function count_events(tree::RecNode)
+    counts = DefaultDict{String,Int}(0)
+    count_events!(counts, tree)
+    return counts
+end
+
+function count_events!(dict, tree)
+    for n in prewalk(tree)
+        event = "$(n.data.e)_$(n.data.label)" 
+        dict[event] += 1
+    end
 end

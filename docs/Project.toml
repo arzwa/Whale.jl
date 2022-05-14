@@ -1,10 +1,12 @@
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+KernelDensity = "5ab0869b-81aa-558d-bb23-cbf5423bbe9b"
 Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"
 NewickTree = "b0a14db8-6308-4ebc-8917-f72cd81f5094"
 Optim = "429524aa-4258-5aef-a3af-852621145aeb"

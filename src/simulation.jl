@@ -3,31 +3,36 @@ Random.randexp(λ) = -log(rand())/λ
 
 # Use the same struct as in `track.jl`
 """
-    simulate([rng,] M::WhaleModel)
+    simulate([rng,] M::WhaleModel; prune=:rec)
 
 Simulate reconstructed trees from a WhaleModel, taking into account the
-conditioning.
+conditioning. Returns a gene tree, profile and the number of rejected
+simulations. Using `prune=:rec` will return a reconciled tree, `prune=:full`
+will return a gene tree, and any other setting will return the tree as
+simulated (i.e. including extinct lineages).
 """
 simulate(M::WhaleModel; kwargs...) = simulate(Random.default_rng(), M; kwargs...)
-function simulate(rng::AbstractRNG, M::WhaleModel; kwargs...)
-    G, p = simulate_conditional(rng, M; kwargs...)
-    G = pruneloss!(G) 
-    return G, p
+function simulate(rng::AbstractRNG, M::WhaleModel; prune=:rec, kwargs...)
+    G, p, n = simulate_conditional(rng, M; kwargs...)
+    G = prune == :rec ? recprune!(G) : (prune == :full ? fullprune!(G) : G)
+    return G, p, n
 end
 
 simulate(M::WhaleModel, n; kwargs...) = simulate(Random.default_rng(), M, n; kwargs...)
 function simulate(rng::AbstractRNG, M::WhaleModel, n; kwargs...)
     xs = map(x->simulate(rng, M; kwargs...), 1:n)
-    first.(xs), vcat(DataFrame.(last.(xs))...)
+    first.(xs), vcat(DataFrame.(getindex.(xs, Ref(2)))...), last.(xs)
 end
 
 function simulate_conditional(rng::AbstractRNG, M::WhaleModel; minn=3)
     L = name.(getleaves(getroot(M)))
+    i = 0
     while true
         G = randtree(rng, M)
         p = profile(G, L)
         n = sum(values(p))
-        (satisfies_condition(M.condition, M, p) && n ≥ minn) && return G, p
+        (satisfies_condition(M.condition, M, p) && n ≥ minn) && return G, p, i
+        i += 1
     end
 end
 
@@ -44,7 +49,7 @@ end
 
 profile(G, M) = profile(G, name.(getleaves(getroot(M))))
 function profile(G, sleaves::Vector)
-    m = countmap(getlabel.(getleaves(G)))
+    m = countmap(name.(getleaves(G)))
     Dict(k=>haskey(m, k) ? m[k] : 0 for k in sleaves)
 end
 
@@ -84,7 +89,6 @@ newnode(γ, e, n::RecNode) = Node(γ, RecData(γ=γ, e=e, t=0.), n)
 newnode(γ, e, l::String) = Node(γ, RecData(γ=γ, e=e, t=0., label=l))
 newnode(γ, e, l::String, n::RecNode) = Node(γ, RecData(γ=γ, e=e, t=0., label=l), n)
 
-
 function dlsim!(n::RecNode{I,T}, t, e, rates) where {I,T}
     @unpack λ, μ = getθ(rates, e)
     w = randexp(λ+μ)
@@ -102,7 +106,8 @@ function dlsim!(n::RecNode{I,T}, t, e, rates) where {I,T}
         end
     else
         n.data.t += t + w
-        n.data.label = isleaf(e) ? name(e) : "speciation"
+        n.data.label = "speciation"
+        isleaf(e) && (n.data.name = name(e))
         # if next is wgd -> wgd model
         if iswgd(e)
             @unpack q = getθ(rates, e)
@@ -125,17 +130,20 @@ function dlsim!(n::RecNode{I,T}, t, e, rates) where {I,T}
     return γ
 end
 
-# manipulations
-pruneloss(tree) = pruneloss!(deepcopy(tree))
-function pruneloss!(n)
+"""
+    fullprune
+
+Prune loss nodes from the tree until we get the would-be observed gene tree.
+"""
+fullprune(tree) = fullprune!(deepcopy(tree))
+function fullprune!(n)
     for node in postwalk(n)
         isroot(node) && continue
+        (isleaf(node) && name(node) != "") && continue
         l = getlabel(node)
         if isleaf(node) && l ∈ ["loss", "duplication", "speciation", "wgd", "wgdloss"]
             delete!(parent(node), node)
             node.parent = node
-        elseif isleaf(node)
-            node.data.name = "$(l)_$(node.data.γ)"  # HACK
         elseif degree(node) == 1
             p = parent(node)
             c = node[1]
@@ -154,6 +162,55 @@ function prunefromroot!(n)
         n.parent = n  # HACK
     end
     return n
+end
+
+"""
+    recprune!(tree)
+
+Prune and relabel a `RecNode` tree so that we get a reconciled tree as we would
+have for a Whale gene tree reconciliation for gene tree data.
+Note that the labeling must correspond exactly to the labeling in `track` if we 
+want to use this for e.g. posterior predictive simulations.
+"""
+recprune(tree) = recprune!(deepcopy(tree))
+
+# this is tricky, we want to have it exactly as in `track`...
+function recprune!(n)
+    for node in postwalk(n)
+        isroot(node) && continue
+        (isleaf(node) && name(node) != "") && continue
+        l = getlabel(node)
+        if isleaf(node) && l ∈ ["loss", "duplication", "speciation", "wgd", "wgdloss"]
+            # this happens when everything below is extinct
+            node.data.label = "loss"
+            # we don't delete the node just yet when the parent is a speciation
+            getlabel(parent(node)) == "speciation" && continue
+            # if parent is wgdloss, we prune, if speciation/wgd, we need to
+            # check later
+            delete!(parent(node), node)
+            node.parent = node
+        elseif degree(node) == 2
+            # check what's below
+            l1 = getlabel(node[1])
+            l2 = getlabel(node[2])
+            if l1 == l2 == "loss"  # remove node
+                delete!(parent(node), node)
+                node.parent = node
+            elseif l1 == "loss" || l2 == "loss"
+                node.data.label = "sploss"
+            end
+        elseif degree(node) == 1 && l == "wgd"
+            node.data.label = "wgdloss"
+        elseif degree(node) == 1 && l != "wgdloss"
+            p = parent(node)
+            c = node[1]
+            c.data.t += distance(node)
+            delete!(p, node)
+            push!(p, c)
+            c.parent = p
+        end
+    end
+    return prunefromroot!(n)
 end
 
 # run ALEobserve

@@ -11,7 +11,7 @@ for a `WhaleModel` from an entry of the DataFrame in the `df` field.
 struct TreeTracker{T,V,X}
     model::WhaleModel{T}
     data ::AbstractVector{V}
-    df   ::X # should implement `eachrow()`
+    df   ::X  # Chain or DataFrame
     fun  ::Function
 end
 
@@ -19,7 +19,7 @@ end
 # all families in each iteration, while now we do it the other way around to
 # prevent having a huge array of trees... If we could summarize trees on the go
 # however, we could interchange the order of the loops.
-track(tt::TreeTracker; kwargs...) = track_threaded(tt; kwargs...)
+track(tt::TreeTracker, N; kwargs...) = track_threaded(tt, N; kwargs...)
 
 function flsh()  # flush streams (on cluster I have troubles with this)
     flush(stderr)
@@ -27,25 +27,30 @@ function flsh()  # flush streams (on cluster I have troubles with this)
 end
 
 # XXX: allocates too much memory!
-function track_threaded(tt::TreeTracker; progress=true, outdir="", summary=true)
+function track_threaded(tt::TreeTracker, N; progress=true, outdir="", summary=true)
     @unpack model, data, df, fun = tt
     outdir != "" && mkpath(outdir)
     result = Vector{RecSummary}(undef, length(data))
     @threads for i=1:length(result)
         # for i=1:length(result)
         progress && (@info "Tracking $(data[i].fname)" ; flsh())
-        result[i] = track_and_sum(model, df, fun, data[i], outdir, summary)
+        result[i] = track_and_sum(model, df, N, fun, data[i], outdir, summary)
     end
     return result
 end
 
+# HACK so that tracker works both with Chain and DataFrame types...
+Base.length(df::DataFrame) = nrow(df)
+Base.getindex(df::DataFrame, i::Int) = df[i,:]
+
 # ccd is an individual family, not the full vector of ccds!
-function track_and_sum(model, df, fun, ccd, outdir="", summary=true)
-    trees = Array{RecNode,1}(undef, size(df)[1])
-    for (i,x) in enumerate(eachrow(df))
-        wmm = fun(model, x)
+function track_and_sum(model, df, N, fun, ccd, outdir="", summary=true)
+    trees = Array{RecNode,1}(undef, N)
+    for j in 1:N #1:length(df)
+        i = rand(1:length(df))
+        wmm = fun(model, df[i])
         ℓ = logpdf!(wmm, ccd)
-        trees[i] = backtrack(wmm, ccd)
+        trees[j] = backtrack(wmm, ccd)
     end
     if summary
         rs = sumtrees(trees, ccd, model)
@@ -335,7 +340,8 @@ function wgdloss(r, b, m)
     @unpack q = getθ(model.rates, m)
     f = id(m[1])
     r -= (1. - q + 2q*getϵ(m[1])) * getl(ccd, ccd.ℓ, f, γ)
-    return (r=r, next=[SliceState(f, γ, lastslice(m[1])), Loss(f)])
+    #return (r=r, next=[SliceState(f, γ, lastslice(m[1])), Loss(f)])
+    return (r=r, next=[SliceState(f, γ, lastslice(m[1]))])  # don't add loss nodes after WGD nonretention
 end
 
 function wgdretention(r, b, m)
@@ -463,10 +469,10 @@ function getlabel(n::RecNode, wm::WhaleModel)
     loss = any(x->x==0, [getγ(c) for c in children(n)])
     return if getγ(n) == 0
         Labels[1]
+    elseif degree(n) == 1 && wgd
+        Labels[3]
     elseif !dup && !loss && wgd
         Labels[2]
-    elseif loss && wgd
-        Labels[3]
     elseif dup
         Labels[4]
     elseif loss

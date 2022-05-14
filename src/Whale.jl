@@ -5,6 +5,7 @@ module Whale
     using NewickTree
     using Distributions
     using Random
+    using Printf
     using StatsBase
     using DataFrames
     using Base.Threads

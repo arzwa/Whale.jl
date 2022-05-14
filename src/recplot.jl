@@ -76,7 +76,7 @@ function genetree_layout(wm, groot, slay; scale=10., loss=0.05)
             if n ∈ leaves
                 layout[n] = [(x0, n.data.label == "loss" ? y2 - loss*scale : y1)]
                 x0 += Δx
-            else
+            else  
                 x = 0.
                 y = 0.
                 for c in children(n)
@@ -91,9 +91,14 @@ function genetree_layout(wm, groot, slay; scale=10., loss=0.05)
         end
         # second pass, correct diagonals etc.
         for n in reverse(gns)
+            isroot(n) && continue
             if length(layout[n]) == 1
                 x, y = layout[n][1]
                 push!(layout[n], (x, y2))
+            end
+            if (parent(n).data.label == "wgd" || parent(n).data.label == "wgdloss")
+                p1, p2 = layout[n]
+                layout[n] = [p1, (p1[1], p2[2]), p2]
             end
             # correct diagonal bits
             (xa,ya), (xb,yb) = layout[n]
@@ -198,10 +203,10 @@ end
     end
 end 
 
-const nodecolors = Dict("speciation"=>1, "sploss"=>1, "duplication"=>2, "wgd"=>3, "wgdloss"=>4)
+const nodecolors = Dict("speciation"=>1, "sploss"=>1, "duplication"=>2, "wgd"=>3, "wgdloss"=>4, "loss"=>5)
 
 # This is a recipe for plotting a reconciled gene tree
-@recipe function f(G::RecNode; namefun=identity, fs=9, transform=false)
+@recipe function f(G::RecNode; namefun=identity, fs=9, transform=false, cred=false, fs2=7)
     d = NewickTree.treepositions(G, transform)
     framestyle --> :none
     grid --> false
@@ -230,9 +235,48 @@ const nodecolors = Dict("speciation"=>1, "sploss"=>1, "duplication"=>2, "wgd"=>3
     end
     anns = [(d[n]..., (" " * namefun(name(n)), fs, :left)) 
             for n in getleaves(G) if !(n.data.label == "loss")]
+    if cred
+        for n in prewalk(G)
+            (isleaf(n) || degree(n) == 1) && continue
+            push!(anns, (d[n]..., (@sprintf(" %.2f", n.data.cred), fs2, :left)))
+        end
+    end
     @series begin
         annotations := anns
         [], []
+    end
+end
+
+@recipe function f(M::WhaleModel, data::Dict; 
+                   fs=9, transform=false, leaflabels=true,
+                   textcol=:black, textalign=:top)
+    d = NewickTree.treepositions(getroot(M), transform)
+    framestyle --> :none
+    grid --> false
+    legend --> false
+    anns = []
+    for n in prewalk(getroot(M))
+        isroot(n) && continue
+        (x1, y1) = d[parent(n)]
+        (x2, y2) = d[n]
+        @series begin
+            seriestype := :path
+            seriescolor --> :black
+            [(x1, y1), (x1, y2), (x2, y2)]
+        end
+        if haskey(data, id(n))
+            xm = (x2 + x1)/2
+            push!(anns, (xm, y2, (@sprintf("%d", data[id(n)]), textcol, textalign, fs)))
+        end
+    end
+    if leaflabels
+        for n in getleaves(getroot(M))
+            push!(anns, (d[n]..., (" " * name(n), fs, :left)))
+        end
+    end
+    @series begin
+        annotations := anns
+        [],[]
     end
 end
 
@@ -267,4 +311,5 @@ end
     primary := false
     ()
 end
+
 
