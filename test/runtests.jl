@@ -62,18 +62,19 @@ using Test, Random, Distributed
         end
 
         # Monte Carlo based verification
-        Random.seed!(123)
         n = length(postwalk(t)) -2
+        N = 10000
         for i=1:10
             θ = DLWGD(λ=randn(n) .- 3, μ=randn(n) .- 3, q=rand(2), η=0.67)
-            w = WhaleModel(θ, t, 0.05, condition=Whale.NowhereExtinctCondition(t))
+            w = WhaleModel(θ, t, 0.01, condition=Whale.NowhereExtinctCondition(t))
             p1 = exp(Whale.condition(w))
-            w = WhaleModel(θ, t, 0.05, condition=Whale.NoCondition())
-            ts, df, _ = Whale.simulate(w, 1000, prune=:full);
+            w = WhaleModel(θ, t, 0.01, condition=Whale.NoCondition())
+            ts, df, _ = Whale.simulate(w, N);
             c = map(x->all(Array(x) .> 0), eachrow(df))
-            p2 = sum(c)/1000
-            @test isapprox(p1, p2, rtol=0.1)
+            p2 = sum(c)/N
+            @test isapprox(p1, p2, rtol=0.2)
         end
+
     end
 
     @testset "Set sampling probabilities" begin
