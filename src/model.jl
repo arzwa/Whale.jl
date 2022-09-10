@@ -18,7 +18,7 @@ function Slices(node::Node{I,D}, Δt, minn, maxn, wgdid=I(0), ℙ=1.0) where {I,
     n = isnan(t) ? 0 : min(maxn, max(minn, ceil(Int, t/Δt)))
     slices = ones(n+1, 4)
     slices[:,1] = vcat(0.0, repeat([n== 0 ? 0. : t/n], n))
-    Slices(slices, name(node), Set{I}(), ℙ, wgdid)
+    Slices(slices, String(name(node)), Set{I}(), ℙ, wgdid)
 end
 
 function copynode(n::ModelNode{T,I}, p, V::Type) where {T,I}

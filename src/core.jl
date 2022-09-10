@@ -63,6 +63,18 @@ function logpdf(wm::WhaleModel{T}, xs::Vector{<:CCD}) where T
     ℓhood(sum(ℓ) - length(xs)*condition(wm))
 end
 
+function logpdf(mm::MixtureModel{VF,VS,<:WhaleModel{T}}, xs::Vector{<:CCD}) where {VF,VS,T}
+    K = length(mm.components)
+    ℓ = Matrix{T}(undef, length(xs), K)
+    for j in 1:K
+        Threads.@threads for i in 1:length(xs)
+            ℓ[i,j] = logpdf(mm.components[j], xs[i])
+        end
+        ℓ[:,j] .+= log(mm.prior.p[j]) .- condition(mm.components[j])
+    end
+    ℓhood(mapreduce(logsumexp, +, eachrow(ℓ)))::T
+end
+
 Distributions.logpdf(m::ModelArray, xs::Vector{<:CCD}) = 
     sum(tmap(i->logpdf(m.models[i], xs[i]), 1:length(xs)))
 

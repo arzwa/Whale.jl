@@ -15,7 +15,8 @@ using Test, Random, Distributed
         w = WhaleModel(r, t, 0.05, maxn=5)
         ccd = read_ale(data, w)
         l = logpdf(w, ccd[1])
-        @test l ≈ -59.03141590814281
+        #@test l ≈ -59.03141590814281
+        @test l ≈ -60.96367806571888
 
         w = WhaleModel(r, t, 0.05, maxn=10000)
         ccd = read_ale(data, w)
@@ -26,7 +27,8 @@ using Test, Random, Distributed
         #  1.263 ms (252 allocations: 297.09 KiB)
         # slowdown exclusively due to logaddexp I fear...
         # unconditioned -614.1255864680994
-        l = -570.9667405899105
+        # l = -570.9667405899105
+        l = -592.0185620440255
         @test logpdf!(w, ccd) ≈ l
         @test logpdf(w, ccd)  ≈ l
         
@@ -64,11 +66,11 @@ using Test, Random, Distributed
         n = length(postwalk(t)) -2
         for i=1:10
             θ = DLWGD(λ=randn(n) .- 3, μ=randn(n) .- 3, q=rand(2), η=0.67)
-            w = WhaleModel(θ, t, 0.05,
-                    condition=Whale.NowhereExtinctCondition(t))
+            w = WhaleModel(θ, t, 0.05, condition=Whale.NowhereExtinctCondition(t))
             p1 = exp(Whale.condition(w))
-            ts, ps = Whale.dlsimbunch(w, 1000, condition=:none);
-            c = map(x->all(Array(x) .> 0), eachrow(ps))
+            w = WhaleModel(θ, t, 0.05, condition=Whale.NoCondition())
+            ts, df, _ = Whale.simulate(w, 1000, prune=:full);
+            c = map(x->all(Array(x) .> 0), eachrow(df))
             p2 = sum(c)/1000
             @test isapprox(p1, p2, rtol=0.1)
         end

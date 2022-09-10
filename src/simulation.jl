@@ -36,6 +36,8 @@ function simulate_conditional(rng::AbstractRNG, M::WhaleModel; minn=3)
     end
 end
 
+satisfies_condition(::NoCondition, M, profile) = true
+
 function satisfies_condition(c::RootCondition, M, profile)
     o = getroot(M)
     a = sum([profile[k] for k in name.(getleaves(o[1]))])

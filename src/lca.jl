@@ -41,10 +41,10 @@ function lcawalk(gn, d)
             push!(p2, s2)
         end
     end
-    p1 = p1[2:end-1]
-    p2 = p2[2:end-1]
     ln = (id(s1) == r1.data.e || id(s1) == r2.data.e) ? 
         "duplication" : "speciation"
+    p1 = ln == "duplication" ? p1[2:end] : p1[2:end-1]
+    p2 = ln == "duplication" ? p2[2:end] : p2[2:end-1]
     rn = Node(id(gn), RecData(γ=id(gn), e=id(s1), t=NaN, label=ln))
     # add the sploss nodes
     for p in p1

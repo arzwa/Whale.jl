@@ -11,6 +11,7 @@ module Whale
     using Base.Threads
     using ThreadTools
     using RecipesBase
+    using StatsFuns
     import NewickTree: id, name, distance
     import Distributions: logpdf, logpdf!
 

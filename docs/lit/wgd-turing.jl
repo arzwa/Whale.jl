@@ -257,3 +257,25 @@ smry.sum
 #     there is no systematic growth or contraction of families across the
 #     genome), we may wish to set `η` to the average number of genes in a
 #     family in a genome observed in the data.
+
+# Mixture model
+@model mixmodel(model, ccd) = begin
+    λ  ~ Turing.FlatPos(0.)
+    μ  ~ Turing.FlatPos(0.)
+    η  ~ Beta(3,1) 
+    q1 ~ Beta() 
+    q2 ~ Beta()
+    α1 ~ Exponential()
+    α2 ~ Exponential()
+    qs = [logit(q1), logit(q2)]
+    qq = [logistic.(qs .- α1), [q1, q2], logistic.(qs .+ α2)]
+    w  ~ Dirichlet(3, 10.)
+    Ms = [model((λ=λ, μ=μ, η=η, q=qq[1])),
+          model((λ=λ, μ=μ, η=η, q=qq[2])),
+          model((λ=λ, μ=μ, η=η, q=qq[3]))]
+    ccd ~ MixtureModel(Ms, w)
+end
+
+model = mixmodel(w, ccd)
+chain = sample(model, NUTS(), 100)
+
