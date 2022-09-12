@@ -11,7 +11,7 @@ for a `WhaleModel` from an entry of the DataFrame in the `df` field.
 struct TreeTracker{T,V,X}
     model::WhaleModel{T}
     data ::AbstractVector{V}
-    df   ::X # should implement `eachrow()`
+    df   ::X  # Chain or DataFrame
     fun  ::Function
 end
 
@@ -19,8 +19,7 @@ end
 # all families in each iteration, while now we do it the other way around to
 # prevent having a huge array of trees... If we could summarize trees on the go
 # however, we could interchange the order of the loops.
-track(tt::TreeTracker; kwargs...) = typeof(tt.data)<:DArray ?
-    track_distributed(tt; kwargs...) : track_threaded(tt; kwargs...)
+track(tt::TreeTracker, N; kwargs...) = track_threaded(tt, N; kwargs...)
 
 function flsh()  # flush streams (on cluster I have troubles with this)
     flush(stderr)
@@ -28,40 +27,30 @@ function flsh()  # flush streams (on cluster I have troubles with this)
 end
 
 # XXX: allocates too much memory!
-function track_threaded(tt::TreeTracker; progress=true, outdir="", summary=true)
+function track_threaded(tt::TreeTracker, N; progress=true, outdir="", summary=true)
     @unpack model, data, df, fun = tt
     outdir != "" && mkpath(outdir)
     result = Vector{RecSummary}(undef, length(data))
     @threads for i=1:length(result)
         # for i=1:length(result)
         progress && (@info "Tracking $(data[i].fname)" ; flsh())
-        result[i] = track_and_sum(model, df, fun, data[i], outdir, summary)
+        result[i] = track_and_sum(model, df, N, fun, data[i], outdir, summary)
     end
     return result
 end
 
-# Both DArray and pmap based implementation. DArray allocates considerably less
-# memory!
-function track_distributed(tt::TreeTracker;
-        progress=true, outdir::String="", summary=true)
-    @unpack model, data, df, fun = tt
-    outdir != "" && mkpath(outdir)
-    f = progress ?
-        x->begin @info "Tracking $(x.fname)"; flsh();
-           track_and_sum(model, df, fun, x, outdir, summary) end :
-        x->track_and_sum(model, df, fun, x, outdir, summary)
-    # result = typeof(data)<:DArray ? map(x->f(x), data) : pmap(x->f(x), data)
-    result = map(x->f(x), data)
-    return result
-end
+# HACK so that tracker works both with Chain and DataFrame types...
+Base.length(df::DataFrame) = nrow(df)
+Base.getindex(df::DataFrame, i::Int) = df[i,:]
 
 # ccd is an individual family, not the full vector of ccds!
-function track_and_sum(model, df, fun, ccd, outdir="", summary=true)
-    trees = Array{RecNode,1}(undef, size(df)[1])
-    for (i,x) in enumerate(eachrow(df))
-        wmm = fun(model, x)
+function track_and_sum(model, df, N, fun, ccd, outdir="", summary=true)
+    trees = Array{RecNode,1}(undef, N)
+    for j in 1:N #1:length(df)
+        i = rand(1:length(df))
+        wmm = fun(model, df[i])
         ℓ = logpdf!(wmm, ccd)
-        trees[i] = backtrack(wmm, ccd)
+        trees[j] = backtrack(wmm, ccd)
     end
     if summary
         rs = sumtrees(trees, ccd, model)
@@ -81,26 +70,36 @@ and species tree node. The reference to the species tree node together
 with the number of leaves should give sufficient information. Loss nodes
 are identified by having `γ == 0`.
 """
-@with_kw_noshow mutable struct RecData{I}
+@with_kw_noshow mutable struct RecData{I,T}
     γ::I                # clade in CCD
-    e::I = UInt16(1)    # edge (in species tree)
-    t::Int = 1          # slice index along edge `e`
+    e::I                # edge (in species tree)
+    t::T = 1            # slice index along edge `e`
     name::String  = ""
     cred::Float64 = NaN
     label::String = ""
 end
 
-const RecNode{I} = Node{I,RecData{I}} where I<:Integer
+const RecNode{I,T,U} = Node{U,RecData{I,T}} where {U<:Integer,I<:Integer,T<:Number}
 
-Base.show(io::IO, n::RecData) = write(io, "$(n.e), $(n.name)")
+function Base.show(io::IO, n::RecData) 
+    s1 = "σ=$(n.e), t=$(round(n.t, digits=2))"
+    s2 = n.name != "" ? n.name : n.label
+    write(io, "$s1, $s2")
+end
+
 getγ(n::RecNode) = n.data.γ
 gete(n::RecNode) = n.data.e
 gett(n::RecNode) = n.data.t
+getc(n::RecNode) = n.data.cred
+getlabel(n::RecNode) = n.data.label
 rectuple(r::RecNode) = (r.data.γ, r.data.e)
 sister(n::RecNode) = first(setdiff(children(parent(n)), Set([n])))
-NewickTree.distance(r::RecNode) = NaN
+NewickTree.distance(r::RecData) = r.t
 NewickTree.support(r::RecData) = r.cred
 NewickTree.name(r::RecData) = r.name
+
+# useful below
+(n::RecNode)(i, t, l) = Node(i, RecData(getγ(n), gete(n), t, name(n), getc(n), l))
 
 # NOTE `t` is not in hash, because duplications with different `t` should ==
 # NOTE: sets of nodes use hashes (e.g. in `sister`), better not extend Base.hash!
@@ -191,7 +190,7 @@ backtrack(wm::WhaleModel, D::AbstractVector) = map((ccd)->backtrack(wm, ccd), D)
 function backtrack(wm::WhaleModel, ccd::CCD)
     bt = BackTracker(wm, ccd)
     backtrack!(bt)
-    return bt.node
+    return process_rectree(wm, bt.node)
 end
 
 backtrack!(b::BackTracker, next::SliceState) = backtrack!(b(next))
@@ -204,18 +203,18 @@ end
 
 # backtracking starts here for real
 backtrack!(b::BackTracker) =
-    b.state.γ == 0 ?
+    b.state.γ == 0 ?   # loss node
         (return addleafname!(b, "loss_$(hash(parent(b.node)))")) :
-        b.state.t == 1 ?
-            _backtrack!(b, b.model[b.state.e]) :
-            _backtrack!(b)
+        b.state.t == 1 ?   # last slice
+            _backtrack!(b, b.model[b.state.e]) :   # internode backtracking
+            _backtrack!(b)                         # intrabranch backtracking
 
 # `n` is a ModelNode!
 function _backtrack!(b, n)  # internode backtracking
     isleaf(n) ? (return addleafname!(b)) : nothing  # terminates recursion
     @unpack node, state, ccd = b
     @unpack e, γ, t = state
-    r = rand()*ccd.ℓ[e][γ,t]
+    r = rand()*getl(ccd, ccd.ℓ, e, γ, t)
     if isroot(n)
         return _backtrackroot!(r, b, n)
     elseif iswgd(n)
@@ -242,14 +241,13 @@ function _backtrack!(r, b, n)
     error(b, r)
 end
 
+# XXX correct?
 function _backtrackroot!(r, b, n)
     @unpack η = getθ(b.model.rates, n)
-    if b.state.γ == length(b.ccd)
-        r /= η
-    end
-    η_ = one(η)/(one(η) - (one(η) - η) * getϵ(n))^2
+    ϵ = getϵ(n)
+    ξ = (1 - (1 - η) * ϵ)
     for f in [rootbifurcation, rootloss]
-        @unpack r, next = f(r, b, n, η_)
+        @unpack r, next = f(r, b, n, η, ξ, ϵ)
         if r < zero(r)
             return backtrack!(b, next)
         end
@@ -273,8 +271,8 @@ function _backtrack!(b::BackTracker)  # intra branch backtracking
     if isleaf(ccd[γ])
         return backtrack!(b, SliceState(e, γ, 1))
     end
-    r = rand()*ccd.ℓ[e][γ,t]
-    r -= getϕ(model[e], t) * ccd.ℓ[e][γ,t-1]
+    r = rand()*getl(ccd, ccd.ℓ, e, γ, t)
+    r -= getϕ(model[e], t) * getl(ccd, ccd.ℓ, e, γ, t-1)
     if r < 0.
         return backtrack!(-b)
     end
@@ -293,7 +291,9 @@ function duplication(r, b)
     Δt = model[e][t,1]
     for triple in ccd[γ].splits
         @unpack p, γ1, γ2 = triple
-        r -= p * ℓ[e][γ1,t-1] * ℓ[e][γ2,t-1] * getψ(model[e], t)
+        r -= p * getl(ccd, ℓ, e, γ1, t-1) * 
+                 getl(ccd, ℓ, e, γ2, t-1) * 
+                 getψ(model[e], t)
         if r < 0.
             return (r=r, next=[SliceState(e, γ1, t-1), SliceState(e, γ2, t-1)])
         end
@@ -311,11 +311,11 @@ function speciation(r, b, m)
     ℓ = ccd.ℓ
     for triple in ccd[γ].splits
         @unpack p, γ1, γ2 = triple
-        r -= p * ℓ[f][γ1,end] * ℓ[g][γ2,end]
+        r -= p * getl(ccd, ℓ, f, γ1) * getl(ccd, ℓ, g, γ2)
         if r < 0.
             return (r=r, next=[SliceState(f, γ1, tf), SliceState(g, γ2, tg)])
         end
-        r -= p * ℓ[g][γ1,end] * ℓ[f][γ2,end]
+        r -= p * getl(ccd, ℓ, g, γ1) * getl(ccd, ℓ, f, γ2)
         if r < 0.
             return (r=r, next=[SliceState(g, γ1, tg), SliceState(f, γ2, tf)])
         end
@@ -328,11 +328,11 @@ function sploss(r, b, m)
     @unpack e, γ, t, = state
     @unpack ℓ = ccd
     f, g = id(m[1]), id(m[2])
-    r -= ℓ[f][γ,end]*getϵ(m[2])
+    r -= getl(ccd, ℓ, f, γ)*getϵ(m[2])
     if r < 0.
         return (r=r, next=[SliceState(f, γ, lastslice(m[1])), Loss(g)])
     end
-    r -= ℓ[g][γ,end]*getϵ(m[1])
+    r -= getl(ccd, ℓ, g, γ)*getϵ(m[1])
     if r < 0.
         return (r=r, next=[SliceState(g, γ, lastslice(m[2])), Loss(f)])
     end
@@ -344,19 +344,21 @@ function wgdloss(r, b, m)
     @unpack e, γ, t, = state
     @unpack q = getθ(model.rates, m)
     f = id(m[1])
-    r -= (1. - q + 2q*getϵ(m[1])) * ccd.ℓ[f][γ,end]
-    return (r=r, next=[SliceState(f, γ, lastslice(m[1])), Loss(f)])
+    r -= (1. - q + 2q*getϵ(m[1])) * getl(ccd, ccd.ℓ, f, γ)
+    #return (r=r, next=[SliceState(f, γ, lastslice(m[1])), Loss(f)])
+    return (r=r, next=[SliceState(f, γ, lastslice(m[1]))])  # don't add loss nodes after WGD nonretention
 end
 
 function wgdretention(r, b, m)
     @unpack state, ccd, model = b
+    @unpack ℓ = ccd
     @unpack e, γ, t, = state
     @unpack q = getθ(model.rates, m)
     f = id(m[1])
     tf = lastslice(m[1])
     for triple in ccd[γ].splits
         @unpack p, γ1, γ2 = triple
-        r -= q * p * ccd.ℓ[f][γ1,end] * ccd.ℓ[f][γ2,end]
+        r -= q * p * getl(ccd, ℓ, f, γ1) * getl(ccd, ℓ, f, γ2)
         if r < 0.
             return (r=r, next=[SliceState(f, γ1, tf), SliceState(f, γ2, tf)])
         end
@@ -364,7 +366,7 @@ function wgdretention(r, b, m)
     return (r=r, next=SliceState[])
 end
 
-function rootbifurcation(r, b, m, η_)
+function rootbifurcation(r, b, m, η, ξ, ϵ)
     @unpack state, ccd, model = b
     @unpack e, γ, t, = state
     @unpack ℓ = ccd
@@ -375,16 +377,18 @@ function rootbifurcation(r, b, m, η_)
     for triple in ccd[γ].splits
         @unpack p, γ1, γ2 = triple
         # either stay in root and duplicate
-        r -= p * ℓ[e][γ1,t] * ℓ[e][γ2,t] * √(one(η)/η_)*(one(η)-η)
+        r -= p * getl(ccd, ℓ, e, γ1, t) * 
+                 getl(ccd, ℓ, e, γ2, t) * 
+                 ξ * (1 - η) / η
         if r < zero(r)
             return (r=r, next=[SliceState(e, γ1, t), SliceState(e, γ2, t)])
         end
         # or speciate
-        r -= p * ℓ[f][γ1,end] * ℓ[g][γ2,end] * η_
+        r -= p * getl(ccd, ℓ, f, γ1) * getl(ccd, ℓ, g, γ2) * η * (1-ϵ) / ξ^2
         if r < zero(r)
             return (r=r, next=[SliceState(f, γ1, tf), SliceState(g, γ2, tg)])
         end
-        r -= p * ℓ[g][γ1,end] * ℓ[f][γ2,end] * η_
+        r -= p * getl(ccd, ℓ, g, γ1) * getl(ccd, ℓ, f, γ2) * η * (1-ϵ) / ξ^2
         if r < zero(r)
             return (r=r, next=[SliceState(g, γ1, tg), SliceState(f, γ2, tf)])
         end
@@ -392,16 +396,16 @@ function rootbifurcation(r, b, m, η_)
     return (r=r, next=SliceState[])
 end
 
-function rootloss(r, b, m, η_)
+function rootloss(r, b, m, η, ξ, ϵ)
     @unpack state, ccd, model = b
     @unpack e, γ, t, = state
     @unpack ℓ = ccd
     f, g = id(m[1]), id(m[2])
-    r -= ℓ[f][γ,end] * getϵ(m[2]) * η_
+    r -= getl(ccd, ℓ, f, γ) * getϵ(m[2]) * η * (1-ϵ) / ξ^2
     if r < 0.
         return (r=r, next=[SliceState(f, γ, lastslice(m[1])), Loss(g)])
     end
-    r -= ℓ[g][γ,end] * getϵ(m[1]) * η_
+    r -= getl(ccd, ℓ, g, γ) * getϵ(m[1]) * η * (1-ϵ) / ξ^2
     if r < 0.
         # XXX (*):  state.node.kind = :sploss
         return (r=r, next=[SliceState(g, γ, lastslice(m[2])), Loss(f)])
@@ -410,3 +414,75 @@ function rootloss(r, b, m, η_)
 end
 
 # NOTE: we should set the parent node at the relevant occasion (see e.g. * ↑)
+
+# Post-process the backtracked tree to get an appropriate timetree 
+# Note that the `t` field in the RecNode after backtracking records the slice
+# (counted from the leafward boundary) where the branch leading to this node
+# *starts*. This is quite confusing. Easiest is to first compute the node
+# heights using the species tree node heights and the properties of the
+# reconciliation (i. e. there must be a node at each species tree branch
+# boundary). 
+# Dispatch on Integer type -- if Real than we already have done the
+# conversion... Bit hacky...
+# We'll label the nodes along the way.
+function process_rectree(w::WhaleModel, n::RecNode{I,T}) where {I,T<:Integer}
+    # the backtracked tree's nodes mark the birth time of a node
+    h = node_heights(n, w)
+    function walk(n, x, i)
+        isleaf(n) && return x, i
+        for c in children(n)
+            sn = w[c.data.e]
+            d = h[parent(c)] - h[c] 
+            y = c(I(i+1), d, getlabel(c, w))
+            push!(x, y)
+            _, i = walk(c, y, I(i+1))
+        end
+        return x, i
+    end
+    walk(n, n(I(1), 0., getlabel(n, w)), 1)[1]
+end
+
+# compute the node_heights for a backtracked reconciled tree.
+function node_heights(tree::RecNode, w::WhaleModel)
+    Sh = getheights(getroot(w))
+    H = maximum(values(Sh))
+    h = Dict(tree=>H)
+    for n in postwalk(tree)
+        e = n.data.e
+        if isleaf(n) 
+            h[n] = 0.
+        elseif getlabel(n, w) == "duplication"
+            d = n[1].data.t
+            Δ = getΔ(w[e], length(w[e]))
+            h[n] = H - Sh[e] + d*Δ - Δ/2  
+            # duplication assumed to happen in the middle of the slice
+        else
+            h[n] = H - Sh[e]
+        end
+    end
+    return h
+end
+
+# don't like this, very ad hoc,we could add a 'kind' field in `SliceState` instead
+# that would annotate RecNodes directly?
+const Labels = ["loss", "wgd", "wgdloss", "duplication", "sploss", "speciation"]
+
+function getlabel(n::RecNode, wm::WhaleModel)
+    childrec = [gete(c) for c in children(n)]
+    dup = all(gete(n) .== childrec) && length(childrec) == 2
+    wgd = iswgd(wm[gete(n)])
+    loss = any(x->x==0, [getγ(c) for c in children(n)])
+    return if getγ(n) == 0
+        Labels[1]
+    elseif degree(n) == 1 && wgd
+        Labels[3]
+    elseif !dup && !loss && wgd
+        Labels[2]
+    elseif dup
+        Labels[4]
+    elseif loss
+        Labels[5]
+    else
+        Labels[6]
+    end
+end

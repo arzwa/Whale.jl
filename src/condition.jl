@@ -1,5 +1,6 @@
 struct RootCondition <: SamplingCondition end
 struct NonExtinctCondition <: SamplingCondition end
+struct NoCondition <: SamplingCondition end
 
 struct NowhereExtinctCondition{T} <: SamplingCondition
     s::Vector{T}  # signs for inclusion - exclusion
@@ -8,6 +9,7 @@ struct NowhereExtinctCondition{T} <: SamplingCondition
 end
 
 condition(wm::WhaleModel) = condition(wm, wm.condition)
+condition(wm::WhaleModel, ::NoCondition) = 0.
 
 # log probability of non-extinction
 function condition(wm::WhaleModel, ::NonExtinctCondition)

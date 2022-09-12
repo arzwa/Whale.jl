@@ -1,40 +1,45 @@
-# Yet another reimplementation, now with NewickTree and RatesModel interfaces,
-# this has no drawbacks as far as I can see compared to the previous
-# implementation.
-
 # NOTE: best to access the model through functions, so that we can adapt the API
 # without too much work
 """
     Slices
 """
 struct Slices{T,I}
-    slices ::Matrix{T}    # slice lengths and extinction and propagation Ps
+    slices ::Matrix{T} # slice lengths and extinction and propagation Ps
     name   ::String
     clade  ::Set{I}
+    leafℙ  ::Float64   # ℙ of a compatible leaf to be seen at this node (MUL)
     wgdid  ::I    # NOTE: it's up to the node to identify its WGD if it is one
 end
 
 const ModelNode{T,I} = Node{I,Slices{T,I}}
 
-function Slices(node::Node{I,D}, Δt, minn, maxn, wgdid=I(0)) where {I,D}
+function Slices(node::Node{I,D}, Δt, minn, maxn, wgdid=I(0), ℙ=1.0) where {I,D}
     t = distance(node)
     n = isnan(t) ? 0 : min(maxn, max(minn, ceil(Int, t/Δt)))
     slices = ones(n+1, 4)
     slices[:,1] = vcat(0.0, repeat([n== 0 ? 0. : t/n], n))
-    Slices(slices, name(node), Set{I}(), wgdid)
+    Slices(slices, String(name(node)), Set{I}(), ℙ, wgdid)
 end
 
 function copynode(n::ModelNode{T,I}, p, V::Type) where {T,I}
     @unpack data = n
     slices = ones(V, size(data.slices))
     slices[:,1] .= data.slices[:,1]
-    s = Slices(slices, name(n), data.clade, data.wgdid)
+    s = Slices(slices, name(n), data.clade, data.leafℙ, data.wgdid)
     isroot(n) ? Node(id(n), s) : Node(id(n), s, p)
 end
 
-getclade(n::Node) = isleaf(n) ? Set([id(n)]) :
-    Set(union([getclade(c) for c in children(n)]...))
-setclade!(n::Node) = union!(n.data.clade, getclade(n))
+function setclade!(n::Node, mulid=Dict())
+    if isleaf(n)
+        c = haskey(mulid, name(n)) ? Set([mulid[name(n)]]) : Set([id(n)])
+        union!(n.data.clade, c)
+    else
+        for c in children(n)
+            setclade!(c, mulid)
+            union!(n.data.clade, c.data.clade)
+        end
+    end
+end
 
 NewickTree.name(s::Slices) = s.name
 NewickTree.distance(s::Slices) = sum(s.slices[:,1])
@@ -49,6 +54,7 @@ Base.length(m::ModelNode) = size(m.data.slices)[1]
 iswgd(n::Node) = startswith(name(n), "wgd")
 wgdid(n::ModelNode) = n.data.wgdid
 lastslice(m::ModelNode) = lastindex(m, 1)
+ismulnode(n::Node) = 0. < n.data.leafℙ < 1.0
 
 abstract type SamplingCondition end
 
@@ -75,14 +81,24 @@ Base.lastindex(m::WhaleModel) = lastindex(m.order)
 root(m::WhaleModel) = m.order[end]
 NewickTree.getroot(m::WhaleModel) = root(m)
 
-# XXX this is insanely ugly. The ain hassle is that we want node IDs in
+# XXX this is insanely ugly. The main hassle is that we want node IDs in
 # order such that the leaves come first, than the internal nodes, and
 # finally the WGDs (but the iteration order is still a postorder).
-function WhaleModel(rates::RatesModel{T}, Ψ::Node{I}, Δt;
-        minn=5, maxn=50, condition=RootCondition()) where {T,I}
+# NOTE: MUL trees are a bit of a hack, they are defined by providing a
+# tree with duplicate leaves. Each MUL tree leaf gets a unique ID for
+# indexing, but we use a single representative of these IDs to be used
+# as clade IDs. This is because the `iscompatible` function takes a look
+# at `node.data.clade`. Using this approach, we have minimal struggle
+# with gene/species names and we can easily specify a MUL tree from a
+# newick string, but it doesn't feel very consistent...
+# NOTE: with MUL trees, it is implictly assumed that there is perfect 
+# retention.
+function WhaleModel(rates::Params{T}, Ψ::Node{I}, Δt;
+        minn=5, maxn=10000, condition=RootCondition()) where {T,I}
     nonwgd = 0  # count non-wgd nodes
     wgdid = I(0)
     order = ModelNode{T,I}[]
+    mulgroups = filter(x->x.second > 1, countmap(name.(getleaves(Ψ))))
     function walk(x, y)
         if iswgd(x)
             wgdid += I(1)
@@ -91,9 +107,11 @@ function WhaleModel(rates::RatesModel{T}, Ψ::Node{I}, Δt;
             nonwgd += 1
             i = I(0)
         end
+        ℙ = haskey(mulgroups, name(x)) ?
+            1.0/mulgroups[name(x)] : isleaf(x) ? 1.0 : 0.0
         y′ = isroot(x) ?
-            Node(id(x), Slices(x, Δt, minn, maxn, i)) :
-            Node(id(x), Slices(x, Δt, minn, maxn, i), y)
+            Node(id(x), Slices(x, Δt, minn, maxn, i, ℙ)) :
+            Node(id(x), Slices(x, Δt, minn, maxn, i, ℙ), y)
         for c in children(x)
             walk(c, y′)
         end
@@ -105,24 +123,29 @@ function WhaleModel(rates::RatesModel{T}, Ψ::Node{I}, Δt;
     j = 1
     order = union(getleaves(order[end]), order)
     index = zeros(I, length(order))
+    mulid = Dict{String,I}()
     for (k,n) in enumerate(order)
         if iswgd(n)
             n.id = I(i)
             i += 1
         else
             n.id = I(j)
+            if haskey(mulgroups, name(n)) 
+                mulid[name(n)] = n.id
+            end
             j += 1
         end
         index[id(n)] = k
     end
-    setclade!.(order)
+    # setclade!.(order, Ref(mulid))
+    setclade!(order[end], mulid)
     model = WhaleModel(rates, order, index, condition)
     setmodel!(model)  # assume the model should be initialized
     return model
 end
 
 (m::WhaleModel)(θ) = m(m.rates(θ))
-function (m::WhaleModel)(rates::RatesModel{T}) where T
+function (m::WhaleModel)(rates::Params{T}) where T
     r = root(m)
     I = typeof(id(r))
     o = similar(m.order, ModelNode{T,I})
@@ -141,7 +164,7 @@ function setmodel!(model)
     for n in order setnode!(n, rates) end
 end
 
-function setnode!(n::ModelNode{T}, rates::M) where {T,M}
+function setnode!(n::ModelNode{T}, rates) where T
     iswgd(n) && return setwgdnode!(n, rates)
     θn = getθ(rates, n)
     n[1,2] = isleaf(n) ? θn.p : prod([c[end,2] for c in children(n)])
@@ -149,7 +172,7 @@ function setnode!(n::ModelNode{T}, rates::M) where {T,M}
     setslices!(n.data.slices, θn.λ, θn.μ)
 end
 
-function setwgdnode!(n::ModelNode{T}, rates::M) where {T,M}
+function setwgdnode!(n::ModelNode{T}, rates) where T
     ϵ = n[1][end,2]
     θn = getθ(rates, n)
     n[1,2] = θn.q * ϵ^2 + (1. - θn.q) * ϵ
@@ -174,8 +197,13 @@ function getslice(λ, μ, t, ϵ)
     (ϵ=_ϵ(α, β, ϵ), ϕ=_ϕ(α, β, ϵ), ψ=_ψ(α, β, ϵ))
 end
 
-function nonwgdchild(n::ModelNode)
+function nonwgdchild(n)
     while iswgd(n) n = first(children(n)) end
+    return n
+end
+
+function nonwgdparent(n)
+    while iswgd(n) n = parent(n) end
     return n
 end
 
@@ -210,11 +238,25 @@ function addbranchwgds!(tree; tips=false)
     nwgd
 end
 
+"""
+    setsamplingp!(model, dict)
+
+Set the sampling probabilities for the leaves in the model given the leaf
+names. This is a convenience function enabling one to use the leaf labels
+instead of node IDs.
+"""
 function setsamplingp!(model, dict::Dict)
-    @unpack params = model.rates
+    @unpack rates = model
     leaves = getleaves(getroot(model))
-    length(params.p) == 0 && push!(params.p, zeros(length(leaves))...)
+    length(rates.p) == 0 && push!(rates.p, zeros(length(leaves))...)
     for l in leaves
-        params.p[id(l)] = haskey(dict, name(l)) ? dict[name(l)] : 0.
+        rates.p[id(l)] = haskey(dict, name(l)) ? dict[name(l)] : 0.
     end
 end
+
+struct ModelArray{M} <: DiscreteMultivariateDistribution
+    models::Vector{M}
+end
+
+Base.length(m::ModelArray) = length(m.models)
+

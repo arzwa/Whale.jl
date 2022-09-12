@@ -1,3 +1,7 @@
+tmp/
+docs/data/
+docs/lit/dump/
+
 # Created by https://www.gitignore.io/api/julia
 # Edit at https://www.gitignore.io/?templates=julia
 

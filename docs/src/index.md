@@ -1,38 +1,30 @@
 
 # Introduction
 
-!!! warning
-    The latest Whale version is a thorough rewrite of the Whale library, and is
-    still work in progress. For the version as used in Zwaenepoel & Van de Peer
-    (2019), refer to [this release
-    (v0.2)](https://github.com/arzwa/Whale.jl/releases/tag/v0.2). Nevertheless,
-    the current version should be safe to use and is much more efficient and
-    convenient (if you know a bit of julia).
-
 Whale provides tools for (genome-wide) **amalgamated likelihood estimation
-(ALE) under a DL+WGD model**, which is an approach to infer reconciled gene
+(ALE) under a DLWGD model**, which is an approach to infer reconciled gene
 trees and parameters of a model of gene family evolution given a known species
 tree.
-
 The ALE approach takes into account uncertainty in the gene tree topology by
 marginalizing over all tree topologies that can be amalgamated from the
 so-called *conditional clade distribution* (CCD). This CCD can be constructed
 from a sample of the posterior distribution of tree topologies (which can be
-obtained using any standard software for Bayesian phylogenetics).
+obtained using any standard software for Bayesian phylogenetics, see below).
 
 More specifically, this library can be used to
 
-- Statistically test the absence or presence of hypothetical whole-genome
-  duplication (WGD) events in a species phylogeny
+- Statistically assess hypothetical whole-genome duplication (WGD) events in a
+  species phylogeny.
 - Infer lineage-specific gene duplication and loss rates for a species
-  phylogeny
+  phylogeny.
 - Infer high-quality (reconciled) gene trees given a known species tree using
-  Bayesian gene tree reconciliation [cf.  Szöllősi *et
+  Bayesian gene tree reconciliation [cf. Szöllősi *et
   al.*](https://academic.oup.com/sysbio/article/64/1/e42/1634124)
-- All of the above at once
+- Conduct Bayesian orthology inference.
+- All of the above at once.
 
 !!! note 
-    This library implements the DL and DL+WGD models. It does not implement
+    This library implements the DL and DLWGD models. It does not implement
     models of gene family evolution that take into account horizontal gene
     transfer, incomplete lineage sorting or gene conversion.
 
@@ -51,16 +43,21 @@ To perform analyses with Whale, you will need
    estimates.)
 2. A bunch of ALE files, which summarize the **conditional clade
    distributions** (CCDs) for the same bunch of gene families. These can be
-   obtained from a sample of the posterior distribution of gene trees using the
-   [`ALEobserve`](https://github.com/ssolo/ALE) tool. A pipeline to obtain
-   these from a set of gene family protein fasta files is available at
-   [github](https://github.com/arzwa/whaleprep).
+   obtained from a sample of the posterior distribution of gene trees (or
+   bootstrap replicates, if you prefer) using the
+   [`ALEobserve`](https://github.com/ssolo/ALE) tool.
 
 !!! note 
     Gene IDs should be prefixed by the name of the species to which the gene
     belongs as used in the species tree. For example if *Arabidopsis thaliana*
     is represented by `ATHA` in the species tree newick file, then the genes
     should be prefixed with `ATHA_`, e.g. `ATHA_AT1G05000`.
+    
+!!! note
+    If one wants to conduct gene tree reconciliation using Whale assuming
+    *known* gene trees as input, one can simply construct a trivial CCD for
+    each gene tree using `ALEobserve` (i.e. construct a CCD for a 'sample'
+    consisting of a single gene tree).
 
 !!! note
     Analyzing CCDs (ALE files) with a very large number of clades or for very

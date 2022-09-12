@@ -7,15 +7,18 @@ struct RecSummary
     fname ::String   # original file name of the associated CCD
 end
 
+Base.getindex(rs::RecSummary, i) = rs.trees[i]
+
 Base.show(io::IO, rsum::RecSummary) =
     write(io, "RecSummary(# unique trees = $(length(rsum.trees)))")
 
 writetrees(s::String, rsum::Vector{NamedTuple}) = open(s, "w") do io
     writetrees(io, rsum)
 end
-function writetrees(io::IO, rsum::Vector{NamedTuple}, sep="\t")
+
+function writetrees(io::IO, rsum::Vector{NamedTuple}, sep="\n")
     for (f,t) in rsum
-        write(io, "#$f\n$(nwstr(t))\n")
+        write(io, "# pp $f$sep$(nwstr(t))\n")
     end
 end
 
@@ -26,9 +29,25 @@ function summarize(xs::AbstractVector{RecSummary}) # no joke
         push!(dfs, rs.events)
     end
     events = vcat(dfs...)
-    gdf = groupby(events, :node)
-    sm = combine(gdf, [x=>sum for x in names(gdf[1])[1:6]]...)
+    gdf = groupby(events, [:node, :clade])
+    sm = combine(gdf, 
+                 eventexpectation(mean)..., 
+                 eventexpectation(std)..., 
+                 eventquantile(0.025, "q1")...,
+                 eventquantile(0.975, "q2")...)
     (full=events, sum=sm)
+end
+
+function eventexpectation(fun, name=fun)
+    funs = [AsTable([lab, :freq]) => 
+            (x->fun(getindex(x, lab), weights(x.freq))) =>
+            "$(lab)_$(name)" for lab in Symbol.(Labels)]
+end
+
+function eventquantile(q, name)
+    funs = [AsTable([lab, :freq]) => 
+            (x->quantile(getindex(x, lab), weights(x.freq), q)) =>
+            "$(lab)_$name" for lab in Symbol.(Labels)]
 end
 
 function getpairs(rsum::AbstractVector{RecSummary}, model)
@@ -73,7 +92,7 @@ end
 
 function _getpairs!(d, idx, f, tree::Node)
     for n in postwalk(tree)
-        isleaf(n) && continue
+        (isleaf(n) || degree(n) == 1) && continue
         for l1 in getleaves(n[1]), l2 in getleaves(n[2])
             (l1.data.label == "loss" || l2.data.label == "loss") && continue
             pairid = join(sort([name(l1), name(l2)]), "__")
@@ -98,14 +117,18 @@ function sumtrees(trees::AbstractVector, ccd::CCD, wm::WhaleModel)
     clades = cladecounts(trees)
     summary = NamedTuple[]
     events = nothing
+    cladelab = [getcladelabel(wm[i]) for i=1:length(wm)]
     for (h, count) in sort(collect(counts), by=x->x[2], rev=true)
         tree = trees[findfirst(x->x==h, hashes)]
         freq = count/N
-        rtree, df = label_and_summarize!(tree, clades, N, ccd.leaves, wm)
+        rtree, df = label_and_summarize!(tree, clades, N, wm)
         push!(summary, (freq=freq, tree=rtree))
-        events = isnothing(events) ? df .* freq : events .+ (df .* freq)
+        df[!,:tree] .= h
+        df[!,:freq] .= freq
+        df[!,:clade] = cladelab
+        df[!,:node] = [id(wm[i]) for i=1:length(wm)]
+        events = isnothing(events) ? df : vcat(events, df)
     end
-    events[!,:node] = [getnodelabel(wm[i]) for i=1:length(wm)]
     RecSummary(summary, events, ccd.fname)
 end
 
@@ -114,108 +137,115 @@ sumevents(r::AbstractVector{RecSummary}) =
 
 cladecounts(trees) = countmap(vcat(map((t)->cladehash.(postwalk(t)), trees)...))
 
-function label_and_summarize!(tree::RecNode, clades, N, leafnames, wm)
+function label_and_summarize!(tree::RecNode, clades, N, wm)
     I = typeof(id(tree))
-    d = Dict{typeof(cladehash(tree)),NamedTuple}()
     e = Dict{String,Vector{Int}}(l=>zeros(Int, length(wm)) for l in Labels)
     for (i,n) in enumerate(postwalk(tree))
-        n.id = I(i)
-        label = getlabel(n, wm)
-        e[label][gete(n)]+= 1
-        n.data.label = label
+        e[n.data.label][gete(n)] += 1
         n.data.cred = clades[cladehash(n)]/N
-        startswith(label, "wgd") ?
+        startswith(n.data.label, "wgd") ?
             n.data.name = name(wm[gete(n)]) : nothing
     end
     (rtree=tree, df=DataFrame(e))
 end
 
-# don't like this, very ad hoc,we could add a 'kind' field in `SliceState` instead
-# that would annotate RecNodes directly?
-const Labels = ["loss", "wgd", "wgdloss", "duplication", "sploss", "speciation"]
-
-function getlabel(n::RecNode, wm::WhaleModel)
-    childrec = [gete(c) for c in children(n)]
-    dup = all(gete(n) .== childrec) && length(childrec) == 2
-    wgd = iswgd(wm[gete(n)])
-    loss = any(x->x==0, [getγ(c) for c in children(n)])
-    return if getγ(n) == 0
-        Labels[1]
-    elseif !dup && !loss && wgd
-        Labels[2]
-    elseif loss && wgd
-        Labels[3]
-    elseif dup
-        Labels[4]
-    elseif loss
-        Labels[5]
-    else
-        Labels[6]
-    end
-end
-
 # get a human readable node label
-function getnodelabel(n)
+function getcladelabel(n)
     name(n) != "" && return name(n)
     !isleaf(n) && return join([name(getleaves(c)[1]) for c in children(n)], ",")
 end
 
-# WGD-related summarization
-iswgddup(n::RecNode) = n.data.label=="wgd"
-getwgds(tree::RecNode) = filter(iswgddup, postwalk(tree))
-getwgds(tree::RecNode, wgds) = filter(
-    x->iswgddup(x) && name(x) ∈ wgds, postwalk(tree))
+"""
+    gettables(trees::Vector{RecSummary}, nodes=[])
+
+Get for every node in the species tree a data structure with all
+gene tree nodes reconciled to that nodes for each relevant event type.
+Output is suggested to be saved as JSON string.
+"""
+function gettables(trees, nodes=[]; leaves=true)
+    table = Dict()
+    for (i,s) in enumerate(trees)
+        seen = Set()
+        for (_, t) in s.trees
+            for n in prewalk(t)
+                e = n.data.e
+                l = n.data.label
+                (isleaf(n) && !leaves) && continue
+                (isleaf(n) && (l == "loss" || l == "sploss")) && continue
+                (!isempty(nodes) && e ∉ nodes) && continue
+                x = isleaf(n) ? (e, name(n)) : (Whale.cladehash(n), l)
+                x ∈ seen && continue
+                push!(seen, x)
+                !haskey(table, e) ? table[e] = Dict() : nothing
+                !haskey(table[e], l) ? table[e][l] = [] : nothing
+                push!(table[e][l], (i = i, 
+                    f = n.data.cred, fname = s.fname, 
+                    left  = isleaf(n) ? name(n) : name.(getleaves(n[1])),
+                    right = isleaf(n) ? "" : name.(getleaves(n[2]))))
+            end
+        end
+    end
+    table
+end
 
 """
-    getwgdtables(recs::Vector{RecSummary}, ccd, model::WhaleModel)
-    getwgdtables(recs::Vector{RecSummary}, ccd, wgds::Vector{String})
+    subgenome_assignments(tables, nodes)
+
+```
+tables = Whale.gettables(trees)
+df = Whale.subgenome_assignments(tables, [1,3])
+```
 """
-getwgdtables(recs::AbstractVector{RecSummary}, ccd, wm::WhaleModel) =
-    getwgdtables(recs, ccd, name.(getwgds(wm)))
-function getwgdtables(recs::AbstractVector{RecSummary}, ccd, wgds::Vector)
-    data = [getwgddups(r, wgds) for r in recs]
-    [wgd=>wgdtable(data, ccd, wgd) for wgd in wgds]
-end
-
-function getwgddups(recs::RecSummary, wgds)
-    d = Dict(wgd=>Dict() for wgd in wgds)
-    for (f, tree) in recs.trees, n in getwgds(tree, wgds)
-        triple = (getγ(n), getγ(n[1]), getγ(n[2]))
-        haskey(d[name(n)], triple) ?
-            d[name(n)][triple] += f : d[name(n)][triple] = f
+function subgenome_assignments(tables, nodes)
+    df = DataFrame(:gene=>String[])
+    for n in nodes
+        tab = tables[n]["speciation"]
+        genes = String[]
+        ps = Float64[]
+        for entry in tab
+            gene = entry.left
+            push!(genes, gene)
+            push!(ps, entry.f)
+        end
+        df = outerjoin(df, DataFrame(:gene=>genes, Symbol("subgenome_$n")=>ps), on=:gene)
     end
-    d
-end
-
-function wgdtable(data, ccd, wgd)
-    X = []
-    for (i, (d, c)) in enumerate(zip(data, ccd)), (t, f) in d[wgd]
-        push!(X, (family=i, frequency=round(f, digits=4),
-            clade=t[1], left=t[2], right=t[3],
-            lleaves=join(getleaves(c, t[2]), ";"),
-            rleaves=join(getleaves(c, t[3]), ";")))
+    for col in names(df)[2:end]
+        df[:,col] = replace!(df[:,col], missing=>0.)
     end
-    DataFrame(X)
+    return df
 end
 
-# function pruneloss!(tree::RecTree)
-#     @unpack root, annot = tree
-#     nodes = postwalk(root)
-#     ids = cladehash.(nodes)
-#     for (h, n) in zip(ids, nodes)
-#         if annot[h].label == "loss"  # deletion happens at sploss node
-#             delete!(tree.annot, h)
-#         elseif annot[h].label == "sploss"
-#             child = children(n)[1]
-#             newchild = RecNode(child.γ, child.e, child.t,
-#                 child.children, n.parent)
-#             delete!(n.parent.children, n)
-#             delete!(tree.annot, h)
-#             push!(n.parent, newchild)
-#         else
-#             ann = annot[h]
-#             delete!(tree.annot, h)
-#             tree.annot[cladehash(n)] = ann
-#         end
-#     end
-# end
+# Per Hengchi's request
+function recstr(n::RecNode)
+    function walk(n)
+        isleaf(n) && return "$(name(n))"
+        s = join([walk(c) for c in children(n)], ",")
+        label = n.data.label
+        cred  = n.data.cred
+        internal = "$(label)_$(cred)" 
+        return "($s)$internal"
+    end
+    s = walk(n)
+    s*";"
+end
+
+function count_events(trees::Vector)
+    counts = DefaultDict{String,Int}(0)
+    for tree in trees
+        count_events!(counts, tree)
+    end
+    return counts
+end
+
+function count_events(tree::RecNode)
+    counts = DefaultDict{String,Int}(0)
+    count_events!(counts, tree)
+    return counts
+end
+
+function count_events!(dict, tree)
+    for n in prewalk(tree)
+        event = "$(n.data.e)_$(n.data.label)" 
+        dict[event] += 1
+    end
+end

@@ -1,21 +1,23 @@
+# custom gradients/frules may be useful here, and they are simple to derive
 # define all in terms of α and β!
 const ΛMATOL = 1e-6
 const MARGIN = 1e-3
+
 getα(λ, μ, t) = isapprox(λ, μ, atol=ΛMATOL) ?
     λ*t/(one(t) + λ*t) : μ*(exp(t*(λ-μ)) - one(t))/(λ*exp(t*(λ-μ)) - μ)
+
 _ϵ(α, β, ϵ) = (α + (one(α)-α-β)*ϵ)/(one(α)-β*ϵ)
 _ϕ(α, β, ϵ) = (one(α)-α)*(one(α)-β)/(one(α)-β*ϵ)^2
 _ψ(α, β, ϵ) = (one(α)-α)*(one(α)-β)*β/(one(α)-β*ϵ)^3
 
 stir(n) = n*log(n) - n + log(2π*n)/2
+
 _bin(n, k) =
     k == 0 ? 1. :
     n <= 60 ? float(binomial(n, k)) :
     exp(stir(n)-stir(k)-stir(n - k))
+
 _ξ(i, j, k, α, β) = _bin(i, k)*_bin(i+j-k-1,i-1)*α^(i-k)*β^(j-k)*(one(α)-α-β)^k
-probify(p) =  p > one(p)  && isapprox(p,  one(p), atol=MARGIN) ?
-    one(p)  : p < zero(p) && isapprox(p, zero(p), atol=MARGIN) ?
-    zero(p) : !(zero(p) <= p <= one(p)) ? NaN : p
 
 # transition probability for the linear BDP
 function tp(a, b, t, λ, μ)
@@ -140,8 +142,13 @@ function allbinarytrees(tree)
     walk(getroot(tree))
 end
 
-# Annoyingly, the order is not the one we'd need for inclusion - exclusion... (which would be 0,0,...,0; 1,0,...,0; 0,1,...,0; ... ... ; 1,1,...,1), hence the `treepgf_allbinary_sign` function.
+# Annoyingly, the order is not the one we'd need for inclusion - exclusion...
+# (which would be 0,0,...,0; 1,0,...,0; 0,1,...,0; ... ... ; 1,1,...,1), hence
+# the `treepgf_allbinary_sign` function.
 
-# In principle possible to use pgf for likelihood? https://www.jstor.org/stable/pdf/2245060.pdf?refreqid=excelsior%3A759e9c0a878328f1a759b9f4b7dade56 describes a numerical inversion algorithm that could be used to obtain the probability of a phylogenetic profile from the pgf (if the latter is correct)?
+# In principle possible to use pgf for likelihood?
+# https://www.jstor.org/stable/pdf/2245060.pdf?refreqid=excelsior%3A759e9c0a878328f1a759b9f4b7dade56
+# describes a numerical inversion algorithm that could be used to obtain the
+# probability of a phylogenetic profile from the pgf (if the latter is
+# correct)?
 
-# The pgf methods do not work yet with WGD
