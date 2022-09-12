@@ -21,23 +21,24 @@
 
 Whale.jl is a julia library for **joint inference of gene tree topologies and
 their reconciliations to a species tree**. Whale uses the **amalgamation**
-method of Szollosi et al. (2014) to efficiently compute the marginal likelihood
-of the gene family under a duplication-loss model of gene family evolution over
-a distribution of tree topologies. Whale also implements a duplication-loss and
-whole-genome duplication (DLWGD) model (Rabier et al. 2014, Zwaenepoel et al.
-2019). The latter can be used for the inference of ancient whole-genome
-duplications (WGDs) from gene trees while taking into account gene tree and
-reconciliation uncertainty.
+method of [Szollosi et al. (2014)](https://doi.org/10.1093/sysbio/syt054) 
+to efficiently compute the marginal likelihood of the gene family under a
+duplication-loss model of gene family evolution over a distribution of tree
+topologies. Whale also implements a duplication-loss and whole-genome
+duplication (DLWGD) model (Rabier et al. 2014, Zwaenepoel et al.  2019). The
+latter can be used for the inference of ancient whole-genome duplications
+(WGDs) from gene trees while taking into account gene tree and reconciliation
+uncertainty.
 
 More specifically, this library can be used to
 
 - Statistically assess hypothetical whole-genome duplication (WGD) events in a
-  species phylogeny.
+  species phylogeny using maximum likelihood estimation (MLE) or Bayesian
+  inference.
 - Infer lineage-specific gene duplication and loss rates for a species
   phylogeny.
 - Infer high-quality (reconciled) gene trees given a known species tree using
-  Bayesian gene tree reconciliation [cf. Szöllősi *et
-  al.*](https://academic.oup.com/sysbio/article/64/1/e42/1634124)
+  Bayesian gene tree reconciliation.
 - Conduct Bayesian orthology inference.
 - All of the above at once.
 
