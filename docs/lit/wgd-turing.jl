@@ -1,23 +1,21 @@
-# # Bayesian inference using `Turing.jl`
+# # Bayesian inference for the DLWGD model
 
-# Note this documentation is generated from a julia script using `Literate.jl`.
-# You can find the associated script by following the 'edit on github' link
-# on top.
+# !!! note
+#     Here it is assumed the reader is already familiar with the material
+#     outlined in the [Tutorial](@ref).
 
-# In this example we will use the probabilistic programming language
-# implemented in [`Turing.jl`](https://turing.ml/dev/) with Whale to specify
-# Bayesian hierarchical models for gene tree reconciliation in a flexible way
-using Whale
-using NewickTree, Distributions, Turing, DataFrames, LinearAlgebra, Random
+using Whale, NewickTree, Distributions, Turing, DataFrames, LinearAlgebra
 using Plots, StatsPlots
-Random.seed!(7137);
-const PROGRESS=true  # turn off progress logging in Turing
+using Random; Random.seed!(7137);
+
+# plotting defaults
+default(grid=false, size=(500,800), titlefontsize=9, title_loc=:left, guidefont=8)
 
 # ## Using a constant-rates model
 
 # First we will do inference for a simple constant-rates model (i.e. assuming a
 # single duplication and loss rate for the entire species tree). First we load
-# the species tree (using the example tree available in the WHale library)
+# the species tree (using the example tree available in the Whale library)
 t = deepcopy(Whale.extree)
 n = length(postwalk(t))  # number of internal nodes
 
@@ -32,29 +30,14 @@ insertnode!(getlca(t, "ATHA", "ATRI"), name="wgd_2")
 θ = ConstantDLWGD(λ=0.1, μ=0.2, q=[0.2, 0.1], η=0.9)
 w = WhaleModel(θ, t, .1, minn=10, maxn=20)
 
-# Note the last argument to `WhaleModel`, this is the slice length `Δt`, here
-# set to `0.1`. This determines the discretization of the branches of the 
-# species tree, and may affect the accuracy of the ALE likelihood. While the
-# transition probabilities over the slices are exact, the number of slices on 
-# a branch constrains the maximum number of duplications possible along the
-# branch. By default, Whale will ensure 5 slices on each branch if your `Δt`
-# would be chosen too coarse. Note that the information printed to the `stdout`
-# for the `WhaleModel` struct gives you this information, e.g. the line
-#
-# ```
-# 10,0,0.292,0.0584,5,"(MPOL,(PPAT));"
-# ```
-#
-# indicates that the branch leading to node 10 (which is not a WGD), has length
-# `0.292` and is sliced in 5 slices of length `0.0584`.
-
 # next we get the data (we need a model object for that)
-ccd = read_ale(joinpath(@__DIR__, "../../example/example-1/ale"), w)
+data = joinpath(@__DIR__, "../../example/example-1/ale")
+ccd = read_ale(data, w)
 
 # Now we define the Turing model
 @model constantrates(model, ccd) = begin
-    λ  ~ Turing.FlatPos(0.)
-    μ  ~ Turing.FlatPos(0.)
+    λ  ~ Exponential()
+    μ  ~ Exponential()
     η  ~ Beta(3,1) 
     q1 ~ Beta() 
     q2 ~ Beta()
@@ -62,8 +45,8 @@ ccd = read_ale(joinpath(@__DIR__, "../../example/example-1/ale"), w)
 end
 
 # In this model we have line by line:
-# - `λ` and `μ`: the duplication and loss rate, for which we assume an
-#   uninformative flat prior
+# - `λ` and `μ`: the duplication and loss rate, for which we assume Exponential
+#   priors.
 # - `η`: the parameter of the geometric prior distribution on the number
 #   of genes at the root (i.e. the Whale likelihood is integrated over
 #   a geometric prior for the number of ancestral genes)
@@ -73,29 +56,33 @@ end
 # - `ccd ~ model(...)`: here we specify the likelihood, we assume the data 
 #   (`ccd`) is iid from the duplication+loss+WGD model with the relevant 
 #   parameters.
-
-model = constantrates(w, ccd)
-chain = sample(model, NUTS(), 100, progress=PROGRESS)
+chain0 = sample(constantrates(w, ccd), NUTS(), 200)
 
 # Making some trace plots is straightforward using tools from the Turing
 # probabilistic programming ecosystem
+plot(chain0, size=(700,900))
 
-aesthetics = (grid=false, size=(500,800), titlefontsize=9, 
-              title_loc=:left, guidefont=8, color=:black)
-plot(chain; aesthetics...)
+# We can compute Bayes factors for the WGD hypotheses
+summarize(chain0[[:q1,:q2]], Whale.bayesfactor)
+
+# This is the log10 Bayes factor in favor of the $q = 0$ model. A Bayes factor
+# smaller than -2 could be considered as evidence in favor of the $q \ne 0$
+# model *compared to the $q=0$ model*. This in itself need not say much, as it
+# says nothing about how well the model actually fits the data.
+
 
 # !!! warning
-#     Of course such a chain should be run much longer than in this example!
-#     Here a very short chain is presented to ensure reasonable build times for
-#     this documentation. Generally, one should at least strive for ESS values
-#     exceeding 100 although short chains may be good for exploring and testing
-#     different models. 
+#     Of course the chain should be run longer than in this example!
+#     Here a short chain is presented to ensure reasonable build times for this
+#     documentation. Generally, one should at least strive for ESS values
+#     exceeding at least 100, although short chains may be good for exploring
+#     and testing different models. 
 
 # Now let's obtain reconciled trees
-posterior = DataFrame(chain)
+posterior = DataFrame(chain0)
 ffun = (m, x)->m((λ=x[:λ], μ=x[:μ], η=x[:η], q=[x[:q1], x[:q2]])) 
 tt = TreeTracker(w, ccd, posterior, ffun)
-trees = track(tt)
+trees = track(tt, 1000)
 
 # Note that `fun` is a function that takes the model object and a row from the
 # posterior data frame, returning a model parameterized by the posterior
@@ -130,10 +117,6 @@ df18[:,[!(all(col .== 0)) for col in eachcol(df18)]]  # filter out all zero colu
 # probability that the gene pair is reconciled to the relevant branch + event
 # combination.
 
-# The following can also be helpful
-tables = Whale.getwgdtables(trees, ccd, w)
-tables
-
 # Here we have for each WGD event in the tree all gene pairs that have non-zero
 # posterior probability (as measured by the frequency in the posterior sample) 
 # to be reconciled to the relevant WGD event.
@@ -142,140 +125,105 @@ tables
 smry = Whale.summarize(trees)
 smry.sum
 
-# here we have the expected number of duplications, losses, etc for the
-# different branches in the species tree (the row associated with a node
-# corresponds to the branch leasing to that node)
+# here we have the expected number of duplications, losses, etc. per family for
+# the different branches in the species tree (the row associated with a node
+# corresponds to the branch leading to that node)
 
 # ## Maximum-likelihood estimation
 
 using Optim
-model = constantrates(w, ccd)
-result = optimize(model, MLE())
+result = optimize(constantrates(w, ccd), MLE())
 
+# One could now compute the likelihood using the model without WGD 1 and/or 2
+# and compare the likelihoods using a likelihood ratio test as in Rabier et al.
+# (2014) to assess whether the data is compatible with the hypothesis $q = 0$
+# (which should represent absence of a WGD).
 
 # ## Using a branch-specific rates model
 
 # Now we will consider a model with branch-specific duplication and loss rates,
-# using a more complicated hierarchical model with an bivariate uncorrelated
-# relaxed clock prior.  We'll use the same tree as above. The relevant model
-# now is the DLWGD model:
-
+# using a more complicated hierarchical model with an uncorrelated relaxed
+# clock model.  We'll use the same tree as above. The relevant model now is the
+# DLWGD model:
 θ = DLWGD(λ=zeros(n), μ=zeros(n), q=rand(2), η=rand())
 w = WhaleModel(θ, t, 0.1)
-ccd = read_ale(joinpath(@__DIR__, "../../example/example-1/ale"), w)
+ccd = read_ale(data, w)
 
 # Note that the duplication and loss rates should here be specified on a
-# log-scale for the DLWGD model. We use an LKJ prior for the covariance matrix,
-# specifying a prior for the correlation of duplication and loss rates (`ρ`)
-# and a prior for the scale parameter `τ` (see e.g. the [stan
-# docs](https://mc-stan.org/docs/2_23/stan-users-guide/multivariate-hierarchical-priors-section.html)):
+# log-scale for the DLWGD model. We assume a Normal prior for the mean
+# duplication and loss rates, and assume the log-scale branch-specific rates to
+# be distributed according to a multivariate normal with diagonal covariance
+# matrix $\tau I$. We assume duplication and loss rates to be independent.
 
-@model branchrates(model, ccd) = begin
+@model branchrates(model, n, ccd, ::Type{T}=Float64) where T = begin
     η ~ Beta(3,1)
-    ρ ~ Uniform(-1, 1.)
-    τ ~ Exponential()
-    T = typeof(τ)
-    S = [τ 0. ; 0. τ]
-    R = [1. ρ ; ρ 1.]
-    Σ = S*R*S
-    !isposdef(Σ) && return -Inf
-    r = Matrix{T}(undef, 2, n)
-    o = id(getroot(model))
-    r[:,o] ~ MvNormal(zeros(2), ones(2))
-    for i=1:n
-        i == o && continue
-        r[:,i] ~ MvNormal(r[:,o], Σ)
-    end
+    λ̄ ~ Normal(log(0.15), 2)
+    μ̄ ~ Normal(log(0.15), 2)
+    τ ~ Exponential(0.1)
+    λ ~ MvNormal(fill(λ̄, n-1), τ)
+    μ ~ MvNormal(fill(μ̄, n-1), τ)
     q1 ~ Beta()
     q2 ~ Beta()
-    ccd ~ model((λ=r[1,:], μ=r[2,:], η=η, q=[q1, q2]))
+    ccd ~ model((λ=λ, μ=μ, η=η, q=[q1, q2]))
 end
 
-# In this model we store the mean duplication and loss rate across branches at
-# the root index (or in other words, we interpret the rates at the root node as
-# the expected rates for the branches in the tree). 
+# ... and sample (this takes a bit longer!)
 
-chain = sample(branchrates(w, ccd), NUTS(), 100, progress=PROGRESS)
+chain1 = sample(branchrates(w, n, ccd), NUTS(), 200)
 
-# I am not running the sampler here for the sake of computation time in
-# generating these docs. Of course, again bear in mind that in real
-# applications you will want to take larger samples, e.g. 1000 instead of 100.
+# Make a plot for the retention parameters
+plot(chain1[[:q1,:q2]], size=(700,300))
 
-# ## A critical branch-specific rates model
+# ## Posterior predictive simulations
+#
+# We can do posterior predictive simulations to assess model fit. There are of
+# course many possible posterior predictive observables that we may employ to
+# do so. The approach below is but one that is (partially) implemented.
+# Here we compare simulated number of events for each branch with reconstructed
+# number of events for each branch. That is, for $N$ samples from the
+# posterior, we (1) simulate a data set of the size of our empirical data set
+# and (2) sample a reconciled tree for each gene family. We then compare, for
+# instance, the number of duplications on the branch leading to node $m$ in the
+# two simulated sets. If the model fits these should be similar.
 
-# It may also be of interest to specify a similar model with a single
-# 'turnover' rate for each branch, i.e.  enforcing `λ = μ` for each branch, but
-# allowing this rate to vary across branches. A birth-death process with this
-# property is said to be a *critical* birth-death process. It is
-# straightforward to specify a hierarchical model for this:
-
-@model critical(model, ccd) = begin
-    η ~ Beta(3,1)
-    σ ~ Exponential()
-    T = eltype(σ)
-    r = Vector{T}(undef, n)
-    o = id(getroot(model))
-    r[o] ~ Turing.Flat()
-    for i=1:n
-        i == o && continue
-        r[i] ~ Normal(r[o], σ)
-    end
-    q1 ~ Beta()
-    q2 ~ Beta()
-    ccd ~ model((λ=r, μ=r, η=η, q=[q1, q2]))
+# We need a function to get a parameterized model from a chain iterate:
+function mfun(M, x)
+    q1 = get(x, :q1).q1[1]
+    q2 = get(x, :q2).q2[1]
+    λ = vec(vcat(get(x, :λ).λ...))
+    μ = vec(vcat(get(x, :μ).μ...))
+    η = get(x, :η).η[1]
+    M((λ=λ, μ=μ, q=[q1,q2], η=η))
 end
 
-Random.seed!(54)
-chain = sample(critical(w, ccd), NUTS(), 100, progress=PROGRESS)
+# The following will then do 100 posterior predictive simulations
+pps = Whale.ppsims(chain1, mfun, w, ccd, 100);
 
-# Note that this model seems to be somewhat easier to sample from, as can be judged
-# by the ESS values. The results, although based on a small data set and a very
-# short chain, already seem to suggest that the gene trees contain some evidence 
-# for a *P. patens* WGD (as `q1` seems to be decidedly non-zero).
-
-posterior = DataFrame(chain)
-
-## function to parameterize a model from a row `x` of the `posterior` data frame
-function modelfun(m, x)
-    r = Array(x)[15:31]
-    m((λ=r, μ=r, η=x[:η], q=[x[:q1], x[:q2]])) 
+# and we make a plot for duplication events
+lab = "duplication"
+ps = map(w.order) do mnode
+    l = "$(id(mnode))_$lab"
+    dots = map(x->(x[1][l], x[2][l]), pps)
+    xmn, xmx = extrema(vcat(first.(dots), first.(dots)))
+    scatter(dots, color=:black, ms=2, alpha=0.5, legend=false, 
+            xlabel="\$y\$", ylabel="\$\\tilde{y}\$", 
+            title=Whale.cladelabel(mnode),
+            xlim=(xmn-0.5,xmx+0.5), xticks=xmn:1:xmx)
+    plot!(x->x, color=:lightgray)
 end
+plot(ps..., size=(700,600))
 
-tt = TreeTracker(w, ccd, posterior, modelfun)
-trees = track(tt)
+# one can of course also compare loss events, speciation events, WGD-derived
+# duplicates etc.
 
-# Here's the summary output
-smry = Whale.summarize(trees)
-smry.sum
-
+# The above is somewhat more informative when analyzing more data. Using this
+# approach on `chain0` and comparing against the results displayed here, one
+# could for instance check whether the constant rates assumption is strongly
+# violated or not. If the dots in these plots are not systematically above or
+# below the 1-1 line, at least this aspect of the data is explained well by the
+# model.
+ 
 # !!! note
-#     Often it can be beneficial to set the hyperparameter `η` to a fixed value
-#     based on the data. `η` is the parameter for the shifted geometric prior
-#     on the number of genes at the root of the gene tree across families, so
-#     that the expected number of genes at the root is `1/η`. Under the
-#     assumption that the evolutonary process is more or less stationary (i.e.
-#     there is no systematic growth or contraction of families across the
-#     genome), we may wish to set `η` to the average number of genes in a
-#     family in a genome observed in the data.
-
-# Mixture model
-@model mixmodel(model, ccd) = begin
-    λ  ~ Turing.FlatPos(0.)
-    μ  ~ Turing.FlatPos(0.)
-    η  ~ Beta(3,1) 
-    q1 ~ Beta() 
-    q2 ~ Beta()
-    α1 ~ Exponential()
-    α2 ~ Exponential()
-    qs = [logit(q1), logit(q2)]
-    qq = [logistic.(qs .- α1), [q1, q2], logistic.(qs .+ α2)]
-    w  ~ Dirichlet(3, 10.)
-    Ms = [model((λ=λ, μ=μ, η=η, q=qq[1])),
-          model((λ=λ, μ=μ, η=η, q=qq[2])),
-          model((λ=λ, μ=μ, η=η, q=qq[3]))]
-    ccd ~ MixtureModel(Ms, w)
-end
-
-model = mixmodel(w, ccd)
-chain = sample(model, NUTS(), 100)
-
+#     I know that this, and the sampling methods for reconciled trees, should
+#     be implemented in a somewhat more consistent and user-friendly style.
+#     It's on the to-do list.

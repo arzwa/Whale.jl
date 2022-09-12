@@ -4,7 +4,7 @@ outdir = joinpath(@__DIR__, "src")
 srcdir = joinpath(@__DIR__, "lit")
 mkpath(outdir)
 
-fnames = ["wgd-dhmc.jl", "wgd-turing.jl", "cytp450.jl"]
+fnames = ["tutorial.jl", "wgd-turing.jl"]
 output = String[]
 
 for f in fnames
@@ -24,7 +24,8 @@ makedocs(
     authors = "Arthur Zwaenepoel",
     doctest = false,
 	pages = ["Index"=>"index.md",
-			 "Examples"=>output],)
+             "Tutorial"=>"tutorial.md",
+             "Examples"=>filter(x->!startswith(x, "tutorial"), output)],)
 
 deploydocs(
     repo = "github.com/arzwa/Whale.jl.git",

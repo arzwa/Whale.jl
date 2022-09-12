@@ -12,6 +12,7 @@ module Whale
     using ThreadTools
     using RecipesBase
     using StatsFuns
+    using KernelDensity
     import NewickTree: id, name, distance
     import Distributions: logpdf, logpdf!
 

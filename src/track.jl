@@ -81,7 +81,12 @@ end
 
 const RecNode{I,T,U} = Node{U,RecData{I,T}} where {U<:Integer,I<:Integer,T<:Number}
 
-Base.show(io::IO, n::RecData) = write(io, "$(n.e), $(n.name != "" ? n.name * ", " : "")$(n.t)$(n.label != "" ? ", "*n.label : "")")
+function Base.show(io::IO, n::RecData) 
+    s1 = "σ=$(n.e), t=$(round(n.t, digits=2))"
+    s2 = n.name != "" ? n.name : n.label
+    write(io, "$s1, $s2")
+end
+
 getγ(n::RecNode) = n.data.γ
 gete(n::RecNode) = n.data.e
 gett(n::RecNode) = n.data.t

@@ -20,7 +20,7 @@ jobs:
     strategy:
       matrix:
         version:
-          - '1.6'
+          - '1.8'
           - 'nightly'
         os:
           - ubuntu-latest
@@ -45,12 +45,11 @@ jobs:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
         with:
-          version: '1.6'
+          version: '1.8'
       - run: |
           julia --project=docs -e '
             using Pkg
             Pkg.develop(PackageSpec(path=pwd()))
-            Pkg.add(url="https://github.com/arzwa/PalmTree.jl", rev="master")
             Pkg.instantiate()'
       - run: julia --project=docs docs/make.jl
         env:
