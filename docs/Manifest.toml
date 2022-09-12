@@ -2,7 +2,7 @@
 
 julia_version = "1.8.0"
 manifest_format = "2.0"
-project_hash = "896d0cbee494a967cb6dcf997cfeab0df8bb8795"
+project_hash = "28107fbe1c7b430e0952c758fe635c3a992ca860"
 
 [[deps.ANSIColoredPrinters]]
 git-tree-sha1 = "574baf8110975760d391c710b6341da1afa48d8c"
@@ -723,7 +723,7 @@ version = "1.2.0"
 
 [[deps.NewickTree]]
 deps = ["AbstractTrees", "RecipesBase", "Test"]
-path = "/home/arzwa/dev/NewickTree/"
+git-tree-sha1 = "cc3b6d7ae9f689c93a079626236fe2858b473313"
 uuid = "b0a14db8-6308-4ebc-8917-f72cd81f5094"
 version = "0.3.0"
 
@@ -1081,11 +1081,6 @@ version = "0.1.1"
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
-[[deps.ThreadTools]]
-git-tree-sha1 = "e335e40d393ccc1e1aa8087632989e856db988e0"
-uuid = "dbf13d8f-d36e-4350-8970-f3a99faba1a8"
-version = "0.2.0"
-
 [[deps.TranscodingStreams]]
 deps = ["Random", "Test"]
 git-tree-sha1 = "8a75929dcd3c38611db2f8d08546decb514fcadf"
@@ -1137,12 +1132,6 @@ deps = ["DataAPI", "InlineStrings", "Parsers"]
 git-tree-sha1 = "b1be2855ed9ed8eac54e5caff2afcdb442d52c23"
 uuid = "ea10d353-3f73-51f8-a26c-33c1cb351aa5"
 version = "1.4.2"
-
-[[deps.Whale]]
-deps = ["DataFrames", "DataStructures", "Distributed", "Distributions", "NewickTree", "Parameters", "Printf", "Random", "RecipesBase", "StatsBase", "StatsFuns", "Test", "ThreadTools"]
-path = "/home/arzwa/dev/Whale/"
-uuid = "eab5b8f2-ac71-4eb1-ac2b-64791b8dae63"
-version = "2.0.3"
 
 [[deps.Widgets]]
 deps = ["Colors", "Dates", "Observables", "OrderedCollections"]
