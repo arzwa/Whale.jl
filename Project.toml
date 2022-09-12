@@ -1,7 +1,7 @@
 name = "Whale"
 uuid = "eab5b8f2-ac71-4eb1-ac2b-64791b8dae63"
 authors = ["Arthur ZWAENEPOEL <arzwa@psb.ugent.be>"]
-version = "2.0.3"
+version = "2.1.0"
 
 [deps]
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
