@@ -32,7 +32,7 @@ More specifically, this library can be used to
 
 You will need julia-1.x. Fire up a julia REPL by typing `julia` at the command
 line enter the package manager interface by typing `]`, and execute `add
-Whale`.
+https://github.com/arzwa/Whale.jl`.
 
 ## Data preparation
 
