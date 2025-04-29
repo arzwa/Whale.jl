@@ -88,6 +88,7 @@ mutable struct CCD{T<:Integer,V<:Real}
     # NOTE leaves have the first clade IDs {1, ...} so we can use a vector
 end
 
+Base.isnan(ccd::CCD) = false
 Base.length(ccd::CCD) = length(ccd.clades)
 Base.lastindex(ccd::CCD) = length(ccd)
 Base.getindex(ccd::CCD, i::Integer) = ccd.clades[i]
